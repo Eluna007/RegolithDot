@@ -24,31 +24,23 @@ EXT="${EXT,,}"
 if [[ "$EXT" == "mp4" || "$EXT" == "webm" || "$EXT" == "mkv" ]]; then
     pkill mpvpaper 2>/dev/null
     mpvpaper -o "no-audio loop" '*' "$WALLPAPER" &
+    echo "Video wallpaper set. Skipping color extraction."
+    exit 0
 else
     pgrep awww-daemon > /dev/null || (awww-daemon &)
     sleep 0.5
     awww img "$WALLPAPER" --transition-type wave --transition-duration 1.5
 fi
 
-# Extract dominant color with ImageMagick
-DOMINANT=$(magick "$WALLPAPER" -resize 50x50\! -format "%[fx:int(255*r+.5)],%[fx:int(255*g+.5)],%[fx:int(255*b+.5)]" info: 2>/dev/null | tr -d '%')
+# Generate full color scheme directly from the image
+COLORS=$(matugen image "$WALLPAPER" -j hex 2>/dev/null)
 
-if [ -z "$DOMINANT" ]; then
-    echo "Failed to extract color"
+if [ -z "$COLORS" ]; then
+    echo "Failed to generate colors from image"
     exit 1
 fi
 
-R=$(echo $DOMINANT | cut -d',' -f1)
-G=$(echo $DOMINANT | cut -d',' -f2)
-B=$(echo $DOMINANT | cut -d',' -f3)
-HEX=$(printf "#%02x%02x%02x" $R $G $B)
-
-echo "Dominant color: $HEX"
-
-# Generate color scheme with matugen
-COLORS=$(matugen color hex "$HEX" -j hex 2>/dev/null)
-
-# Extract key colors
+# Extract key colors from matugen dark scheme
 extract() {
     echo "$COLORS" | python3 -c "
 import sys, json
@@ -69,7 +61,7 @@ PRIMARY_CONT=$(extract "primary_container" "#1c4875")
 ON_SURFACE=$(extract "on_surface" "#e1e2e8")
 TERTIARY=$(extract "tertiary" "#d4bae4")
 
-# Write Colors.qml for Quickshell
+# Write Colors.qml for Quickshell (watchFiles: true triggers a live reload)
 cat > "$THEME_FILE" << QMLEOF
 pragma Singleton
 
@@ -83,11 +75,12 @@ Singleton {
     property color primaryContainer: "$PRIMARY_CONT"
     property color foreground:        "$ON_SURFACE"
     property color tertiary:         "$TERTIARY"
-    property color dominant:         "$HEX"
+    property color dominant:         "$PRIMARY"
 }
 QMLEOF
 
 echo "Colors written to $THEME_FILE"
+
 cat > "$HOME/.config/rofi/luna.rasi" << ROFIEOF
 * {
     bg:          ${SURFACE}ee;
@@ -182,7 +175,8 @@ scrollbar {
 ROFIEOF
 echo "Rofi theme updated"
 
-# Update Hyprland border colors
-hyprctl eval "hl.config({ general = { col = { active_border = { colors = {'rgb(${PRIMARY//#/})', 'rgb(${TERTIARY//#/})'}, angle = 45 }, inactive_border = 'rgb(${SURFACE_VAR//#/})' } } })" 2>/dev/null
+# Update Hyprland border colors at runtime
+hyprctl keyword "general:col.active_border" "rgba(${PRIMARY//#/}ee) rgba(${TERTIARY//#/}ee) 45deg"
+hyprctl keyword "general:col.inactive_border" "rgba(${SURFACE_VAR//#/}aa)"
 
 echo "Done! Wallpaper and theme updated."

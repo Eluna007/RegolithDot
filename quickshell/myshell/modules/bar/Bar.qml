@@ -84,13 +84,86 @@ Item {
             }
         }
 
-        // Clock pill
+        // Clock pill (height grows to fit time + date + weather)
         Pill {
             Layout.fillWidth: true
-            implicitHeight: 70
+            implicitHeight: 88
 
             Clock {
                 anchors.centerIn: parent
+            }
+        }
+
+        // Media pill — slides in when a player is active
+        Rectangle {
+            id: mediaPill
+            Layout.fillWidth: true
+            readonly property bool active: !Services.Media.stopped
+            implicitHeight: active ? 90 : 0
+            Layout.preferredHeight: implicitHeight
+            clip: true
+
+            Behavior on implicitHeight {
+                NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
+            }
+
+            radius: Root.Theme.pillRadius
+            color: Services.Media.playing ? Root.Theme.pillBgActive : Root.Theme.pillBg
+
+            Behavior on color { ColorAnimation { duration: 300 } }
+
+            TapHandler {
+                onTapped: Services.Media.playPause()
+            }
+
+            // Play / pause icon
+            Text {
+                anchors.top: parent.top
+                anchors.topMargin: 6
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: Services.Media.playing ? "󰏤" : "󰐊"
+                color: Root.Theme.textAccent
+                font.pixelSize: 11
+                opacity: mediaPill.active ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: 200 } }
+            }
+
+            // Artist · Title, rotated to fit the narrow bar
+            Text {
+                x: (parent.width - height) / 2
+                y: mediaPill.height - 10
+                text: (Services.Media.artist !== "" ? Services.Media.artist + " · " : "") + Services.Media.title
+                color: "white"
+                font.pixelSize: 9
+                elide: Text.ElideRight
+                width: mediaPill.implicitHeight - 26
+                rotation: -90
+                transformOrigin: Item.TopLeft
+                opacity: mediaPill.active ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: 200 } }
+            }
+
+            // Progress bar
+            Rectangle {
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 5
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: 6
+                anchors.rightMargin: 6
+                height: 2
+                radius: 1
+                color: Root.Theme.pillBgHover
+                opacity: mediaPill.active ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: 200 } }
+
+                Rectangle {
+                    width: parent.width * Services.Media.progress
+                    height: parent.height
+                    radius: parent.radius
+                    color: Root.Theme.textAccent
+                    Behavior on width { NumberAnimation { duration: 800; easing.type: Easing.Linear } }
+                }
             }
         }
 

@@ -31,6 +31,14 @@ ColumnLayout {
         horizontalAlignment: Text.AlignHCenter
     }
 
+    Text {
+        text: Services.Weather.icon + " " + Services.Weather.temperature
+        color: "#88ffffff"
+        font.pixelSize: 9
+        Layout.alignment: Qt.AlignHCenter
+        horizontalAlignment: Text.AlignHCenter
+    }
+
     TapHandler {
         onTapped: Services.Dashboard.toggle()
     }
