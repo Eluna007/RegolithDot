@@ -328,26 +328,73 @@ PanelWindow {
                             opacity: visible ? 1 : 0
                             Behavior on opacity { NumberAnimation { duration: 150 } }
 
-                            Rectangle {
+                            Item {
                                 Layout.fillHeight: true
                                 Layout.preferredWidth: height
-                                radius: height / 2
-                                color: Root.Theme.pillBgActive
-                                clip: true
 
-                                Image {
+                                Canvas {
+                                    id: eqCanvas
                                     anchors.fill: parent
-                                    source: Services.Media.artUrl
-                                    fillMode: Image.PreserveAspectCrop
-                                    visible: Services.Media.artUrl !== ""
+                                    property var barData: Services.CavaAudio.bars
+                                    property color accent: Root.Theme.textAccent
+                                    readonly property real artRadius: (height - 64) / 2
+                                    onBarDataChanged: requestPaint()
+                                    onAccentChanged: requestPaint()
+                                    onPaint: {
+                                        const ctx = getContext("2d")
+                                        ctx.clearRect(0, 0, width, height)
+                                        const cx = width / 2, cy = height / 2
+                                        const innerR = artRadius + 6
+                                        const maxBarH = 24
+                                        const bars = barData, n = bars.length
+                                        if (n === 0) return
+                                        const barW = Math.max(2, (2 * Math.PI * innerR / n) * 0.55)
+                                        for (let i = 0; i < n; i++) {
+                                            const angle = (i / n) * 2 * Math.PI - Math.PI / 2
+                                            const h = (bars[i] / 100) * maxBarH
+                                            if (h < 1.5) continue
+                                            ctx.beginPath()
+                                            ctx.strokeStyle = Qt.rgba(accent.r, accent.g, accent.b, 1)
+                                            ctx.lineWidth = barW
+                                            ctx.lineCap = "round"
+                                            ctx.globalAlpha = 0.7 + 0.3 * (bars[i] / 100)
+                                            ctx.moveTo(cx + Math.cos(angle) * (innerR + 1), cy + Math.sin(angle) * (innerR + 1))
+                                            ctx.lineTo(cx + Math.cos(angle) * (innerR + h), cy + Math.sin(angle) * (innerR + h))
+                                            ctx.stroke()
+                                        }
+                                        ctx.globalAlpha = 1
+                                    }
                                 }
 
-                                Text {
+                                Rectangle {
                                     anchors.centerIn: parent
-                                    text: "󰝚"
-                                    color: Root.Theme.textMuted
-                                    font.pixelSize: 48
-                                    visible: Services.Media.artUrl === ""
+                                    width: parent.height - 64
+                                    height: parent.height - 64
+                                    radius: height / 2
+                                    color: Root.Theme.pillBgActive
+                                    clip: true
+
+                                    NumberAnimation on rotation {
+                                        from: 0; to: 360
+                                        duration: 14000
+                                        loops: Animation.Infinite
+                                        running: Services.Media.playing
+                                    }
+
+                                    Image {
+                                        anchors.fill: parent
+                                        source: Services.Media.artUrl
+                                        fillMode: Image.PreserveAspectCrop
+                                        visible: Services.Media.artUrl !== ""
+                                    }
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "󰝚"
+                                        color: Root.Theme.textMuted
+                                        font.pixelSize: 40
+                                        visible: Services.Media.artUrl === ""
+                                    }
                                 }
                             }
 
@@ -428,79 +475,123 @@ PanelWindow {
 
                             Repeater {
                                 model: [
-                                    { label: "CPU Temp", value: Services.SystemStats.cpuTemp, max: 100, unit: "°C", color: "#ff6b9d", icon: "󰻠", sublabel: "" },
-                                    { label: "NVMe Temp", value: Services.SystemStats.nvmeTemp, max: 85, unit: "°C", color: "#89b4fa", icon: "󰋊", sublabel: "" },
-                                    { label: "Memory", value: Services.SystemStats.ramPercent, max: 100, unit: "%", color: "#a6e3a1", icon: "󰍛", sublabel: Services.SystemStats.ramStr },
-                                    { label: "Storage", value: Services.SystemStats.diskPercent, max: 100, unit: "%", color: "#efbd94", icon: "󰋊", sublabel: Services.SystemStats.diskStr }
+                                    { label: "CPU",  unit: "%", useAccent: true  },
+                                    { label: "GPU",  unit: "%", useAccent: false },
+                                    { label: "RAM",  unit: "%", useAccent: true  },
+                                    { label: "Disk", unit: "%", useAccent: false }
                                 ]
 
                                 delegate: Rectangle {
                                     required property var modelData
+                                    required property int index
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
                                     radius: 12
                                     color: Root.Theme.pillBgHover
 
+                                    property real gaugeValue: {
+                                        if (index === 0) return Services.SystemStats.cpuPercent
+                                        if (index === 1) return Services.SystemStats.gpuPercent
+                                        if (index === 2) return Services.SystemStats.ramPercent
+                                        return Services.SystemStats.diskPercent
+                                    }
+
+                                    property string sublabelText: {
+                                        if (index === 0) return Services.SystemStats.cpuTemp + "°C"
+                                        if (index === 1) return Services.SystemStats.gpuFreqCur + " MHz"
+                                        if (index === 2) return Services.SystemStats.ramStr
+                                        return Services.SystemStats.diskStr
+                                    }
+
                                     ColumnLayout {
                                         anchors.centerIn: parent
-                                        spacing: 8
+                                        spacing: 6
 
                                         Item {
-                                            width: 80; height: 80
+                                            width: 110; height: 110
                                             Layout.alignment: Qt.AlignHCenter
 
                                             Canvas {
-                                                id: canvas
+                                                id: gaugeCanvas
                                                 anchors.fill: parent
-                                                property real progress: modelData.value / modelData.max
-                                                property color arcColor: modelData.color
-
+                                                property real progress: Math.min(1, Math.max(0, gaugeValue / 100))
+                                                property color fillColor: modelData.useAccent ? Root.Theme.textAccent : Root.Theme.tertiary
+                                                onProgressChanged: requestPaint()
+                                                onFillColorChanged: requestPaint()
                                                 onPaint: {
                                                     const ctx = getContext("2d")
-                                                    const cx = width / 2
-                                                    const cy = height / 2
-                                                    const r = 34
-                                                    const start = -Math.PI / 2
-                                                    const end = start + (2 * Math.PI * progress)
                                                     ctx.clearRect(0, 0, width, height)
-                                                    ctx.beginPath()
-                                                    ctx.arc(cx, cy, r, 0, 2 * Math.PI)
-                                                    ctx.strokeStyle = "#44ffffff"
-                                                    ctx.lineWidth = 6
-                                                    ctx.stroke()
-                                                    ctx.beginPath()
-                                                    ctx.arc(cx, cy, r, start, end)
-                                                    ctx.strokeStyle = arcColor
-                                                    ctx.lineWidth = 6
-                                                    ctx.lineCap = "round"
-                                                    ctx.stroke()
+                                                    const cx = width / 2, cy = height / 2 + 6, r = 44
+                                                    const segs = 24
+                                                    const startA = (215 / 180) * Math.PI
+                                                    const sweep = (300 / 180) * Math.PI
+                                                    const segA = sweep / segs
+                                                    const gap = segA * 0.18
+                                                    const filled = Math.round(progress * segs)
+                                                    const fc = Qt.rgba(fillColor.r, fillColor.g, fillColor.b, 1)
+                                                    for (let i = 0; i < segs; i++) {
+                                                        const sa = startA + i * segA
+                                                        const ea = sa + segA - gap
+                                                        const active = i < filled
+                                                        if (active) {
+                                                            ctx.beginPath()
+                                                            ctx.arc(cx, cy, r, sa, ea)
+                                                            ctx.strokeStyle = fc
+                                                            ctx.lineWidth = 16
+                                                            ctx.globalAlpha = 0.08
+                                                            ctx.lineCap = "butt"
+                                                            ctx.stroke()
+                                                        }
+                                                        ctx.beginPath()
+                                                        ctx.arc(cx, cy, r, sa, ea)
+                                                        ctx.strokeStyle = active ? fc : "#ffffff"
+                                                        ctx.lineWidth = 7
+                                                        ctx.globalAlpha = active ? 0.9 : 0.1
+                                                        ctx.lineCap = "butt"
+                                                        ctx.stroke()
+                                                    }
+                                                    ctx.globalAlpha = 0.28
+                                                    ctx.strokeStyle = "#ffffff"
+                                                    ctx.lineWidth = 1.5
+                                                    ;[0, 0.25, 0.5, 0.75, 1.0].forEach(p => {
+                                                        const a = startA + p * sweep
+                                                        ctx.beginPath()
+                                                        ctx.moveTo(cx + Math.cos(a) * (r - 11), cy + Math.sin(a) * (r - 11))
+                                                        ctx.lineTo(cx + Math.cos(a) * (r + 14), cy + Math.sin(a) * (r + 14))
+                                                        ctx.stroke()
+                                                    })
+                                                    ctx.globalAlpha = 1
                                                 }
-
-                                                onProgressChanged: requestPaint()
                                             }
 
-                                            Text {
+                                            ColumnLayout {
                                                 anchors.centerIn: parent
-                                                text: Math.round(modelData.value) + modelData.unit
-                                                color: Root.Theme.textPrimary
-                                                font.pixelSize: 13
-                                                font.weight: Font.Bold
+                                                anchors.verticalCenterOffset: 6
+                                                spacing: 1
+                                                Text {
+                                                    Layout.alignment: Qt.AlignHCenter
+                                                    text: Math.round(gaugeValue) + modelData.unit
+                                                    color: Root.Theme.textPrimary
+                                                    font.pixelSize: 15
+                                                    font.weight: Font.Bold
+                                                }
                                             }
                                         }
 
                                         Text {
-                                            text: modelData.icon + "  " + modelData.label
-                                            color: Root.Theme.textMuted
-                                            font.pixelSize: 10
                                             Layout.alignment: Qt.AlignHCenter
+                                            text: modelData.label
+                                            color: modelData.useAccent ? Root.Theme.textAccent : Root.Theme.tertiary
+                                            font.pixelSize: 10
+                                            font.weight: Font.SemiBold
+                                            font.letterSpacing: 1
                                         }
 
                                         Text {
-                                            text: modelData.sublabel
+                                            Layout.alignment: Qt.AlignHCenter
+                                            text: sublabelText
                                             color: Root.Theme.textMuted
                                             font.pixelSize: 9
-                                            Layout.alignment: Qt.AlignHCenter
-                                            visible: modelData.sublabel !== ""
                                         }
                                     }
                                 }
