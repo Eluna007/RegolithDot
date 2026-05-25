@@ -14,9 +14,12 @@ Singleton {
     property real diskTotal: 0
     property real cpuTemp: 0
     property real nvmeTemp: 0
+    property int gpuFreqCur: 0
+    property int gpuFreqMax: 1
 
     readonly property int ramPercent: ramTotal > 0 ? Math.round((ramUsed / ramTotal) * 100) : 0
     readonly property int diskPercent: diskTotal > 0 ? Math.round((diskUsed / diskTotal) * 100) : 0
+    readonly property int gpuPercent: gpuFreqMax > 0 ? Math.round((gpuFreqCur / gpuFreqMax) * 100) : 0
 
     readonly property string ramStr: Math.round(ramUsed) + " / " + Math.round(ramTotal) + " GB"
     readonly property string diskStr: Math.round(diskUsed) + " / " + Math.round(diskTotal) + " GB"
@@ -68,6 +71,20 @@ Singleton {
         stdout: SplitParser { onRead: data => root.nvmeTemp = parseFloat(data) || 0 }
     }
 
+    Process {
+        id: gpuCurPoller
+        command: ["bash", "-c", "cat /sys/class/drm/card*/gt_cur_freq_mhz 2>/dev/null | head -1"]
+        running: true
+        stdout: SplitParser { onRead: data => root.gpuFreqCur = parseInt(data) || 0 }
+    }
+
+    Process {
+        id: gpuMaxPoller
+        command: ["bash", "-c", "cat /sys/class/drm/card*/gt_max_freq_mhz 2>/dev/null | head -1"]
+        running: true
+        stdout: SplitParser { onRead: data => { const v = parseInt(data); if (v > 0) root.gpuFreqMax = v } }
+    }
+
     Timer {
         interval: 5000
         running: true
@@ -78,6 +95,8 @@ Singleton {
             diskPoller.running = true
             cpuTempPoller.running = true
             nvmeTempPoller.running = true
+            gpuCurPoller.running = true
+            gpuMaxPoller.running = true
         }
     }
 }
