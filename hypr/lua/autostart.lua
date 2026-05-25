@@ -1,0 +1,12 @@
+local cfg = require("lua.config")
+
+hl.on("hyprland.start", function()
+    hl.exec_cmd("swaync")
+    hl.exec_cmd("awww-daemon")
+    hl.exec_cmd("bash -c 'sleep 1 && awww restore'")
+    hl.exec_cmd("qs -c myshell")
+    hl.exec_cmd("hypridle")
+    hl.exec_cmd("bash -c 'wl-paste --type text --watch cliphist store'")
+    hl.exec_cmd("bash -c 'wl-paste --type image --watch cliphist store'")
+    hl.exec_cmd("bash ~/.config/hypr/scripts/lockscreen-weather.sh")
+end)
