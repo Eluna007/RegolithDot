@@ -9,148 +9,167 @@ import "../../" as Root
 PanelWindow {
     id: root
 
-    anchors {
-        top: true
-        left: true
-        right: true
-        bottom: true
-    }
-
+    anchors { top: true; left: true; right: true; bottom: true }
     color: "transparent"
     exclusiveZone: -1
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: Services.PowerMenu.visible
+        ? WlrKeyboardFocus.Exclusive
+        : WlrKeyboardFocus.None
 
     visible: Services.PowerMenu.visible
 
+    function triggerAction(cmd) {
+        Services.PowerMenu.close()
+        runner.command = ["bash", "-c", cmd]
+        runner.running = true
+    }
+
     Item {
         anchors.fill: parent
+        focus: true
 
-        // Dim background
+        Keys.onPressed: event => {
+            switch (event.key) {
+                case Qt.Key_Escape: Services.PowerMenu.close();                                                                    event.accepted = true; break
+                case Qt.Key_L:      root.triggerAction("bash -c 'bash ~/.config/hypr/scripts/lockscreen-weather.sh & hyprlock'"); event.accepted = true; break
+                case Qt.Key_E:      root.triggerAction("hyprctl dispatch exit");  event.accepted = true; break
+                case Qt.Key_S:      root.triggerAction("systemctl suspend");       event.accepted = true; break
+                case Qt.Key_R:      root.triggerAction("systemctl reboot");        event.accepted = true; break
+                case Qt.Key_P:      root.triggerAction("systemctl poweroff");      event.accepted = true; break
+                case Qt.Key_H:      root.triggerAction("systemctl hibernate");     event.accepted = true; break
+            }
+        }
+
+        // Dim backdrop
         Rectangle {
             anchors.fill: parent
-            color: "#88000000"
+            color: "#aa000000"
             opacity: Services.PowerMenu.visible ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: 200 } }
-
+            Behavior on opacity { NumberAnimation { duration: 220 } }
             MouseArea {
                 anchors.fill: parent
                 onClicked: Services.PowerMenu.close()
             }
         }
 
-        // Menu
+        // Panel
         Rectangle {
+            id: menu
             anchors.centerIn: parent
-            width: 320
-            height: menuContent.implicitHeight + 32
-            radius: 20
+            width: 300
+            height: menuCol.implicitHeight + 40
+            radius: 24
             color: Root.Theme.pillBg
 
             opacity: Services.PowerMenu.visible ? 1 : 0
-            scale: Services.PowerMenu.visible ? 1 : 0.9
+            scale:   Services.PowerMenu.visible ? 1 : 0.88
+            Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+            Behavior on scale   { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
 
-            Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
-            Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+            MouseArea { anchors.fill: parent }
 
             ColumnLayout {
-                id: menuContent
-                anchors {
-                    fill: parent
-                    margins: 16
-                }
-                spacing: 8
+                id: menuCol
+                anchors { top: parent.top; left: parent.left; right: parent.right; margins: 20 }
+                spacing: 16
+
+                Item { height: 4 }
 
                 Text {
-                    text: "Session"
-                    color: Root.Theme.textMuted
-                    font.pixelSize: 12
-                    font.weight: Font.Bold
                     Layout.alignment: Qt.AlignHCenter
+                    text: Services.Time.hourStr + ":" + Services.Time.minuteStr
+                    color: Root.Theme.textPrimary
+                    font.pixelSize: 40
+                    font.weight: Font.Light
                 }
 
-                Repeater {
-                    model: [
-                        { icon: "󰤄", label: "Suspend",  color: "#89b4fa", cmd: "systemctl suspend" },
-                        { icon: "󰜉", label: "Reboot",   color: "#fab387", cmd: "systemctl reboot" },
-                        { icon: "󰐥", label: "Shutdown", color: "#f38ba8", cmd: "systemctl poweroff" },
-                        { icon: "󰍃", label: "Logout",   color: "#a6e3a1", cmd: "hyprctl dispatch exit" },
-                        { icon: "󰌾", label: "Lock",     color: "#cba6f7", cmd: "bash -c 'bash ~/.config/hypr/scripts/lockscreen-weather.sh & hyprlock'" }
-                    ]
-
-                    delegate: Rectangle {
-                        required property var modelData
-                        Layout.fillWidth: true
-                        implicitHeight: 48
-                        radius: 12
-                        color: hovered ? Root.Theme.pillBgHover : Root.Theme.pillBgActive
-
-                        property bool hovered: false
-
-                        Behavior on color { ColorAnimation { duration: 150 } }
-
-                        RowLayout {
-                            anchors { fill: parent; margins: 14 }
-                            spacing: 14
-
-                            Text {
-                                text: modelData.icon
-                                color: modelData.color
-                                font.pixelSize: 20
-                            }
-
-                            Text {
-                                text: modelData.label
-                                color: Root.Theme.textPrimary
-                                font.pixelSize: 14
-                                font.weight: Font.Medium
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            onEntered: parent.hovered = true
-                            onExited: parent.hovered = false
-                            onClicked: {
-                                Services.PowerMenu.close()
-                                runner.command = ["bash", "-c", modelData.cmd]
-                                runner.running = true
-                            }
-                        }
-                    }
+                Text {
+                    Layout.alignment: Qt.AlignHCenter
+                    text: Qt.formatDateTime(new Date(), "dddd, MMMM d yyyy")
+                    color: Root.Theme.textMuted
+                    font.pixelSize: 11
                 }
 
-                // Cancel
                 Rectangle {
                     Layout.fillWidth: true
-                    implicitHeight: 40
-                    radius: 12
-                    color: cancelHover ? Root.Theme.pillBgHover : "transparent"
-                    property bool cancelHover: false
+                    height: 1
+                    color: Root.Theme.pillBgHover
+                }
 
-                    Behavior on color { ColorAnimation { duration: 150 } }
+                GridLayout {
+                    Layout.fillWidth: true
+                    columns: 2
+                    rowSpacing: 12
+                    columnSpacing: 12
 
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Cancel"
-                        color: Root.Theme.textMuted
-                        font.pixelSize: 13
-                    }
+                    Repeater {
+                        model: [
+                            { icon: "󰌾", label: "Lock",      key: "l", cmd: "bash -c 'bash ~/.config/hypr/scripts/lockscreen-weather.sh & hyprlock'" },
+                            { icon: "󰍃", label: "Logout",    key: "e", cmd: "hyprctl dispatch exit" },
+                            { icon: "󰒲", label: "Sleep",     key: "s", cmd: "systemctl suspend" },
+                            { icon: "󰑐", label: "Restart",   key: "r", cmd: "systemctl reboot" },
+                            { icon: "󰐥", label: "Shutdown",  key: "p", cmd: "systemctl poweroff" },
+                            { icon: "󰏸", label: "Hibernate", key: "h", cmd: "systemctl hibernate" }
+                        ]
 
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        onEntered: parent.cancelHover = true
-                        onExited: parent.cancelHover = false
-                        onClicked: Services.PowerMenu.close()
+                        delegate: ColumnLayout {
+                            id: btn
+                            required property var modelData
+                            Layout.fillWidth: true
+                            spacing: 6
+                            Layout.alignment: Qt.AlignHCenter
+
+                            property bool hovered: false
+
+                            Rectangle {
+                                Layout.alignment: Qt.AlignHCenter
+                                width: 64; height: 64; radius: 32
+                                color: btn.hovered ? Root.Theme.pillBgActive : Root.Theme.pillBgHover
+                                scale: btn.hovered ? 1.08 : 1.0
+                                Behavior on color { ColorAnimation { duration: 180 } }
+                                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: btn.modelData.icon
+                                    color: btn.hovered ? Root.Theme.textAccent : Root.Theme.textPrimary
+                                    font.pixelSize: 24
+                                    Behavior on color { ColorAnimation { duration: 180 } }
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onEntered: btn.hovered = true
+                                    onExited:  btn.hovered = false
+                                    onClicked: root.triggerAction(btn.modelData.cmd)
+                                }
+                            }
+
+                            Text {
+                                Layout.alignment: Qt.AlignHCenter
+                                text: btn.modelData.label
+                                color: btn.hovered ? Root.Theme.textAccent : Root.Theme.textPrimary
+                                font.pixelSize: 11
+                                font.weight: Font.Medium
+                                Behavior on color { ColorAnimation { duration: 180 } }
+                            }
+
+                            Text {
+                                Layout.alignment: Qt.AlignHCenter
+                                text: btn.modelData.key
+                                color: Root.Theme.textMuted
+                                font.pixelSize: 9
+                            }
+                        }
                     }
                 }
+
+                Item { height: 4 }
             }
         }
     }
 
-    Process {
-        id: runner
-    }
+    Process { id: runner }
 }
