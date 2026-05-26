@@ -5,6 +5,7 @@ import Quickshell.Wayland
 import Quickshell.Io
 import "../../services" as Services
 import "../../" as Root
+import "../../components"
 
 PanelWindow {
     id: qcWin
@@ -19,12 +20,44 @@ PanelWindow {
     property bool panelOpen: false
     visible: false
 
+    // Dragging state for slider handles
+    property bool volDragging: false
+    property bool briDragging: false
+    Timer { id: volDragTimer; interval: 500; onTriggered: qcWin.volDragging = false }
+    Timer { id: briDragTimer; interval: 500; onTriggered: qcWin.briDragging = false }
+
+    // WiFi / Bluetooth state
+    property bool wifiEnabled: true
+    property bool bluetoothEnabled: false
+
+    Process { id: wifiPoller; command: ["bash", "-c", "nmcli radio wifi"]; running: true
+        stdout: SplitParser { onRead: data => qcWin.wifiEnabled = data.trim() === "enabled" }
+    }
+    Process { id: btPoller; command: ["bash", "-c", "bluetoothctl show 2>/dev/null | grep 'Powered:' | awk '{print $2}'"]; running: true
+        stdout: SplitParser { onRead: data => qcWin.bluetoothEnabled = data.trim() === "yes" }
+    }
+    Process { id: wifiToggleRunner }
+    Process { id: btToggleRunner }
+
+    function toggleWifi() {
+        wifiEnabled = !wifiEnabled
+        wifiToggleRunner.command = ["nmcli", "radio", "wifi", wifiEnabled ? "on" : "off"]
+        wifiToggleRunner.running = true
+    }
+    function toggleBt() {
+        bluetoothEnabled = !bluetoothEnabled
+        btToggleRunner.command = ["bash", "-c", "bluetoothctl power " + (bluetoothEnabled ? "on" : "off")]
+        btToggleRunner.running = true
+    }
+
     Connections {
         target: Services.QuickControls
         function onVisibleChanged() {
             if (Services.QuickControls.visible) {
                 qcWin.visible = true
                 qcWin.panelOpen = true
+                wifiPoller.running = true   // refresh state on open
+                btPoller.running = true
             } else {
                 qcWin.panelOpen = false
                 closeDelay.start()
@@ -111,12 +144,13 @@ PanelWindow {
                             color: Root.Theme.textMuted
                             font.pixelSize: 13
                         }
-                        MouseArea {
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            onEntered: parent.xHover = true
-                            onExited:  parent.xHover = false
+                        StateLayer {
+                            anchors.fill: parent; radius: 14
                             onClicked: Services.QuickControls.close()
+                        }
+                        MouseArea {
+                            anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.NoButton
+                            onEntered: parent.xHover = true; onExited: parent.xHover = false
                         }
                     }
                 }
@@ -160,20 +194,52 @@ PanelWindow {
                                 radius: height / 2
                                 color: Qt.rgba(Root.Theme.textAccent.r, Root.Theme.textAccent.g, Root.Theme.textAccent.b, 0.15)
 
+                                // Fill bar
                                 Rectangle {
                                     width: parent.width * (Services.Audio.percent / 100)
                                     height: parent.height; radius: parent.radius
                                     color: Services.Audio.muted ? "#88f38ba8" : Root.Theme.textAccent
                                     Behavior on width { NumberAnimation { duration: 80 } }
                                 }
+
+                                // Handle
+                                Rectangle {
+                                    id: volHandle
+                                    width: 36; height: 36; radius: 18
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    x: Math.max(4, Math.min(parent.width - width - 4,
+                                        parent.width * (Services.Audio.percent / 100) - width / 2))
+                                    color: Qt.rgba(0, 0, 0, 0.3)
+                                    Behavior on x { NumberAnimation { duration: 80 } }
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: Services.Audio.icon
+                                        color: "white"; font.pixelSize: 14
+                                        opacity: qcWin.volDragging ? 0 : 1
+                                        Behavior on opacity { NumberAnimation { duration: 120 } }
+                                    }
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: Services.Audio.percent + ""
+                                        color: "white"; font.pixelSize: 10; font.weight: Font.Bold
+                                        opacity: qcWin.volDragging ? 1 : 0
+                                        Behavior on opacity { NumberAnimation { duration: 120 } }
+                                    }
+                                }
                             }
 
                             MouseArea {
                                 anchors.fill: parent
-                                onClicked: mouse => qcWin.applyVolume(Math.round((mouse.x / width) * 100))
+                                onClicked: mouse => {
+                                    qcWin.applyVolume(Math.round((mouse.x / width) * 100))
+                                    qcWin.volDragging = true; volDragTimer.restart()
+                                }
                                 onMouseXChanged: {
-                                    if (pressed)
+                                    if (pressed) {
                                         qcWin.applyVolume(Math.round(Math.max(0, Math.min(mouseX, width)) / width * 100))
+                                        qcWin.volDragging = true; volDragTimer.restart()
+                                    }
                                 }
                             }
                         }
@@ -214,11 +280,38 @@ PanelWindow {
                                 radius: height / 2
                                 color: Qt.rgba(Root.Theme.tertiary.r, Root.Theme.tertiary.g, Root.Theme.tertiary.b, 0.15)
 
+                                // Fill bar
                                 Rectangle {
                                     width: parent.width * (Services.Brightness.percent / 100)
                                     height: parent.height; radius: parent.radius
                                     color: Root.Theme.tertiary
                                     Behavior on width { NumberAnimation { duration: 80 } }
+                                }
+
+                                // Handle
+                                Rectangle {
+                                    id: briHandle
+                                    width: 36; height: 36; radius: 18
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    x: Math.max(4, Math.min(parent.width - width - 4,
+                                        parent.width * (Services.Brightness.percent / 100) - width / 2))
+                                    color: Qt.rgba(0, 0, 0, 0.3)
+                                    Behavior on x { NumberAnimation { duration: 80 } }
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: Services.Brightness.icon
+                                        color: "white"; font.pixelSize: 14
+                                        opacity: qcWin.briDragging ? 0 : 1
+                                        Behavior on opacity { NumberAnimation { duration: 120 } }
+                                    }
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: Services.Brightness.percent + ""
+                                        color: "white"; font.pixelSize: 10; font.weight: Font.Bold
+                                        opacity: qcWin.briDragging ? 1 : 0
+                                        Behavior on opacity { NumberAnimation { duration: 120 } }
+                                    }
                                 }
                             }
 
@@ -227,14 +320,65 @@ PanelWindow {
                                 onClicked: mouse => {
                                     briDebounce.pending = Math.round((mouse.x / width) * 100)
                                     briDebounce.triggered()
+                                    qcWin.briDragging = true; briDragTimer.restart()
                                 }
                                 onMouseXChanged: {
                                     if (pressed) {
                                         briDebounce.pending = Math.round(Math.max(0, Math.min(mouseX, width)) / width * 100)
                                         briDebounce.restart()
+                                        qcWin.briDragging = true; briDragTimer.restart()
                                     }
                                 }
                                 onReleased: { briDebounce.stop(); briDebounce.triggered() }
+                            }
+                        }
+                    }
+                }
+
+                // ── Connectivity Toggles ──────────────────────────────────
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 60
+                    radius: 14
+                    color: Root.Theme.pillBgHover
+
+                    RowLayout {
+                        anchors { fill: parent; margins: 12 }
+                        spacing: 12
+
+                        // WiFi
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            Text { text: qcWin.wifiEnabled ? "󰤨" : "󰤭"; color: qcWin.wifiEnabled ? Root.Theme.textAccent : Root.Theme.textMuted; font.pixelSize: 18 }
+                            ColumnLayout {
+                                spacing: 0
+                                Text { text: "Wi-Fi"; color: Root.Theme.textMuted; font.pixelSize: 11 }
+                                Text { text: qcWin.wifiEnabled ? Services.Network.ssid || "On" : "Off"; color: qcWin.wifiEnabled ? Root.Theme.textPrimary : Root.Theme.textMuted; font.pixelSize: 10; elide: Text.ElideRight }
+                            }
+                            Item { Layout.fillWidth: true }
+                            ToggleSwitch {
+                                checked: qcWin.wifiEnabled
+                                onToggled: qcWin.toggleWifi()
+                            }
+                        }
+
+                        Rectangle { width: 1; height: 36; color: Root.Theme.pillBgActive }
+
+                        // Bluetooth
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            Text { text: "󰂯"; color: qcWin.bluetoothEnabled ? Root.Theme.textAccent : Root.Theme.textMuted; font.pixelSize: 18 }
+                            ColumnLayout {
+                                spacing: 0
+                                Text { text: "Bluetooth"; color: Root.Theme.textMuted; font.pixelSize: 11 }
+                                Text { text: qcWin.bluetoothEnabled ? "On" : "Off"; color: qcWin.bluetoothEnabled ? Root.Theme.textPrimary : Root.Theme.textMuted; font.pixelSize: 10 }
+                            }
+                            Item { Layout.fillWidth: true }
+                            ToggleSwitch {
+                                checked: qcWin.bluetoothEnabled
+                                onToggled: qcWin.toggleBt()
                             }
                         }
                     }
