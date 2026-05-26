@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import "../../services" as Services
 
 // Invisible edge strips that detect touch/mouse swipes to open panels.
+// Left edge  → swipe right → Notification Panel
 // Right edge → swipe left  → Quick Controls
 // Bottom edge → swipe up   → Dashboard
 
@@ -14,6 +15,33 @@ Variants {
 
     Item {
         required property ShellScreen modelData
+
+        // Left edge strip
+        PanelWindow {
+            id: leftStrip
+            screen: parent.modelData
+
+            anchors { top: true; left: true; bottom: true }
+            implicitWidth: 20
+            color: "transparent"
+            exclusiveZone: 0
+            WlrLayershell.layer: WlrLayer.Top
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+            visible: !Services.NotifPanel.visible
+
+            Item {
+                anchors.fill: parent
+                DragHandler {
+                    target: null
+                    xAxis.enabled: true
+                    yAxis.enabled: false
+                    onActiveChanged: {
+                        if (!active && translation.x > 40)
+                            Services.NotifPanel.open()
+                    }
+                }
+            }
+        }
 
         // Right edge strip
         PanelWindow {
