@@ -5,6 +5,7 @@ import Quickshell.Wayland
 import Quickshell.Io
 import "../../services" as Services
 import "../../" as Root
+import "../../components"
 
 PanelWindow {
     id: root
@@ -138,12 +139,19 @@ PanelWindow {
                                     Behavior on color { ColorAnimation { duration: 180 } }
                                 }
 
+                                StateLayer {
+                                    anchors.fill: parent
+                                    radius: 32
+                                    onClicked: root.triggerAction(btn.modelData.cmd)
+                                    onPressed: btn.hovered = true
+                                }
+
                                 MouseArea {
                                     anchors.fill: parent
                                     hoverEnabled: true
+                                    acceptedButtons: Qt.NoButton
                                     onEntered: btn.hovered = true
                                     onExited:  btn.hovered = false
-                                    onClicked: root.triggerAction(btn.modelData.cmd)
                                 }
                             }
 

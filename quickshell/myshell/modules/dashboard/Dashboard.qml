@@ -6,6 +6,7 @@ import Quickshell
 import Quickshell.Wayland
 import "../../services" as Services
 import "../../" as Root
+import "../../components"
 
 PanelWindow {
     id: root
@@ -132,8 +133,9 @@ PanelWindow {
                                     }
                                 }
 
-                                MouseArea {
+                                StateLayer {
                                     anchors.fill: parent
+                                    radius: 4
                                     onClicked: panel.currentTab = index
                                 }
                             }
