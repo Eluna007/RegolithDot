@@ -42,7 +42,17 @@ Singleton {
     signal configReloaded
 
     function dispatch(request: string): void {
-        Hyprland.dispatch(`hl.dsp.exec_raw(${JSON.stringify(request)})`);
+        const parts = request.split(" ");
+        const cmd = parts[0];
+        const arg = request.slice(cmd.length + 1);
+        let lua;
+        if (cmd === "workspace")
+            lua = `hl.dsp.focus({ workspace = ${JSON.stringify(arg)} })`;
+        else if (cmd === "togglespecialworkspace")
+            lua = `hl.dsp.workspace.toggle_special(${JSON.stringify(arg)})`;
+        else
+            lua = `hl.dsp.exec_raw(${JSON.stringify(request)})`;
+        Quickshell.execDetached(["sh", "-c", `hyprctl dispatch ${JSON.stringify(lua)}`]);
     }
 
     function cycleSpecialWorkspace(direction: string): void {
