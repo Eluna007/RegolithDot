@@ -30,5 +30,5 @@ QtObject {
     property string waybarColorsPath: ""
     property string waybarLaunchPath: ""
     property string kittySignalProcess: ".kitty-wrapped"
-    property string extraReloadCommand: ""
+    property string extraReloadCommand: "$HOME/.config/kitty/caelestia-kitty.sh"
 }
