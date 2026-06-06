@@ -1,0 +1,190 @@
+#!/usr/bin/env python3
+"""Touchscreen gesture daemon for Hyprland.
+
+Reads raw multi-touch events from the touchscreen and dispatches hyprctl
+actions mirroring the touchpad gesture map in lua/input.lua.
+
+Requires: python-evdev, user in the 'input' group.
+"""
+
+import asyncio
+import logging
+import subprocess
+import sys
+
+try:
+    from evdev import InputDevice, ecodes, list_devices
+except ImportError:
+    sys.exit("python-evdev is not installed: sudo pacman -S python-evdev")
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="touch-gestures: %(message)s",
+    stream=sys.stderr,
+)
+log = logging.getLogger(__name__)
+
+# Minimum pixel travel to count as a swipe.
+SWIPE_THRESHOLD = 60
+
+# Mirror of the gesture map in lua/input.lua.
+# Key: (finger_count, direction)
+# Value: list of argv for subprocess (use ["hyprctl", "dispatch", ...] or ["bash", "-c", ...])
+GESTURE_MAP: dict[tuple[int, str], list[str]] = {
+    # 3-finger workspace switch (matches hl.gesture horizontal workspace)
+    (3, "left"):  ["hyprctl", "dispatch", "workspace", "r+1"],
+    (3, "right"): ["hyprctl", "dispatch", "workspace", "r-1"],
+    # 3-finger vertical drawers (matches hl.gesture up/down)
+    (3, "up"):    ["bash", "-c", "caelestia shell drawers toggle launcher"],
+    (3, "down"):  ["bash", "-c", "caelestia shell drawers toggle dashboard"],
+    # 4-finger vertical drawers
+    (4, "up"):    ["bash", "-c", "caelestia shell drawers toggle session"],
+    (4, "down"):  ["bash", "-c", "caelestia shell drawers toggle sidebar"],
+    # 4-finger horizontal — move focused window to adjacent workspace
+    (4, "left"):  ["hyprctl", "dispatch", "movetoworkspace", "r+1"],
+    (4, "right"): ["hyprctl", "dispatch", "movetoworkspace", "r-1"],
+}
+
+
+def find_touchscreen() -> InputDevice | None:
+    """Return the first touchscreen InputDevice, preferring 'touchscreen' in name."""
+    candidates: list[InputDevice] = []
+    for path in list_devices():
+        try:
+            dev = InputDevice(path)
+        except PermissionError:
+            log.warning("No read permission on %s — is user in 'input' group?", path)
+            continue
+        caps = dev.capabilities()
+        if ecodes.EV_ABS not in caps:
+            continue
+        abs_codes = {code for code, _ in caps[ecodes.EV_ABS]}
+        if ecodes.ABS_MT_POSITION_X not in abs_codes:
+            continue
+        candidates.append(dev)
+
+    if not candidates:
+        return None
+
+    # Prefer device whose name suggests touchscreen over touchpad.
+    name_score = lambda d: (
+        "screen" in d.name.lower(),
+        "touch" in d.name.lower(),
+        "pad" not in d.name.lower(),
+    )
+    return max(candidates, key=name_score)
+
+
+class SlotTracker:
+    """Tracks one MT slot (finger)."""
+    __slots__ = ("tracking_id", "start_x", "start_y", "cur_x", "cur_y")
+
+    def __init__(self) -> None:
+        self.tracking_id: int = -1
+        self.start_x: int | None = None
+        self.start_y: int | None = None
+        self.cur_x: int | None = None
+        self.cur_y: int | None = None
+
+    @property
+    def active(self) -> bool:
+        return self.tracking_id >= 0
+
+    def reset(self) -> None:
+        self.tracking_id = -1
+        self.start_x = self.start_y = self.cur_x = self.cur_y = None
+
+
+def classify_direction(dx: float, dy: float) -> str:
+    """Return 'left', 'right', 'up', or 'down' for the dominant axis."""
+    if abs(dx) >= abs(dy):
+        return "left" if dx < 0 else "right"
+    return "up" if dy < 0 else "down"
+
+
+def dispatch(argv: list[str]) -> None:
+    log.info("dispatch %s", " ".join(argv))
+    subprocess.run(argv, check=False)
+
+
+async def run(dev: InputDevice) -> None:
+    log.info("watching %s (%s)", dev.name, dev.path)
+
+    slots: dict[int, SlotTracker] = {}
+    current_slot = 0
+    slots[0] = SlotTracker()
+
+    # Track which slots just lifted in this sync cycle.
+    lifted_this_cycle: list[SlotTracker] = []
+
+    async for event in dev.async_read_loop():
+        t = event.type
+        c = event.code
+        v = event.value
+
+        if t == ecodes.EV_ABS:
+            if c == ecodes.ABS_MT_SLOT:
+                current_slot = v
+                if current_slot not in slots:
+                    slots[current_slot] = SlotTracker()
+
+            slot = slots.setdefault(current_slot, SlotTracker())
+
+            if c == ecodes.ABS_MT_TRACKING_ID:
+                if v == -1:
+                    # Finger lifted — record final state for gesture detection.
+                    if slot.active and slot.start_x is not None and slot.cur_x is not None:
+                        lifted_this_cycle.append(slot)
+                    slot.reset()
+                else:
+                    slot.tracking_id = v
+                    # start_x/y will be set on first position event below.
+
+            elif c == ecodes.ABS_MT_POSITION_X:
+                slot.cur_x = v
+                if slot.start_x is None:
+                    slot.start_x = v
+
+            elif c == ecodes.ABS_MT_POSITION_Y:
+                slot.cur_y = v
+                if slot.start_y is None:
+                    slot.start_y = v
+
+        elif t == ecodes.EV_SYN and c == ecodes.SYN_REPORT:
+            if lifted_this_cycle:
+                active_count = sum(1 for s in slots.values() if s.active)
+                if active_count == 0:
+                    # All fingers are up — evaluate the gesture.
+                    n = len(lifted_this_cycle)
+                    dxs = [s.cur_x - s.start_x for s in lifted_this_cycle]
+                    dys = [s.cur_y - s.start_y for s in lifted_this_cycle]
+                    dx = sum(dxs) / n
+                    dy = sum(dys) / n
+
+                    if abs(dx) >= SWIPE_THRESHOLD or abs(dy) >= SWIPE_THRESHOLD:
+                        direction = classify_direction(dx, dy)
+                        action = GESTURE_MAP.get((n, direction))
+                        if action:
+                            dispatch(action)
+                        else:
+                            log.debug("no binding for (%d, %s)", n, direction)
+
+                lifted_this_cycle.clear()
+
+
+def main() -> None:
+    dev = find_touchscreen()
+    if dev is None:
+        log.error(
+            "No multi-touch device found. "
+            "Check 'libinput list-devices' and ensure user is in the 'input' group."
+        )
+        sys.exit(1)
+    try:
+        asyncio.run(run(dev))
+    except KeyboardInterrupt:
+        pass
+
+
+if __name__ == "__main__":
+    main()
