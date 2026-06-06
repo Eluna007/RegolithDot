@@ -66,12 +66,12 @@ def find_touchscreen() -> InputDevice | None:
     if not candidates:
         return None
 
-    # Prefer device whose name suggests touchscreen over touchpad.
-    name_score = lambda d: (
-        "screen" in d.name.lower(),
-        "touch" in d.name.lower(),
-        "pad" not in d.name.lower(),
-    )
+    # Prefer touchscreen over touchpad: score (has "screen", no "pad", has "touch").
+    # "Touchpad" scores (False, False, True) vs touchscreen (True, True, True).
+    def name_score(d: InputDevice) -> tuple[bool, bool, bool]:
+        n = d.name.lower()
+        return ("screen" in n, "pad" not in n, "touch" in n)
+
     return max(candidates, key=name_score)
 
 
@@ -114,8 +114,8 @@ async def run(dev: InputDevice) -> None:
     current_slot = 0
     slots[0] = SlotTracker()
 
-    # Track which slots just lifted in this sync cycle.
-    lifted_this_cycle: list[SlotTracker] = []
+    # Capture (dx, dy) per finger at lift time so slot.reset() can't corrupt them.
+    lifted_deltas: list[tuple[int, int]] = []
 
     async for event in dev.async_read_loop():
         t = event.type
@@ -132,13 +132,15 @@ async def run(dev: InputDevice) -> None:
 
             if c == ecodes.ABS_MT_TRACKING_ID:
                 if v == -1:
-                    # Finger lifted — record final state for gesture detection.
-                    if slot.active and slot.start_x is not None and slot.cur_x is not None:
-                        lifted_this_cycle.append(slot)
+                    # Capture delta before reset() clears the fields.
+                    if (slot.active
+                            and slot.start_x is not None and slot.cur_x is not None
+                            and slot.start_y is not None and slot.cur_y is not None):
+                        lifted_deltas.append((slot.cur_x - slot.start_x,
+                                              slot.cur_y - slot.start_y))
                     slot.reset()
                 else:
                     slot.tracking_id = v
-                    # start_x/y will be set on first position event below.
 
             elif c == ecodes.ABS_MT_POSITION_X:
                 slot.cur_x = v
@@ -151,15 +153,12 @@ async def run(dev: InputDevice) -> None:
                     slot.start_y = v
 
         elif t == ecodes.EV_SYN and c == ecodes.SYN_REPORT:
-            if lifted_this_cycle:
+            if lifted_deltas:
                 active_count = sum(1 for s in slots.values() if s.active)
                 if active_count == 0:
-                    # All fingers are up — evaluate the gesture.
-                    n = len(lifted_this_cycle)
-                    dxs = [s.cur_x - s.start_x for s in lifted_this_cycle]
-                    dys = [s.cur_y - s.start_y for s in lifted_this_cycle]
-                    dx = sum(dxs) / n
-                    dy = sum(dys) / n
+                    n = len(lifted_deltas)
+                    dx = sum(d[0] for d in lifted_deltas) / n
+                    dy = sum(d[1] for d in lifted_deltas) / n
 
                     if abs(dx) >= SWIPE_THRESHOLD or abs(dy) >= SWIPE_THRESHOLD:
                         direction = classify_direction(dx, dy)
@@ -169,7 +168,7 @@ async def run(dev: InputDevice) -> None:
                         else:
                             log.debug("no binding for (%d, %s)", n, direction)
 
-                lifted_this_cycle.clear()
+                    lifted_deltas.clear()
 
 
 def main() -> None:
