@@ -59,7 +59,8 @@ def hypr_ipc_dispatch(cmd: str) -> None:
     if not sig:
         log.error("HYPRLAND_INSTANCE_SIGNATURE not set; cannot dispatch via IPC")
         return
-    sock_path = f"/tmp/hypr/{sig}/.socket.sock"
+    uid = os.getuid()
+    sock_path = f"/run/user/{uid}/hypr/{sig}/.socket.sock"
     lua = f'return hl.dispatch("{cmd}")'
     log.info("ipc %s", lua)
     try:
