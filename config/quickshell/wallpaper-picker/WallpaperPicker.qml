@@ -267,7 +267,7 @@ Item {
         const escReload = escapeBash(reloadScript);
 
         if (isVideo) {
-            wallpaperCmd = `ffmpeg -i "$WALL_FILE" -vframes 1 -q:v 2 /tmp/wall_frame.jpg -y 2>/dev/null; caelestia wallpaper -f /tmp/wall_frame.jpg; sleep 0.3; mpvpaper -o 'loop --no-audio --hwdec=auto --video-sync=display-resample --no-input-default-bindings --no-osc' '*' "$WALL_FILE"`
+            wallpaperCmd = `ffmpeg -i "$WALL_FILE" -vframes 1 -q:v 2 /tmp/wall_frame.jpg -y 2>/dev/null; caelestia wallpaper -f /tmp/wall_frame.jpg; sleep 0.3; mpvpaper -p -o 'loop --no-audio --hwdec=auto --video-sync=display-resample --no-input-default-bindings --no-osc' '*' "$WALL_FILE"`
             lockBgCmd = `cp "$THUMB_FILE" /tmp/lock_bg.png`
         } else {
             wallpaperCmd = `caelestia wallpaper -f "$WALL_FILE"`
