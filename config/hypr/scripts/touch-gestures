@@ -66,12 +66,12 @@ def find_touchscreen() -> InputDevice | None:
     if not candidates:
         return None
 
-    # Prefer device whose name suggests touchscreen over touchpad.
-    name_score = lambda d: (
-        "screen" in d.name.lower(),
-        "touch" in d.name.lower(),
-        "pad" not in d.name.lower(),
-    )
+    # Prefer touchscreen over touchpad: score (has "screen", no "pad", has "touch").
+    # "Touchpad" scores (False, False, True) vs touchscreen (True, True, True).
+    def name_score(d: InputDevice) -> tuple[bool, bool, bool]:
+        n = d.name.lower()
+        return ("screen" in n, "pad" not in n, "touch" in n)
+
     return max(candidates, key=name_score)
 
 
@@ -155,7 +155,17 @@ async def run(dev: InputDevice) -> None:
                 active_count = sum(1 for s in slots.values() if s.active)
                 if active_count == 0:
                     # All fingers are up — evaluate the gesture.
-                    n = len(lifted_this_cycle)
+                    # Discard any slot that never received position events.
+                    complete = [
+                        s for s in lifted_this_cycle
+                        if s.cur_x is not None and s.start_x is not None
+                        and s.cur_y is not None and s.start_y is not None
+                    ]
+                    if not complete:
+                        lifted_this_cycle.clear()
+                        continue
+                    n = len(complete)
+                    lifted_this_cycle = complete
                     dxs = [s.cur_x - s.start_x for s in lifted_this_cycle]
                     dys = [s.cur_y - s.start_y for s in lifted_this_cycle]
                     dx = sum(dxs) / n
