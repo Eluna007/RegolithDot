@@ -9,6 +9,8 @@ Requires: python-evdev, user in the 'input' group.
 
 import asyncio
 import logging
+import os
+import socket
 import subprocess
 import sys
 
@@ -29,21 +31,44 @@ SWIPE_THRESHOLD = 60
 
 # Mirror of the gesture map in lua/input.lua.
 # Key: (finger_count, direction)
-# Value: list of argv for subprocess (use ["hyprctl", "dispatch", ...] or ["bash", "-c", ...])
-GESTURE_MAP: dict[tuple[int, str], list[str]] = {
+# Value: either ("ipc", "dispatcher args") or ("shell", "command string")
+GESTURE_MAP: dict[tuple[int, str], tuple[str, str]] = {
     # 3-finger workspace switch (matches hl.gesture horizontal workspace)
-    (3, "left"):  ["bash", "-c", "hyprctl dispatch workspace r+1"],
-    (3, "right"): ["bash", "-c", "hyprctl dispatch workspace r-1"],
+    (3, "left"):  ("ipc",   "workspace r+1"),
+    (3, "right"): ("ipc",   "workspace r-1"),
     # 3-finger vertical drawers (matches hl.gesture up/down)
-    (3, "up"):    ["bash", "-c", "caelestia shell drawers toggle launcher"],
-    (3, "down"):  ["bash", "-c", "caelestia shell drawers toggle dashboard"],
+    (3, "up"):    ("shell", "caelestia shell drawers toggle launcher"),
+    (3, "down"):  ("shell", "caelestia shell drawers toggle dashboard"),
     # 4-finger vertical drawers
-    (4, "up"):    ["bash", "-c", "caelestia shell drawers toggle session"],
-    (4, "down"):  ["bash", "-c", "caelestia shell drawers toggle sidebar"],
+    (4, "up"):    ("shell", "caelestia shell drawers toggle session"),
+    (4, "down"):  ("shell", "caelestia shell drawers toggle sidebar"),
     # 4-finger horizontal — move focused window to adjacent workspace
-    (4, "left"):  ["bash", "-c", "hyprctl dispatch movetoworkspace r+1"],
-    (4, "right"): ["bash", "-c", "hyprctl dispatch movetoworkspace r-1"],
+    (4, "left"):  ("ipc",   "movetoworkspace r+1"),
+    (4, "right"): ("ipc",   "movetoworkspace r-1"),
 }
+
+
+def hypr_ipc_dispatch(cmd: str) -> None:
+    """Send a dispatch command directly to Hyprland's IPC socket.
+
+    hyprctl wraps the command in unquoted Lua — e.g. 'workspace r+1' becomes
+    hl.dispatch(workspace r+1) which is a Lua parse error.  Sending the Lua
+    ourselves with proper quoting avoids that.
+    """
+    sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE", "")
+    if not sig:
+        log.error("HYPRLAND_INSTANCE_SIGNATURE not set; cannot dispatch via IPC")
+        return
+    sock_path = f"/tmp/hypr/{sig}/.socket.sock"
+    lua = f'return hl.dispatch("{cmd}")'
+    log.info("ipc %s", lua)
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            s.connect(sock_path)
+            s.sendall(lua.encode())
+            s.recv(4096)
+    except OSError as e:
+        log.error("IPC error: %s", e)
 
 
 def find_touchscreen() -> InputDevice | None:
@@ -102,9 +127,13 @@ def classify_direction(dx: float, dy: float) -> str:
     return "up" if dy < 0 else "down"
 
 
-def dispatch(argv: list[str]) -> None:
-    log.info("dispatch %s", " ".join(argv))
-    subprocess.run(argv, check=False)
+def dispatch(action: tuple[str, str]) -> None:
+    kind, cmd = action
+    if kind == "ipc":
+        hypr_ipc_dispatch(cmd)
+    else:
+        log.info("shell %s", cmd)
+        subprocess.run(["bash", "-c", cmd], check=False)
 
 
 async def run(dev: InputDevice) -> None:
