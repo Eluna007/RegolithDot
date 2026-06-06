@@ -42,7 +42,7 @@ Singleton {
     signal configReloaded
 
     function dispatch(request: string): void {
-        Hyprland.dispatch(request);
+        Hyprland.dispatch(`hl.dsp.exec_raw(${JSON.stringify(request)})`);
     }
 
     function cycleSpecialWorkspace(direction: string): void {
