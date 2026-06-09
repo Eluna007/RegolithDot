@@ -18,3 +18,9 @@ hl.window_rule({
     },
     no_focus = true,
 })
+
+hl.window_rule({
+    name  = "float-sticky-notes",
+    match = { class = "^sticky\\.py$" },
+    float = true,
+})
