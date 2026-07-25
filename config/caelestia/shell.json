@@ -1,0 +1,42 @@
+{
+    "bar": {
+        "activeWindow": {
+            "compact": true,
+            "inverted": true
+        },
+        "clock": {
+            "background": false,
+            "showDate": true,
+            "showIcon": true
+        },
+        "persistent": true,
+        "showOnHover": true,
+        "status": {
+            "showAudio": true,
+            "showKbLayout": false,
+            "showMicrophone": true,
+            "showNetwork": true
+        },
+        "tray": {
+            "background": false,
+            "compact": false,
+            "recolour": false
+        },
+        "workspaces": {
+            "occupiedBg": false
+        }
+    },
+    "launcher": {
+        "showOnHover": true,
+        "vimKeybinds": true
+    },
+    "notifs": {
+        "expire": true
+    },
+    "paths": {
+        "sessionGif": "/home/edgarlr/Pictures/gifs/21937-frieren.gif"
+    },
+    "services": {
+        "defaultPlayer": "Spotify"
+    }
+}
