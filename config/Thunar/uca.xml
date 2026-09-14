@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<actions>
+<action>
+	<icon>utilities-terminal</icon>
+	<name>Open Kitty Here</name>
+	<submenu></submenu>
+	<unique-id>1780360115354386-1</unique-id>
+	<command>kitty --directory %f</command>
+	<description>Open this directory in Kitty</description>
+	<range></range>
+	<patterns>*</patterns>
+	<startup-notify/>
+	<directories/>
+</action>
+<action>
+	<icon>accessories-text-editor</icon>
+	<name>Edit in Neovim</name>
+	<submenu></submenu>
+	<unique-id>1782863000000000-2</unique-id>
+	<command>kitty --directory %d nvim %f</command>
+	<description>Open the selected file in Neovim inside Kitty</description>
+	<range></range>
+	<patterns>*</patterns>
+	<text-files/>
+</action>
+<action>
+	<icon>edit-copy</icon>
+	<name>Copy Path</name>
+	<submenu></submenu>
+	<unique-id>1782863000000000-3</unique-id>
+	<command>sh -c &apos;printf %s "$1" | wl-copy&apos; apollo-copy-path %f</command>
+	<description>Copy the selected path to the clipboard</description>
+	<range></range>
+	<patterns>*</patterns>
+	<directories/>
+	<text-files/>
+	<other-files/>
+</action>
+</actions>

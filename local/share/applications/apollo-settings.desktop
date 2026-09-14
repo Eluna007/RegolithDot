@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Apollo Settings
+GenericName=Desktop Settings
+Comment=Customize your Apollo Shell desktop
+Exec=apollo-settings
+Terminal=false
+Icon=apollo-settings
+Categories=Settings;DesktopSettings;
+Keywords=apollo;hyprland;quickshell;theme;rice;
+StartupNotify=false
