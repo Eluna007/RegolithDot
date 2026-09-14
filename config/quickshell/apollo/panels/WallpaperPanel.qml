@@ -9,14 +9,17 @@ import "../services"
 
 // Visual wallpaper picker — a horizontal filmstrip of thumbnails read live
 // from ~/Pictures/Wallpapers (auto-updates when files are added/removed).
-// Wheel / arrows to browse, click or Enter to apply via awww. Esc to close.
+// Wheel / arrows to browse, click or Enter to apply. Esc to close.
 PanelWindow {
     id: root
     signal close()
 
     // Hyprland output this picker belongs to (set per-screen from shell.qml).
-    // When set, wallpapers are applied to THIS monitor only, so each screen
-    // can carry its own wallpaper.
+    // Currently unused: wallpapers are applied through wallpaper-switch.sh,
+    // which drives hyprpaper/mpvpaper across all monitors at once. Kept so
+    // shell.qml's per-screen assignment stays valid, and as the hook to
+    // reinstate per-monitor wallpapers if that script ever grows an output
+    // argument.
     property string outputName: ""
 
     anchors { top: true; bottom: true; left: true; right: true }
@@ -46,23 +49,23 @@ PanelWindow {
     readonly property string homeDir: Quickshell.env("HOME")
     readonly property string wallDir: Config.resolvedWallpaperDir
 
-    // ── Apply a wallpaper via awww (animated grow transition; handles gifs) ──
-    // Apply via awww and record the pick (path passed as $1 to dodge quoting issues)
+    // ── Apply a wallpaper through the machine's own pipeline ────────────────
+    // wallpaper-switch.sh picks hyprpaper for stills and mpvpaper for gifs and
+    // video (hyprpaper only ever shows one frame of a gif), records the choice
+    // in ~/.config/hypr/last-wallpaper.txt so restore-wallpaper.sh can replay
+    // it next session, and reruns matugen so the shell and lock screen
+    // recolour to match.
+    //
+    // Moonlit applied wallpapers with awww and cached the pick under
+    // ~/.cache/wallpaper-*. Neither is in use here, so both are gone — and
+    // with them per-monitor wallpapers, which the script does not support.
     Process { id: applyProc }
     function apply(path) {
         if (!path) return
         applyProc.running = false
-        // $1 = wallpaper path, $2 = output name (empty → all monitors).
-        // When an output is given we target it with `awww -o` and remember
-        // this monitor's pick in a per-output cache, while still updating the
-        // shared cache hyprlock/SDDM read.
+        // Path goes in as $1 rather than being interpolated, to dodge quoting.
         applyProc.command = ["sh", "-c",
-            "if [ -n \"$2\" ]; then OUT=\"-o $2\"; else OUT=\"\"; fi; " +
-            "awww img \"$1\" $OUT -t grow --transition-pos 0.5,0.5 --transition-fps 60 " +
-            "--transition-duration 1.1 --resize crop && " +
-            "printf '%s' \"$1\" > ~/.cache/wallpaper-current; " +
-            "[ -n \"$2\" ] && printf '%s' \"$1\" > \"$HOME/.cache/wallpaper-$2\"",
-            "sh", path, root.outputName]
+            "\"$HOME/.local/bin/wallpaper-switch.sh\" \"$1\"", "sh", path]
         applyProc.running = true
         root.appliedPath = path
         root.close()            // dismiss the picker once a wallpaper is chosen
@@ -73,14 +76,12 @@ PanelWindow {
     function nextWall() { if (wallModel.count > 0) strip.currentIndex = (strip.currentIndex + 1) % wallModel.count }
     function prevWall() { if (wallModel.count > 0) strip.currentIndex = (strip.currentIndex - 1 + wallModel.count) % wallModel.count }
 
-    // Read this monitor's last pick on startup so the strip can highlight it
-    // (per-output cache when we know our output, else the shared one). awww's
-    // own cache handles the actual wallpaper restore on boot.
+    // Read the last pick on startup so the strip can highlight it. Same file
+    // restore-wallpaper.sh reads on session start, so the picker and the boot
+    // restore can never disagree about what is currently set.
     FileView {
         id: currentFile
-        path: root.outputName
-              ? root.homeDir + "/.cache/wallpaper-" + root.outputName
-              : root.homeDir + "/.cache/wallpaper-current"
+        path: root.homeDir + "/.config/hypr/last-wallpaper.txt"
         onLoaded: root.appliedPath = text().trim()
     }
 

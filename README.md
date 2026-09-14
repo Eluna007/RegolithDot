@@ -105,7 +105,9 @@ Clipboard history is `copyq`, not Moonlit's `cliphist` watchers.
 The pipeline spans three places, which is worth knowing before you move any
 piece of it:
 
-1. `local/bin/wallpaper-switch.sh` applies a wallpaper — `hyprpaper` for
+1. `local/bin/wallpaper-switch.sh` applies a wallpaper. The `SUPER+W`
+   carousel calls it too, so the picker and the boot restore can't disagree
+   about what's set. It uses `hyprpaper` for
    stills, `mpvpaper` for gifs and video (hyprpaper can only show one frame of
    a gif) — then runs `matugen` over it.
 2. matugen writes `~/.config/quickshell/colors.json`. That is the *parent* of
