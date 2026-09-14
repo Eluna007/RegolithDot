@@ -28,7 +28,16 @@ case "$selected" in
     pkill mpvpaper 2>/dev/null
     if ! pgrep -x hyprpaper >/dev/null; then
       hyprpaper &
-      sleep 0.5
+      # Wait for hyprpaper's IPC to actually answer instead of guessing at a
+      # sleep. A flat 0.5s was enough when hyprpaper was already warm, but not
+      # at a cold start, where the compositor is bringing up the shell, two
+      # portals and several daemons at the same time: the wallpaper request
+      # landed before the socket was listening, was dropped, and the session
+      # came up on the default Hyprland background.
+      for _ in $(seq 1 60); do
+        hyprctl hyprpaper listactive >/dev/null 2>&1 && break
+        sleep 0.25
+      done
     fi
 
     # hyprpaper's IPC no longer has `preload` (nor `unload`/`listloaded`) —
