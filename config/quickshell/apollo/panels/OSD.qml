@@ -34,10 +34,14 @@ PanelWindow {
 
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
+                    // `mic` comes from osd-report.sh's XF86AudioMicMute path; without
+                    // a case of its own it fell through to the brightness icon.
                     text: root.kind === "volume"
                           ? (root.value === 0 ? "󰖁" : "󰕾")
+                          : root.kind === "mic"
+                          ? (root.value === 0 ? "󰍭" : "󰍬")
                           : "󰃞"
-                    color: root.kind === "volume" ? root.accent : root.yellow
+                    color: root.kind === "brightness" ? root.yellow : root.accent
                     font { pixelSize: 22; family: root.nfFont }
                 }
 

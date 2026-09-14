@@ -22,18 +22,18 @@ jobs:
           bash -n config/rofi/scripts/launcher.sh
           bash -n config/rofi/scripts/emoji.sh
           bash -n config/rofi/scripts/keybinds.sh
-          bash -n config/hypr/scripts/lock.sh
           bash -n config/ranger/scope.sh
           bash -n scripts/apollo-doctor
+          for f in local/bin/*.sh; do bash -n "$f"; done
 
       - name: Run shellcheck
         run: |
           shellcheck config/rofi/scripts/launcher.sh
           shellcheck config/rofi/scripts/emoji.sh
           shellcheck config/rofi/scripts/keybinds.sh
-          shellcheck config/hypr/scripts/lock.sh
           shellcheck -e SC2034,SC2317 config/ranger/scope.sh
           shellcheck scripts/apollo-doctor
+          shellcheck local/bin/*.sh
 
       # A Lua syntax error takes the whole Hyprland config down and leaves you
       # with a handful of emergency keybinds, so this is the check that matters.
@@ -57,9 +57,14 @@ jobs:
           test -f config/quickshell/apollo/services/Hypr.qml
           test -f config/hypr/hyprland.lua
           test -f config/rofi/config.rasi
+          test -f config/rofi/themes/apollo-colors.rasi
+          test -f config/hypr/hyprlock.conf
+          for s in osd-report restore-wallpaper wallpaper-switch generate-hyprlock-colors; do
+            test -x "local/bin/$s.sh"
+          done
           test -f local/share/icons/Apollo-Terminal/index.theme
           test -d local/share/icons/Apollo-Terminal/scalable
-          for m in config env monitors appearance animations input rules keybinds autostart; do
+          for m in config env monitors appearance animations input gestures rules keybinds autostart; do
             test -f "config/hypr/lua/$m.lua"
           done
 

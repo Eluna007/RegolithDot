@@ -1,105 +1,94 @@
--- ╭──────────────────────────────────────────────────────────────────────╮
--- │  THIS IS THE FILE YOU REPLACE.                                       │
--- │                                                                      │
--- │  It's a faithful port of Apollo's keybinds.conf, kept so Apollo      │
--- │  boots usable out of the box. Nothing else in lua/ requires anything  │
--- │  from here, so you can overwrite the whole file with your own binds   │
--- │  and the rest of the config is unaffected.                           │
--- ╰──────────────────────────────────────────────────────────────────────╯
+-- Luna's keybinds, carried over from the pre-Apollo config.
 --
--- hyprlang -> Lua, for reference while you port your own:
+-- Kept verbatim except where a bind talked to the old shell. Apollo's
+-- Quickshell config is a *named* one (~/.config/quickshell/apollo), so its
+-- IPC is addressed as `qs -c apollo ipc call …`; a bare `qs ipc call` will
+-- not find it. The panel names also differ: the old shell had one handler
+-- per panel, Apollo has a single `panel toggle <name>`.
 --
---   bind  = SUPER, Q, exec, kitty   ->  hl.bind("SUPER + Q", hl.dsp.exec_cmd("kitty"))
---   bindm = SUPER, mouse:272, ...   ->  hl.bind(..., ..., { mouse = true })
---   bindel = , XF86...              ->  hl.bind(..., ..., { locked = true, repeating = true })
---                                       (e = repeating, l = locked)
---
--- exec_cmd runs through `sh -c`, so $(...), pipes, and $HOME all still work.
+-- The keys themselves are unchanged.
 
-local cfg = require("lua.config")
-local mod = "SUPER"
+local env = require("lua.config")
+local mainMod = "SUPER"
 
-local function bind(keys, action, flags)
-    hl.bind(mod .. " + " .. keys, action, flags or {})
+-- Core app binds
+hl.bind(mainMod .. " + Return", hl.dsp.exec_cmd(env.terminal), { description = "Terminal" })
+hl.bind(mainMod .. " + Space", hl.dsp.exec_cmd(env.launcher), { description = "App launcher" })
+hl.bind(mainMod .. " + Q", hl.dsp.window.close(), { description = "Close window" })
+hl.bind(mainMod .. " + M", hl.dsp.exit(), { description = "Exit Hyprland" })
+hl.bind(mainMod .. " + V", hl.dsp.window.float(), { description = "Toggle floating" })
+hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen({ mode = "fullscreen" }), { description = "Fullscreen" })
+
+-- Move focus (vim style)
+hl.bind(mainMod .. " + H", hl.dsp.focus({ direction = "left" }),  { description = "Focus left" })
+hl.bind(mainMod .. " + L", hl.dsp.focus({ direction = "right" }), { description = "Focus right" })
+hl.bind(mainMod .. " + K", hl.dsp.focus({ direction = "up" }),    { description = "Focus up" })
+hl.bind(mainMod .. " + J", hl.dsp.focus({ direction = "down" }),  { description = "Focus down" })
+
+-- Switch Workspaces (1-9, 0)
+for i = 1, 10 do
+    local key = tostring(i % 10)
+    local ws = tostring(i)
+    hl.bind(mainMod .. " + " .. key, hl.dsp.focus({ workspace = ws }),
+        { description = "Workspace " .. ws })
 end
 
--- ── Apps ─────────────────────────────────────────────────────────────────
-bind("Q",     hl.dsp.exec_cmd(cfg.terminal), { description = "Terminal" })
-bind("Space", hl.dsp.exec_cmd(cfg.launcher), { description = "App launcher" })
-bind("comma", hl.dsp.exec_cmd(cfg.settings), { description = "Apollo Settings" })
+-- Resize submap
+hl.bind(mainMod .. " + S", hl.dsp.submap("resize"), { description = "Resize mode" })
+hl.define_submap("resize", function()
+    hl.bind("H", hl.dsp.window.resize({ x = -20, y = 0, relative = true }), { description = "Shrink width" })
+    hl.bind("L", hl.dsp.window.resize({ x = 20, y = 0, relative = true }),  { description = "Grow width" })
+    hl.bind("K", hl.dsp.window.resize({ x = 0, y = -20, relative = true }), { description = "Shrink height" })
+    hl.bind("J", hl.dsp.window.resize({ x = 0, y = 20, relative = true }),  { description = "Grow height" })
+    hl.bind("Escape", hl.dsp.submap("reset"), { description = "Leave resize mode" })
+end)
 
--- ── Windows ──────────────────────────────────────────────────────────────
-bind("W",   hl.dsp.window.close(),      { description = "Close window" })
-bind("Tab", hl.dsp.window.cycle_next(), { description = "Next window" })
-bind("F",   hl.dsp.window.fullscreen(), { description = "Fullscreen" })
-bind("P",   hl.dsp.window.float(),      { description = "Toggle floating" })
-
-hl.bind("ALT + Tab", hl.dsp.exec_cmd("qs -c apollo ipc call panel toggle overview"),
+-- Window overview (Alt+Tab style switcher)
+hl.bind(mainMod .. " + Tab", hl.dsp.exec_cmd("qs -c apollo ipc call panel toggle overview"),
     { description = "Window overview" })
 
--- ── Workspaces ───────────────────────────────────────────────────────────
--- Apollo ships four. Widen the range if you want more.
-for i = 1, 4 do
-    bind(tostring(i), hl.dsp.focus({ workspace = i }),
-        { description = "Workspace " .. i })
-    hl.bind(mod .. " + SHIFT + " .. i, hl.dsp.window.move({ workspace = i }),
-        { description = "Move to workspace " .. i })
-end
+-- Wallpaper carousel
+hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("qs -c apollo ipc call panel toggle wallpaper"),
+    { description = "Wallpaper carousel" })
 
--- ── Wallpaper ────────────────────────────────────────────────────────────
-bind("B", hl.dsp.exec_cmd("qs -c apollo ipc call panel toggle wallpaper"),
-    { description = "Wallpaper picker" })
+-- Screenshot
+hl.bind("XF86SelectiveScreenshot", hl.dsp.exec_cmd(
+    "grim -g \"$(slurp)\" - | satty --filename - " ..
+    "--output-filename ~/Pictures/screenshot-$(date +%s).png --copy-command \"wl-copy\""),
+    { description = "Screenshot region" })
 
--- Random wallpaper. flock keeps a held-down key from starting a pile of
--- concurrent transitions; the trailing sleep holds the lock until the
--- crossfade finishes.
-bind("SHIFT + B", hl.dsp.exec_cmd(
-    [[flock -n /tmp/wallrand.lock -c 'W=$(find ]] .. cfg.wallpapers ..
-    [[ -type f | shuf -n1); awww img "$W" -t grow --transition-fps 60 ]] ..
-    [[--transition-duration 1.1 --resize crop && printf "%s" "$W" > ]] ..
-    [[~/.cache/wallpaper-current; sleep 1.3']]
-), { description = "Random wallpaper" })
+-- Toggle between dwindle and master layouts
+hl.bind(mainMod .. " + SHIFT + SPACE", function()
+    local current = hl.get_config("general.layout")
+    if current == "dwindle" then
+        hl.config({ general = { layout = "master" } })
+    else
+        hl.config({ general = { layout = "dwindle" } })
+    end
+end, { description = "Toggle dwindle/master layout" })
 
--- ── Rofi extras ──────────────────────────────────────────────────────────
+-- Rofi extras. The launcher stays wofi (see lua/config.lua); rofi is here
+-- only for these two modes. The cheatsheet reads `hyprctl binds -j`, so it
+-- lists what is actually registered — including the ten workspace binds this
+-- file generates in a loop, which no config-file parser would ever see.
+-- Needs `rofi` and `jq`.
 hl.bind("ALT + period", hl.dsp.exec_cmd(
-    [[rofi -show emoji -modi "emoji:$HOME/.config/rofi/scripts/emoji.sh" ]] ..
+    [[rofi -show emoji -modes "emoji:$HOME/.config/rofi/scripts/emoji.sh" ]] ..
     [[-theme $HOME/.config/rofi/themes/emoji.rasi]]
 ), { description = "Emoji picker" })
 
 hl.bind("ALT + slash", hl.dsp.exec_cmd(
-    [[rofi -show keybinds -modi "keybinds:$HOME/.config/rofi/scripts/keybinds.sh" ]] ..
+    [[rofi -show keybinds -modes "keybinds:$HOME/.config/rofi/scripts/keybinds.sh" ]] ..
     [[-theme $HOME/.config/rofi/themes/keybinds.rasi]]
 ), { description = "Keybind cheatsheet" })
 
--- ── Screenshots ──────────────────────────────────────────────────────────
--- Saved to disk and copied to the clipboard in one pass; the cliphist watcher
--- picks the image up from there automatically.
-local shot_dir = cfg.screenshots
+-- Media keys (volume/mute) — routed through osd-report.sh so the shell's
+-- OSD pops up for any trigger, not just clicking the bar icon.
+hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("~/.local/bin/osd-report.sh volume raise"), { description = "Volume up" })
+hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("~/.local/bin/osd-report.sh volume lower"), { description = "Volume down" })
+hl.bind("XF86AudioMute",        hl.dsp.exec_cmd("~/.local/bin/osd-report.sh volume mute"),  { description = "Mute" })
+hl.bind("XF86AudioMicMute",     hl.dsp.exec_cmd("~/.local/bin/osd-report.sh mic mute"),     { description = "Mute microphone" })
 
-hl.bind("ALT + S", hl.dsp.exec_cmd(
-    "mkdir -p " .. shot_dir .. [[ && grim -g "$(slurp)" - | tee ]] ..
-    shot_dir .. [[/$(date +%Y-%m-%d_%H-%M-%S).png | wl-copy --type image/png]]
-), { description = "Screenshot region" })
-
-hl.bind("ALT + D", hl.dsp.exec_cmd(
-    "mkdir -p " .. shot_dir .. [[ && grim - | tee ]] ..
-    shot_dir .. [[/$(date +%Y-%m-%d_%H-%M-%S).png | wl-copy --type image/png]]
-), { description = "Screenshot screen" })
-
--- ── Brightness ───────────────────────────────────────────────────────────
--- locked so they work on the lock screen, repeating so holding the key ramps.
-local brightness_flags = { locked = true, repeating = true }
-
-hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd(
-    [[brightnessctl s 5%- && qs -c apollo ipc call osd set brightness ]] ..
-    [[$(brightnessctl -m | cut -d, -f4 | tr -d %)]]
-), brightness_flags)
-
-hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd(
-    [[brightnessctl s 5%+ && qs -c apollo ipc call osd set brightness ]] ..
-    [[$(brightnessctl -m | cut -d, -f4 | tr -d %)]]
-), brightness_flags)
-
--- ── Mouse ────────────────────────────────────────────────────────────────
-hl.bind(mod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
-hl.bind(mod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
+-- Brightness keys
+hl.bind("XF86MonBrightnessUp",   hl.dsp.exec_cmd("~/.local/bin/osd-report.sh brightness raise"), { description = "Brightness up" })
+hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("~/.local/bin/osd-report.sh brightness lower"), { description = "Brightness down" })

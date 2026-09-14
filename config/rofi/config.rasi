@@ -1,5 +1,8 @@
+/* rofi 2.0 renamed `modi` to `modes` (and `-modi` to `-modes` on the
+ * command line). Apollo targets 2.x; on rofi 1.7 these keys are the
+ * other way round. */
 configuration {
-    modi:                 "script:~/.config/rofi/scripts/launcher.sh,drun";
+    modes:                "script:~/.config/rofi/scripts/launcher.sh,drun";
     combi-modes:          "script,drun";
     combi-display-format: "{text}";
     show-icons:           true;

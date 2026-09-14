@@ -225,7 +225,6 @@ echo ~/Pictures/Wallpapers/<your-wallpaper> > ~/.cache/wallpaper-current
 # Neovim plugins
 nvim --headless "+Lazy! sync" +qa
 
-chmod +x ~/.config/hypr/scripts/lock.sh
 ```
 
 ---

@@ -52,6 +52,8 @@ hyprctl binds -j | jq -r '
           "XF86AudioRaiseVolume": "Volume Up",
           "XF86AudioLowerVolume": "Volume Down",
           "XF86AudioMute": "Mute",
+          "XF86AudioMicMute": "Mic Mute",
+          "XF86SelectiveScreenshot": "Screenshot Key",
           "XF86AudioPlay": "Play/Pause",
           "XF86AudioNext": "Next Track",
           "XF86AudioPrev": "Previous Track"

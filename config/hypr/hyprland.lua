@@ -1,7 +1,7 @@
 -- ╭──────────────────────────────────────────────────────────────────────╮
 -- │  Apollo — a Hyprland rice                                            │
 -- │                                                                      │
--- │  A remake of Apollo-shell (github.com/Fi3w0/Apollo-shell),         │
+-- │  A remake of Moonlit-shell (github.com/Fi3w0/Moonlit-shell),         │
 -- │  translated from hyprlang (.conf) to Hyprland's Lua configuration.   │
 -- ╰──────────────────────────────────────────────────────────────────────╯
 --
@@ -14,6 +14,7 @@ require("lua.monitors")
 require("lua.appearance")
 require("lua.animations")
 require("lua.input")
+require("lua.gestures")
 require("lua.rules")
 require("lua.keybinds")
 require("lua.autostart")

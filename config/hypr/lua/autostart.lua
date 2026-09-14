@@ -3,8 +3,10 @@
 -- hyprlang's `exec-once = ...` becomes a hyprland.start event handler. The
 -- practical difference: exec-once fired once per config *load*, this fires
 -- once per session, so `hyprctl reload` no longer duplicates every daemon.
-
-local cfg = require("lua.config")
+--
+-- This is Luna's daemon list merged with Apollo's. Moonlit's awww wallpaper
+-- daemon and cliphist watchers are deliberately absent — the wallpaper is
+-- handled by ~/.local/bin/restore-wallpaper.sh and the clipboard by copyq.
 
 hl.on("hyprland.start", function()
     -- The shell. Apollo lives in ~/.config/quickshell/apollo, so it has to be
@@ -23,15 +25,17 @@ hl.on("hyprland.start", function()
     hl.exec_cmd("sleep 2 && /usr/lib/xdg-desktop-portal-hyprland")
     hl.exec_cmd("sleep 3 && /usr/lib/xdg-desktop-portal")
 
+    -- Load Hyprland plugins (hyprgrass, for the touchscreen gestures).
+    hl.exec_cmd("hyprpm reload -n")
+
+    -- Restore the last wallpaper.
+    hl.exec_cmd("~/.local/bin/restore-wallpaper.sh")
+
+    -- Idle daemon. Needs `hypridle` installed; without it the screen never
+    -- auto-locks, but nothing else breaks.
     hl.exec_cmd("hypridle")
-    hl.exec_cmd("nm-applet")
 
-    -- Wallpaper daemon: restore the last wallpaper, fall back to a default.
-    hl.exec_cmd("awww-daemon")
-    hl.exec_cmd("sleep 1 && (awww restore || awww img " ..
-        cfg.wallpapers .. "/wallpaper4.jpg -t none)")
-
-    -- Clipboard history.
-    hl.exec_cmd("wl-paste --type text --watch cliphist store")
-    hl.exec_cmd("wl-paste --type image --watch cliphist store")
+    hl.exec_cmd("kdeconnectd")
+    hl.exec_cmd("kdeconnect-indicator")
+    hl.exec_cmd("copyq")
 end)
