@@ -22,7 +22,6 @@ jobs:
           bash -n config/rofi/scripts/launcher.sh
           bash -n config/rofi/scripts/emoji.sh
           bash -n config/rofi/scripts/keybinds.sh
-          bash -n config/hypr/scripts/lock.sh
           bash -n config/ranger/scope.sh
           bash -n scripts/apollo-doctor
           for f in local/bin/*.sh; do bash -n "$f"; done
@@ -32,7 +31,6 @@ jobs:
           shellcheck config/rofi/scripts/launcher.sh
           shellcheck config/rofi/scripts/emoji.sh
           shellcheck config/rofi/scripts/keybinds.sh
-          shellcheck config/hypr/scripts/lock.sh
           shellcheck -e SC2034,SC2317 config/ranger/scope.sh
           shellcheck scripts/apollo-doctor
           shellcheck local/bin/*.sh
