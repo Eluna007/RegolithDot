@@ -73,12 +73,12 @@ end, { description = "Toggle dwindle/master layout" })
 -- file generates in a loop, which no config-file parser would ever see.
 -- Needs `rofi` and `jq`.
 hl.bind("ALT + period", hl.dsp.exec_cmd(
-    [[rofi -show emoji -modi "emoji:$HOME/.config/rofi/scripts/emoji.sh" ]] ..
+    [[rofi -show emoji -modes "emoji:$HOME/.config/rofi/scripts/emoji.sh" ]] ..
     [[-theme $HOME/.config/rofi/themes/emoji.rasi]]
 ), { description = "Emoji picker" })
 
 hl.bind("ALT + slash", hl.dsp.exec_cmd(
-    [[rofi -show keybinds -modi "keybinds:$HOME/.config/rofi/scripts/keybinds.sh" ]] ..
+    [[rofi -show keybinds -modes "keybinds:$HOME/.config/rofi/scripts/keybinds.sh" ]] ..
     [[-theme $HOME/.config/rofi/themes/keybinds.rasi]]
 ), { description = "Keybind cheatsheet" })
 

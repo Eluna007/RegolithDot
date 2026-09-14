@@ -254,6 +254,14 @@ main() {
   check_cmd awww awww
   check_optional_cmd hyprsunset hyprsunset
   check_cmd jq jq
+  # The wallpaper pipeline: hyprpaper for stills, mpvpaper+ffmpeg for
+  # gifs/video, matugen for the colour scheme it derives from them.
+  check_cmd hyprpaper hyprpaper
+  check_cmd matugen matugen
+  check_optional_cmd mpvpaper mpvpaper
+  check_optional_cmd ffmpeg ffmpeg
+  check_optional_cmd wofi wofi
+  check_optional_cmd satty satty
 
   info "Hardware and services"
   check_cmd brightnessctl brightnessctl
@@ -279,6 +287,12 @@ main() {
   check_aur_helper
   check_wallpapers
   check_file "$HOME/.config/quickshell/apollo/shell.qml" "live quickshell config"
+  # matugen writes this next to the shell dir, and generate-hyprlock-colors.sh
+  # reads it. It is easy to delete by accident when swapping shells.
+  check_file "$HOME/.config/quickshell/colors.json" "matugen colors.json (lock screen accent)"
+  for s in osd-report restore-wallpaper wallpaper-switch generate-hyprlock-colors; do
+    if [[ -x "$HOME/.local/bin/$s.sh" ]]; then ok "$s.sh installed"; else fail "$s.sh missing from ~/.local/bin"; fi
+  done
   check_hypr_lua
   check_file "$HOME/.config/rofi/config.rasi" "live Rofi config"
   check_version "$repo"

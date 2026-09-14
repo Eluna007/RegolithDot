@@ -37,9 +37,13 @@ config/xdg-desktop-portal/
 
 apollo-settings/        Go/Fyne GUI for the safe knobs; generates Lua
 scripts/apollo-doctor   health check
+local/bin/              wallpaper pipeline, OSD bridge, game wrappers
 local/share/            icon theme, .desktop entry, PrismLauncher theme
 sddm/                   SDDM theme drop-in
 ```
+
+`config/hypr/hyprlock.conf` stays hyprlang too (hyprlock is its own binary),
+and unlike the rest of `config/hypr/` it is *not* Moonlit's — see below.
 
 See [MANUAL-INSTALL.md](MANUAL-INSTALL.md) to deploy it.
 
@@ -97,6 +101,24 @@ reads colours generated from the current wallpaper by
 directly for the same reason.
 
 Clipboard history is `copyq`, not Moonlit's `cliphist` watchers.
+
+The pipeline spans three places, which is worth knowing before you move any
+piece of it:
+
+1. `local/bin/wallpaper-switch.sh` applies a wallpaper — `hyprpaper` for
+   stills, `mpvpaper` for gifs and video (hyprpaper can only show one frame of
+   a gif) — then runs `matugen` over it.
+2. matugen writes `~/.config/quickshell/colors.json`. That is the *parent* of
+   `~/.config/quickshell/apollo`, not inside it, so clearing out a previous
+   shell can delete it by accident.
+3. `local/bin/generate-hyprlock-colors.sh` reads that JSON and writes
+   `hyprlock-colors.conf`, which `hyprlock.conf` sources as `$accent`.
+
+Break any link and the lock screen silently falls back to a default blue.
+`apollo-doctor` checks for all three.
+
+Requires `hyprpaper`, `matugen`, and (for animated wallpapers) `mpvpaper` and
+`ffmpeg`.
 
 ---
 
