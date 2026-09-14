@@ -1,1 +1,0 @@
-/home/edgarlr/.config/quickshell/wallpaper-picker/Main.qml
