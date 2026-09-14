@@ -59,7 +59,7 @@ jobs:
           test -f config/rofi/config.rasi
           test -f local/share/icons/Apollo-Terminal/index.theme
           test -d local/share/icons/Apollo-Terminal/scalable
-          for m in config env monitors appearance animations input rules keybinds autostart; do
+          for m in config env monitors appearance animations input gestures rules keybinds autostart; do
             test -f "config/hypr/lua/$m.lua"
           done
 

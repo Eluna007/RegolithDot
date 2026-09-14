@@ -23,13 +23,12 @@ config/hypr/            Hyprland — Lua
   lua/monitors.lua        monitor rules
   lua/appearance.lua      general + decoration + blur + shadow
   lua/animations.lua      curves and the animation tree
-  lua/input.lua           touchpad
+  lua/input.lua           touchpad + native trackpad gestures
+  lua/gestures.lua        touchscreen gestures (needs the hyprgrass plugin)
   lua/rules.lua           window + layer rules
-  lua/keybinds.lua        keybinds  ← the file you're meant to replace
+  lua/keybinds.lua        keybinds
   lua/autostart.lua       hyprland.start handler
   hypridle.conf           hypridle — still hyprlang, it's a separate binary
-  hyprlock.conf           hyprlock  — likewise
-  scripts/lock.sh
 
 config/quickshell/apollo/   the shell: bar/, panels/, services/, shell.qml
 config/rofi/                themes + launcher/emoji/keybind modes
@@ -77,13 +76,27 @@ Two things beyond the config files had to follow:
 
 ---
 
-## Keybinds
+## Keybinds, input and gestures
 
-`config/hypr/lua/keybinds.lua` is a faithful port of Moonlit's bindings, kept
-only so Apollo boots usable. Nothing else in `lua/` imports it — overwrite the
-whole file with your own and the rest of the config doesn't notice.
+`lua/keybinds.lua`, `lua/input.lua` and `lua/gestures.lua` are Luna's, not
+Moonlit's — carried over when Apollo was deployed. Notable differences from
+upstream: `natural_scroll = false`, `disable_while_typing = false`, a vim-style
+focus/resize layout with a resize submap, and touchscreen gestures via the
+[hyprgrass](https://github.com/horriblename/hyprgrass) plugin, which Moonlit
+had no equivalent for.
 
-The header of that file has the hyprlang → Lua cheatsheet for porting your own.
+Nothing else in `lua/` imports these three, so they stay easy to swap.
+
+## The lock screen and wallpaper
+
+Apollo does not use Moonlit's `awww` wallpaper daemon or its `lock.sh`.
+Wallpapers are handled by `~/.local/bin/restore-wallpaper.sh` /
+`wallpaper-switch.sh`, and `hyprlock.conf` lives outside this repo because it
+reads colours generated from the current wallpaper by
+`~/.local/bin/generate-hyprlock-colors.sh`. `hypridle.conf` calls `hyprlock`
+directly for the same reason.
+
+Clipboard history is `copyq`, not Moonlit's `cliphist` watchers.
 
 ---
 

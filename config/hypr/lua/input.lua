@@ -1,30 +1,32 @@
--- Input: touchpad behaviour.
+-- Input: keyboard, touchpad, trackpad gestures.
 --
--- Translated from Apollo's input.conf. Two option names needed real changes,
--- not just reindentation:
+-- Luna's settings, kept over Apollo's. The differences are deliberate
+-- personal preferences, not defaults worth overwriting:
 --
---   tap-to-click  ->  tap_to_click
---     Lua identifiers can't contain hyphens, and the option's current name
---     uses an underscore anyway.
---
---   drag_lock = true  ->  drag_lock = 1
---     drag_lock is no longer a bool. It's 0 = off, 1 = on with timeout,
---     2 = on and sticky. 1 is the behaviour the old `true` gave you.
+--   natural_scroll       = false  (Moonlit used true — reversed scrolling)
+--   disable_while_typing = false  (Moonlit used true)
+--   clickfinger_behavior = true   (2/3-finger clicks as right/middle)
 
 hl.config({
     input = {
-        -- 2-finger scrolling, the touchpad norm.
-        scroll_method = "2fg",
+        kb_layout    = "us",
+        follow_mouse = 1,
+        sensitivity  = 0,
 
         touchpad = {
-            natural_scroll       = true,
+            natural_scroll       = false, -- traditional scroll direction
             tap_to_click         = true,
-            disable_while_typing = true,
-            drag_lock            = 1,
-
-            -- Apollo dials scrolling down to 70%; the stock 1.0 overshoots
-            -- badly on a high-resolution touchpad.
-            scroll_factor        = 0.7,
+            disable_while_typing = false,
+            clickfinger_behavior = true,
         },
     },
+})
+
+-- 3-finger horizontal swipe to switch workspaces.
+-- This is Hyprland's native (trackpad-only) gesture support; touchscreen
+-- swipes are handled separately in gestures.lua via hyprgrass.
+hl.gesture({
+    fingers   = 3,
+    direction = "horizontal",
+    action    = "workspace",
 })

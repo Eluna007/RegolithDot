@@ -36,7 +36,7 @@ local p = M.palette
 -- ── Core apps ────────────────────────────────────────────────────────────
 M.terminal    = "kitty"
 M.filemanager = "thunar"
-M.launcher    = "rofi -show combi"
+M.launcher    = "wofi --show drun"
 M.settings    = "apollo-settings"
 
 -- ── Layout ───────────────────────────────────────────────────────────────

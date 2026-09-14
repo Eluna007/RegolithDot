@@ -171,7 +171,7 @@ check_hypr_lua() {
 
   local missing=()
   local m
-  for m in config env monitors appearance animations input rules keybinds autostart; do
+  for m in config env monitors appearance animations input gestures rules keybinds autostart; do
     [[ -f "$dir/lua/$m.lua" ]] || missing+=("$m.lua")
   done
   if (( ${#missing[@]} > 0 )); then
