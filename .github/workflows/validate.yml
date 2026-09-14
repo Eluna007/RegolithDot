@@ -40,6 +40,48 @@ jobs:
       - name: Check Hyprland Lua syntax
         run: luac5.4 -p config/hypr/hyprland.lua config/hypr/lua/*.lua
 
+      # apollo-settings unbinds a keybind's `Default` before applying a new
+      # combo. If Default is not the key currently bound to that same action,
+      # it unbinds a key someone is actually using — which is how editing the
+      # terminal bind once deleted the SUPER+W wallpaper picker.
+      #
+      # Cross-referenced by label: config.go's Label must equal the bind's
+      # `description` in keybinds.lua, and their keys must agree. Checking only
+      # that the key exists somewhere is not enough: SUPER+W did exist, as a
+      # different bind entirely.
+      - name: Check apollo-settings keybind defaults match keybinds.lua
+        run: |
+          python3 - <<'PY'
+          import re, sys, pathlib
+          go  = pathlib.Path("apollo-settings/config.go").read_text()
+          lua = pathlib.Path("config/hypr/lua/keybinds.lua").read_text()
+
+          block = re.search(r"func curatedKeybinds\(\).*?\n}", go, re.S).group(0)
+          curated = re.findall(
+              r'"(\w+)":\s*\{Label:\s*"([^"]+)",\s*Default:\s*"([^"]+)"', block)
+          assert curated, "no curated keybinds parsed from config.go"
+
+          # label -> key, from the live keybinds
+          bound = dict(
+              (m[1], m[0]) for m in
+              re.findall(r'mainMod \.\. " \+ (\S+?)".*?description = "([^"]+)"', lua))
+          assert bound, "no described binds parsed from keybinds.lua"
+
+          bad = []
+          for name, label, combo in curated:
+              mods, _, key = combo.partition(",")
+              key = key.strip()
+              if label not in bound:
+                  bad.append(f"{name}: config.go Label {label!r} matches no bind description in keybinds.lua")
+              elif bound[label] != key:
+                  bad.append(
+                      f"{name}: config.go Default is SUPER+{key}, but {label!r} "
+                      f"is bound to SUPER+{bound[label]} in keybinds.lua")
+          if bad:
+              print("\n".join(bad)); sys.exit(1)
+          print(f"ok - {len(curated)} curated keybind defaults match keybinds.lua")
+          PY
+
       - name: Validate XML
         run: python3 -m xml.etree.ElementTree config/Thunar/uca.xml
 
