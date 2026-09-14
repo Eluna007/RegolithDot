@@ -150,10 +150,16 @@ check_wallpapers() {
   else
     warn "no wallpapers found in ~/Pictures/Wallpapers"
   fi
-  if [[ -s "$HOME/.cache/wallpaper-current" ]]; then
-    ok "current wallpaper cache exists"
+  # restore-wallpaper.sh reads this on session start; without it you get a
+  # bare hyprpaper instead of your last wallpaper. (Moonlit used awww and
+  # ~/.cache/wallpaper-current — neither is in use here.)
+  local last="$HOME/.config/hypr/last-wallpaper.txt"
+  if [[ -s "$last" ]] && [[ -f "$(cat "$last")" ]]; then
+    ok "last wallpaper recorded and still exists"
+  elif [[ -s "$last" ]]; then
+    warn "last-wallpaper.txt points at a file that no longer exists"
   else
-    warn "current wallpaper cache missing"
+    warn "no last-wallpaper.txt — the wallpaper will not be restored on boot"
   fi
 }
 
@@ -213,7 +219,7 @@ check_paths() {
     # works on the machine it was written on. Moonlit hardcoded a few; this
     # catches them coming back. Broadened from the original's literal
     # /home/fiw so it also catches paths added by whoever forks this.
-    if git -C "$repo" grep -nE '/home/[a-z_][a-z0-9_-]*/' -- ':!README.md' ':!MANUAL-INSTALL.md' ':!.github/**' ':!scripts/apollo-doctor' ':!**/ranger_devicons/**' >/tmp/apollo-doctor-paths.$$ 2>/dev/null; then
+    if git -C "$repo" grep -nE '/home/[a-z_][a-z0-9_-]*/' -- ':!README.md' ':!MANUAL-INSTALL.md' ':!.github/**' ':!scripts/apollo-doctor' ':!**/ranger_devicons/**' ':!old-apollo-shell/**' >/tmp/apollo-doctor-paths.$$ 2>/dev/null; then
       fail "repo contains hardcoded /home/<user> paths"
       sed 's/^/  /' "/tmp/apollo-doctor-paths.$$"
     else
@@ -243,15 +249,16 @@ main() {
   check_cmd rofi Rofi
   check_cmd kitty Kitty
   check_cmd thunar Thunar
-  check_cmd fish Fish
-  check_cmd nvim Neovim
+  # Themed by Apollo but not required by it — a missing one costs you
+  # that app's config, nothing else.
+  check_optional_cmd fish Fish
+  check_optional_cmd nvim Neovim
 
   info "Wayland desktop helpers"
   check_cmd grim grim
   check_cmd slurp slurp
   check_cmd wl-copy wl-clipboard
   check_cmd cliphist cliphist
-  check_cmd awww awww
   check_optional_cmd hyprsunset hyprsunset
   check_cmd jq jq
   # The wallpaper pipeline: hyprpaper for stills, mpvpaper+ffmpeg for

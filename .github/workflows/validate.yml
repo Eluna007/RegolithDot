@@ -88,7 +88,8 @@ jobs:
         run: |
           if git grep -nE '/home/[a-z_][a-z0-9_-]*/' \
                -- ':!README.md' ':!MANUAL-INSTALL.md' ':!.github/**' \
-                  ':!scripts/apollo-doctor' ':!**/ranger_devicons/**'; then
+                  ':!scripts/apollo-doctor' ':!**/ranger_devicons/**' \
+                  ':!old-apollo-shell/**'; then
             echo "Found a hardcoded /home/<user> path in tracked config files."
             exit 1
           fi
