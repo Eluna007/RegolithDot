@@ -1,0 +1,80 @@
+import Quickshell
+import QtQuick
+
+Scope {
+    id: root
+
+    property string barPosition: "left"
+    property int barThickness: 48
+    property color barColor: Qt.rgba(0.09, 0.09, 0.12, 0.75)
+
+    Variants {
+        model: Quickshell.screens
+
+        PanelWindow {
+            required property var modelData
+            screen: modelData
+
+            anchors {
+                top: root.barPosition === "top" || root.barPosition === "left" || root.barPosition === "right"
+                bottom: root.barPosition === "bottom" || root.barPosition === "left" || root.barPosition === "right"
+                left: root.barPosition === "left" || root.barPosition === "top" || root.barPosition === "bottom"
+                right: root.barPosition === "right" || root.barPosition === "top" || root.barPosition === "bottom"
+            }
+
+            implicitWidth: root.barPosition === "left" || root.barPosition === "right" ? root.barThickness : 1
+            implicitHeight: root.barPosition === "top" || root.barPosition === "bottom" ? root.barThickness : 1
+
+            color: root.barColor
+
+            Column {
+                anchors.fill: parent
+                anchors.margins: 8
+                spacing: 16
+
+                Rectangle {
+                    width: parent.width
+                    height: 120
+                    color: "transparent"
+                    border.color: Qt.rgba(1, 1, 1, 0.15)
+                    radius: 8
+                    Text {
+                        anchors.centerIn: parent
+                        text: "WS"
+                        color: "white"
+                        opacity: 0.6
+                    }
+                }
+
+                Text {
+                    id: clock
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    color: "white"
+                    font.pixelSize: 12
+                    text: Qt.formatDateTime(new Date(), "HH:mm")
+
+                    Timer {
+                        interval: 1000
+                        running: true
+                        repeat: true
+                        onTriggered: clock.text = Qt.formatDateTime(new Date(), "HH:mm")
+                    }
+                }
+
+                Rectangle {
+                    width: parent.width
+                    height: 60
+                    color: "transparent"
+                    border.color: Qt.rgba(1, 1, 1, 0.15)
+                    radius: 8
+                    Text {
+                        anchors.centerIn: parent
+                        text: "Tray"
+                        color: "white"
+                        opacity: 0.6
+                    }
+                }
+            }
+        }
+    }
+}

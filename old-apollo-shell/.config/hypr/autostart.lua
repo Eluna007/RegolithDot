@@ -1,0 +1,7 @@
+hl.on("hyprland.start", function()
+ hl.exec_cmd("~/.local/bin/restore-wallpaper.sh")
+ hl.exec_cmd("hyprpm reload -n")
+ hl.exec_cmd("kdeconnectd")
+ hl.exec_cmd("kdeconnect-indicator")
+ hl.exec_cmd("copyq")
+end)
