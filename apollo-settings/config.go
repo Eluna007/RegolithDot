@@ -74,13 +74,20 @@ type Config struct {
 
 // curatedKeybinds is the safe, fixed set the app is willing to rebind. The
 // dispatcher/label/default never change; only the user's combo does.
+// curatedKeybinds MUST mirror lua/keybinds.lua. `Default` is the combo this
+// app unbinds before applying a new one, so a Default that does not match the
+// live config unbinds a key someone is actually using: these were Moonlit's
+// (SUPER+Q terminal, SUPER+W close), and against Apollo's keybinds that meant
+// editing the terminal bind silently deleted the SUPER+W wallpaper picker.
+//
+// If you rebind any of these five in lua/keybinds.lua, change them here too.
 func curatedKeybinds() map[string]Keybind {
 	return map[string]Keybind{
-		"terminal":   {Label: "Terminal", Default: "SUPER, Q", Combo: "SUPER, Q", Dispatcher: `hl.dsp.exec_cmd("kitty")`},
-		"launcher":   {Label: "App launcher", Default: "SUPER, Space", Combo: "SUPER, Space", Dispatcher: `hl.dsp.exec_cmd("rofi -show combi")`},
-		"close":      {Label: "Close window", Default: "SUPER, W", Combo: "SUPER, W", Dispatcher: "hl.dsp.window.close()"},
-		"fullscreen": {Label: "Fullscreen", Default: "SUPER, F", Combo: "SUPER, F", Dispatcher: "hl.dsp.window.fullscreen()"},
-		"float":      {Label: "Toggle floating", Default: "SUPER, P", Combo: "SUPER, P", Dispatcher: "hl.dsp.window.float()"},
+		"terminal":   {Label: "Terminal", Default: "SUPER, Return", Combo: "SUPER, Return", Dispatcher: `hl.dsp.exec_cmd("kitty")`},
+		"launcher":   {Label: "App launcher", Default: "SUPER, Space", Combo: "SUPER, Space", Dispatcher: `hl.dsp.exec_cmd("wofi --show drun")`},
+		"close":      {Label: "Close window", Default: "SUPER, Q", Combo: "SUPER, Q", Dispatcher: "hl.dsp.window.close()"},
+		"fullscreen": {Label: "Fullscreen", Default: "SUPER, F", Combo: "SUPER, F", Dispatcher: `hl.dsp.window.fullscreen({ mode = "fullscreen" })`},
+		"float":      {Label: "Toggle floating", Default: "SUPER, V", Combo: "SUPER, V", Dispatcher: "hl.dsp.window.float()"},
 	}
 }
 
