@@ -1,11 +1,8 @@
 -- Window and layer rules.
 --
--- Translated from the tail of Apollo's decoration.conf, which had already
--- moved to the 0.55 block syntax:
---
---   windowrule[name] { match:class = ^(x)$   opacity = 0.9 0.8 }
---     becomes
---   hl.window_rule({ name = "name", match = { class = "^(x)$" }, opacity = "0.9 0.8" })
+-- Apollo's rules merged with Luna's from the previous config. Hyprland
+-- evaluates these top to bottom and the *last* match wins, so the broad
+-- rules come first and the specific ones after.
 --
 -- `opacity` takes a single string, not two numbers: "<active> <inactive>",
 -- optionally "<active> <inactive> <fullscreen>". Values multiply with
@@ -23,21 +20,25 @@ hl.layer_rule({
     ignore_alpha = 0.2,
 })
 
--- ── Windows ──────────────────────────────────────────────────────────────
--- Terminal frost is handled by kitty itself (background_opacity 0.85 in
--- kitty.conf), so the global blur shows through without a rule here.
-
--- Semi-transparent Thunar.
+-- ── Floating utility dialogs ─────────────────────────────────────────────
 hl.window_rule({
-    name    = "thunar-frost",
-    match   = { class = "^(thunar)$" },
-    opacity = "0.88 0.85",
+    name  = "float-pavucontrol",
+    match = { class = "^(pavucontrol)$" },
+    float = true,
 })
 
 hl.window_rule({
-    name    = "prism-frost",
-    match   = { class = "^(PrismLauncher|prismlauncher|org\\.prismlauncher\\.PrismLauncher)$" },
-    opacity = "0.78 0.74",
+    name  = "float-blueman",
+    match = { class = "^(blueman-manager)$" },
+    float = true,
+})
+
+-- Picture-in-picture: float, pin above other windows, keep it out of the way.
+hl.window_rule({
+    name  = "pip-float",
+    match = { title = "^(Picture-in-Picture)$" },
+    float = true,
+    pin   = true,
 })
 
 -- Portal file chooser: float it, center it, and give it the same rounding as
@@ -50,6 +51,25 @@ hl.window_rule({
     border_size = 2,
     rounding    = 10,
     opacity     = "0.95 0.92",
+})
+
+-- ── Frosted windows ──────────────────────────────────────────────────────
+-- Terminal frost is handled by kitty itself (background_opacity in
+-- kitty.conf), so the global blur shows through without a rule here.
+
+-- Thunar. The class is capital-T "Thunar" on Arch, so Moonlit's lowercase-only
+-- `^(thunar)$` never matched — the case-insensitive first letter comes from
+-- Luna's config and is what actually makes this rule fire.
+hl.window_rule({
+    name    = "thunar-frost",
+    match   = { class = "^([Tt]hunar)$" },
+    opacity = "0.88 0.85",
+})
+
+hl.window_rule({
+    name    = "prism-frost",
+    match   = { class = "^(PrismLauncher|prismlauncher|org\\.prismlauncher\\.PrismLauncher)$" },
+    opacity = "0.78 0.74",
 })
 
 -- Apollo Settings. Matched by title, not class: it's a Fyne app, and under

@@ -1,0 +1,14 @@
+/* Default accent layer.
+ *
+ * emoji.rasi and keybinds.rasi chain this file rather than the base theme
+ * directly, so apollo-settings can recolour every rofi mode at once by
+ * rewriting just this one file (see rofi.go / renderRofiColors).
+ *
+ * This checked-in version is a pass-through: it chains the base theme and
+ * changes nothing. Without it the emoji picker and keybind cheatsheet would
+ * fail on a fresh clone, before apollo-settings has ever been run.
+ *
+ * apollo-settings overwrites this file on Apply. That shows up as a tracked
+ * change — which is the point: your accent is part of the rice. */
+
+@theme "~/.config/rofi/themes/catppuccin-mocha.rasi"
