@@ -23,16 +23,24 @@ case "$selected" in
     ~/.local/bin/generate-hyprlock-colors.sh
     ;;
   *)
-    # Image-to-image: never restart hyprpaper. It supports live preload +
-    # swap over its own IPC — that's the whole point of the daemon design,
-    # and it's what avoids the flash of the bare compositor background.
+    # Image-to-image: never restart hyprpaper. It swaps over its own IPC,
+    # which is what avoids the flash of the bare compositor background.
     pkill mpvpaper 2>/dev/null
     if ! pgrep -x hyprpaper >/dev/null; then
       hyprpaper &
       sleep 0.5
     fi
-    hyprctl hyprpaper preload "$selected"
-    hyprctl hyprpaper wallpaper ",$selected,fill"
+
+    # hyprpaper's IPC no longer has `preload` (nor `unload`/`listloaded`) —
+    # `wallpaper` loads the image on demand. Calling preload just returns
+    # "invalid hyprpaper request". The surviving requests are:
+    #   hyprctl hyprpaper wallpaper '[mon], [path], [fit_mode]'
+    #   hyprctl hyprpaper listactive
+    # Empty monitor = fallback, i.e. every output.
+    if ! hyprctl hyprpaper wallpaper ",$selected,fill"; then
+      echo "wallpaper-switch: hyprpaper rejected the wallpaper request" >&2
+      exit 1
+    fi
 
     matugen image "$selected" --source-color-index 0
     ~/.local/bin/generate-hyprlock-colors.sh

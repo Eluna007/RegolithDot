@@ -180,6 +180,12 @@ ln -sfn ~/RegolithDot/config/xdg-desktop-portal    ~/.config/xdg-desktop-portal
 ln -sfn ~/RegolithDot/local/share/icons/Apollo-Terminal ~/.local/share/icons/Apollo-Terminal
 ln -sfn ~/RegolithDot/local/share/PrismLauncher         ~/.local/share/PrismLauncher
 
+# Scripts the config calls by path: autostart.lua runs restore-wallpaper.sh,
+# the keybinds run osd-report.sh, and the wallpaper picker runs
+# wallpaper-switch.sh. Symlinked, so `git pull` updates them.
+mkdir -p ~/.local/bin
+for s in ~/RegolithDot/local/bin/*.sh; do ln -sfn "$s" ~/.local/bin/"$(basename "$s")"; done
+
 # keyd is system-wide and needs a real copy, not a symlink
 sudo cp config/keyd/default.conf /etc/keyd/default.conf
 sudo keyd reload
@@ -216,7 +222,9 @@ update-desktop-database ~/.local/share/applications 2>/dev/null
 gtk-update-icon-cache ~/.local/share/icons/hicolor 2>/dev/null
 
 # Health check on PATH
-install -Dm755 scripts/apollo-doctor ~/.local/bin/apollo-doctor
+# Symlink, not a copy: a copy goes stale the moment you `git pull`, and a
+# doctor reporting checks that were fixed weeks ago is worse than none.
+ln -sfn ~/RegolithDot/scripts/apollo-doctor ~/.local/bin/apollo-doctor
 
 # First wallpaper, so hyprlock isn't staring at an empty cache
 awww img ~/Pictures/Wallpapers/<your-wallpaper> -t none
