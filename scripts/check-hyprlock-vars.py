@@ -10,7 +10,8 @@ those are where the risk actually is.
 """
 import pathlib, re, sys
 
-PROPS = r'(?:border_)?color|inner_color|outer_color|font_color|shadow_color|path'
+PROPS = (r'(?:border_)?color|inner_color|outer_color|font_color|shadow_color'
+         r'|path|reload_cmd')
 USE = re.compile(rf'^\s*(?:{PROPS})\s*=\s*\$([A-Za-z_][A-Za-z0-9_]*)\s*$')
 DEF = re.compile(r'^\s*\$([A-Za-z_][A-Za-z0-9_]*)\s*=')
 

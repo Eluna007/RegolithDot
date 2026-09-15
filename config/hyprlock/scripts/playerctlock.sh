@@ -1,148 +1,91 @@
-#!/bin/env bash
-
-THUMB=/tmp/hyde-mpris
-THUMB_BLURRED=/tmp/hyde-mpris-blurred
+#!/usr/bin/env bash
+# Track metadata for the hyprlock layouts: $music --title, --artist, etc.
+#
+# Rewritten from upstream, which called an is_spotify() gate on every
+# invocation and exited 1 with "Not playing on Spotify" when Spotify was not
+# running - so on a machine without Spotify every music widget in every layout
+# printed that string instead of the track. It now uses whichever MPRIS player
+# is actually playing.
+#
+# Album art is NOT fetched here. Upstream re-ran a download and an ImageMagick
+# pass in the background on every call, and the layouts call this several times
+# a second. Art is hlock_mpris.sh's job, driven by hyprlock's reload_cmd.
+set -uo pipefail
 
 if [ $# -eq 0 ]; then
-    echo "Usage: $0 --title | --arturl | --artist | --position | --length | --album | --source"
+    echo "Usage: $0 --title | --artist | --album | --position | --length | --status | --source"
     exit 1
 fi
 
-# Function to get metadata using playerctl
-get_metadata() {
-    key=$1
-    playerctl metadata --format "{{ $key }}" 2>/dev/null
-}
+command -v playerctl >/dev/null 2>&1 || { echo ""; exit 0; }
 
-# Function to check if the player is Spotify
-is_spotify() {
-    player=$(playerctl -l 2>/dev/null | grep spotify)
-    if [ -z "$player" ]; then
-        echo "Not playing on Spotify"
-        exit 1
-    fi
-}
+# First player that is playing or paused. `playerctl -l` lists every MPRIS
+# client - browsers register one per tab - so status is what picks the real one.
+player=""
+while read -r p; do
+    [ -n "$p" ] || continue
+    case "$(playerctl -p "$p" status 2>/dev/null)" in
+        Playing|Paused) player="$p"; break ;;
+    esac
+done < <(playerctl -l 2>/dev/null)
 
-# Function to determine the source and return an icon and text
-get_source_info() {
-    trackid=$(get_metadata "mpris:trackid")
-    if [[ "$trackid" == *"spotify"* ]]; then
-        echo -e "Spotify "
-    else
-        echo ""
-    fi
-}
+# Nothing playing: every field is blank, so the widgets simply render empty
+# rather than showing an error string.
+[ -n "$player" ] || { echo ""; exit 0; }
 
-# Function to get position using playerctl
-get_position() {
-    playerctl position 2>/dev/null
-}
+meta() { playerctl -p "$player" metadata --format "{{ $1 }}" 2>/dev/null; }
 
-# Function to convert microseconds to minutes and seconds
-convert_length() {
-    local length=$1
-    local seconds=$((length / 1000000))
-    local minutes=$((seconds / 60))
-    local remaining_seconds=$((seconds % 60))
-    printf "%d:%02d min" $minutes $remaining_seconds
-}
+# microseconds -> M:SS
+fmt_len() { local s=$(( ${1:-0} / 1000000 )); printf "%d:%02d min" $((s/60)) $((s%60)); }
+# seconds (possibly fractional) -> M:SS
+fmt_pos() { local s=${1%.*}; printf "%d:%02d" $((s/60)) $((s%60)); }
 
-# Function to convert seconds to minutes and seconds
-convert_position() {
-    local position=$1
-    local seconds=${position%.*} # Remove fractional part if exists
-    local minutes=$((seconds / 60))
-    local remaining_seconds=$((seconds % 60))
-    printf "%d:%02d" $minutes $remaining_seconds
-}
-
-# Function to fetch album art and create blurred version
-fetch_thumb() {
-    artUrl=$(playerctl -p spotify metadata --format '{{mpris:artUrl}}') 
-    [[ "${artUrl}" = "$(cat "${THUMB}.inf")" ]] && return 0
-
-    printf "%s\n" "$artUrl" > "${THUMB}.inf"
-
-    curl -so "${THUMB}.png" "$artUrl"
-    magick "${THUMB}.png" -quality 50 "${THUMB}.png"
-    # Create blurred version
-    magick "${THUMB}.png" -blur 200x7 -resize 1920x^ -gravity center -extent 1920x1080\! "${THUMB_BLURRED}.png"
-
-    pkill -USR2 hyprlock
-}
-
-# Ensure player is Spotify
-is_spotify
-
-# Run fetch_thumb function in the background
-{ fetch_thumb ;} || { rm -f "${THUMB}*" && exit 1;} &
-
-# Parse the argument
 case "$1" in
 --title)
-    title=$(get_metadata "xesam:title")
-    if [ -z "$title" ]; then
-        echo ""
-    else
-        echo "${title:0:15}..." # Limit the output to 50 characters
-    fi
+    t="$(meta "xesam:title")"
+    [ -n "$t" ] && { [ ${#t} -gt 15 ] && echo "${t:0:15}..." || echo "$t"; } || echo ""
     ;;
 --artist)
-    artist=$(get_metadata "xesam:artist")
-    if [ -z "$artist" ]; then
-        echo ""
-    else
-        echo "${artist:0:20}" #mit the output to 50 characters
-    fi
+    a="$(meta "xesam:artist")"; echo "${a:0:20}"
+    ;;
+--album)
+    meta "xesam:album"
     ;;
 --position)
-    position=$(get_position)
-    length=$(get_metadata "mpris:length")
-    if [ -z "$position" ] || [ -z "$length" ]; then
-        echo ""
+    pos="$(playerctl -p "$player" position 2>/dev/null)"
+    len="$(meta "mpris:length")"
+    if [ -n "$pos" ] && [ -n "$len" ]; then
+        echo "$(fmt_pos "$pos")/$(fmt_len "$len")"
     else
-        position_formatted=$(convert_position "$position")
-        length_formatted=$(convert_length "$length")
-        echo "$position_formatted/$length_formatted"
+        echo ""
     fi
     ;;
 --length)
-    length=$(get_metadata "mpris:length")
-    if [ -z "$length" ]; then
-        echo ""
-    else
-        convert_length "$length"
-    fi
+    len="$(meta "mpris:length")"; [ -n "$len" ] && fmt_len "$len" || echo ""
     ;;
 --status)
-    status=$(playerctl status 2>/dev/null)
-    if [[ $status == "Playing" ]]; then
-        echo "⏸"
-    elif [[ $status == "Paused" ]]; then
-        echo "▶"
-    else
-        echo ""
-    fi
-    ;;
---album)
-    album=$(playerctl metadata --format "{{ xesam:album }}" 2>/dev/null)
-    if [[ -n $album ]]; then
-        echo "$album"
-    else
-        status=$(playerctl status 2>/dev/null)
-        if [[ -n $status ]]; then
-            echo "Not album"
-        else
-            echo ""
-        fi
-    fi
+    # The glyph is the action the button would take, not the current state.
+    case "$(playerctl -p "$player" status 2>/dev/null)" in
+        Playing) echo "⏸" ;;
+        Paused)  echo "▶" ;;
+        *)       echo "" ;;
+    esac
     ;;
 --source)
-    get_source_info
+    # Upstream only recognised Spotify and printed nothing for anything else.
+    # playerctl's player name is the bus name: "spotify", "firefox",
+    # "mpv.instance123", "chromium.instance456".
+    case "${player%%.*}" in
+        spotify)            echo "Spotify " ;;
+        firefox)            echo "Firefox 󰈹" ;;
+        chromium|chrome|brave) echo "Browser " ;;
+        mpv)                echo "mpv " ;;
+        vlc)                echo "VLC 󰕼" ;;
+        *)                  echo "${player%%.*} " ;;
+    esac
     ;;
 *)
-    echo "Invalid option: $1"
-    echo "Usage: $0 --title | --arturl | --artist | --position | --length | --album | --source"
+    echo "Invalid option: $1" >&2
     exit 1
     ;;
 esac

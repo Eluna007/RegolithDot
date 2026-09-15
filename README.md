@@ -128,6 +128,18 @@ one as nothing, which on a lock screen reads as black on black.
 Needs `playerctl` for the music widgets, `cava` for layout18's visualiser,
 `imagemagick` for album art, and `curl` for layout15's weather.
 
+`playerctlock.sh` (metadata) and `hlock_mpris.sh` (album art) were rewritten:
+upstream hardcoded `playerctl -p spotify` and bailed with "Not playing on
+Spotify" otherwise, so every music widget printed that string on a machine
+without it. They now take whichever MPRIS player is playing, and the art
+script handles `file://` and `data:` art as well as `http(s)://`.
+
+Album art reaches hyprlock through `reload_cmd`, which is expected to *print
+a path* — upstream left it empty, so the art never refreshed. When nothing is
+playing the script prints `assets/no-art.png`, a 1×1 transparent PNG: a path
+that does not exist makes hyprlock log `cannot get file time` and render a
+broken widget.
+
 Apollo does not use Moonlit's `awww` wallpaper daemon or its `lock.sh`.
 `hypridle.conf` calls `hyprlock` directly.
 
