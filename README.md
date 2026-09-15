@@ -145,6 +145,14 @@ one as nothing, which on a lock screen reads as black on black.
 Needs `playerctl` for the music widgets, `cava` for layout18's visualiser,
 `imagemagick` for album art, and `curl` for layout15's weather.
 
+`battery.sh` (layout15 and layout20) finds the battery instead of assuming
+`/sys/class/power_supply/BAT0`. That name is not universal — plenty of
+laptops expose `BAT1` — and on a machine where it is wrong the widget
+rendered blank while every update tick wrote a `cat: No such file` pair into
+hyprlock's log. `scripts/test-battery.sh` (a CI step) covers discovery, every
+decile including 100%, and the no-battery case; a second CI step rejects a
+hardcoded `BAT<n>` path anywhere outside a comment.
+
 `playerctlock.sh` (metadata) and `hlock_mpris.sh` (album art) were rewritten:
 upstream hardcoded `playerctl -p spotify` and bailed with "Not playing on
 Spotify" otherwise, so every music widget printed that string on a machine

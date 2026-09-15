@@ -123,9 +123,23 @@ ShellRoot {
         // CPU/RAM/WiFi/temp — one instance for the whole shell.
         property var stats: SystemStats { }
 
-        // Battery via sysfs.
+        // Battery via sysfs. Finds the battery rather than assuming BAT0:
+        // that name is not universal, and because the old command fell back to
+        // `echo 100` the bar read a confident, permanent 100% on any machine
+        // where it was wrong. Printing nothing on a real desktop is the honest
+        // answer, so the no-battery fallback stays only for the parse below.
+        //
+        // POSIX sh, no process substitution - `sh` is not guaranteed to be
+        // bash, and the old `paste <(...)` silently depended on it being so.
         property var battProc: Process {
-            command: ["sh", "-c", "paste <(cat /sys/class/power_supply/BAT0/capacity 2>/dev/null || echo 100) <(cat /sys/class/power_supply/BAT0/status 2>/dev/null || echo Unknown)"]
+            command: ["sh", "-c",
+                "for d in /sys/class/power_supply/*; do " +
+                "  [ -r \"$d/capacity\" ] || continue; " +
+                "  t=$(cat \"$d/type\" 2>/dev/null); " +
+                "  [ -z \"$t\" ] || [ \"$t\" = Battery ] || continue; " +
+                "  printf '%s\\t%s\\n' \"$(cat \"$d/capacity\")\" \"$(cat \"$d/status\" 2>/dev/null || echo Unknown)\"; " +
+                "  exit 0; " +
+                "done; printf '100\\tUnknown\\n'"]
             stdout: SplitParser {
                 onRead: d => {
                     var p = d.trim().split("\t")
