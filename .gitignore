@@ -24,3 +24,7 @@ config/nvim/after/
 # Generated on the machine by Luna's wallpaper/colour scripts
 config/hypr/last-wallpaper.txt
 config/hypr/hyprlock-colors.conf
+
+# hyprlock: generated on the machine, not config
+config/hyprlock/colors.conf
+config/hyprlock/wallpaper.conf

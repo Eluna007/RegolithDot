@@ -82,6 +82,13 @@ jobs:
           print(f"ok - {len(curated)} curated keybind defaults match keybinds.lua")
           PY
 
+      # An undefined $variable is not an error to hyprlock - it renders as
+      # nothing, i.e. black text on a black card, with no diagnostic. Since the
+      # colours now come from a generated file, a typo in either half would
+      # only show up on a locked screen.
+      - name: Check hyprlock layout variables
+        run: python3 scripts/check-hyprlock-vars.py
+
       - name: Validate XML
         run: python3 -m xml.etree.ElementTree config/Thunar/uca.xml
 
@@ -101,7 +108,11 @@ jobs:
           test -f config/rofi/config.rasi
           test -f config/rofi/themes/apollo-colors.rasi
           test -f config/hypr/hyprlock.conf
-          for s in osd-report restore-wallpaper wallpaper-switch generate-hyprlock-colors; do
+          test -f config/hyprlock/assets.conf
+          test -f config/matugen/templates/hyprlock-colors.conf.template
+          for n in 12 15 18 20; do test -f "config/hyprlock/layouts/layout$n.conf"; done
+          test -x local/bin/hyprlock-wallpaper.sh
+          for s in osd-report restore-wallpaper wallpaper-switch hyprlock-wallpaper; do
             test -x "local/bin/$s.sh"
           done
           test -f local/share/icons/Apollo-Terminal/index.theme

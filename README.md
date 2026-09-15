@@ -31,6 +31,8 @@ config/hypr/            Hyprland — Lua
   hypridle.conf           hypridle — still hyprlang, it's a separate binary
 
 config/quickshell/apollo/   the shell: bar/, panels/, services/, shell.qml
+config/hyprlock/            lock screen: 4 layouts + their scripts
+config/matugen/             colour generation, incl. the hyprlock template
 config/rofi/                themes + launcher/emoji/keybind modes
 config/{kitty,fish,nvim,gtk-3.0,gtk-4.0,ranger,Thunar,fastfetch,keyd,dgop}
 config/xdg-desktop-portal/
@@ -91,14 +93,43 @@ had no equivalent for.
 
 Nothing else in `lua/` imports these three, so they stay easy to swap.
 
-## The lock screen and wallpaper
+## The lock screen
+
+Four layouts vendored from
+[mahaveergurjar/Hyprlock-Dots](https://github.com/mahaveergurjar/Hyprlock-Dots)
+(upstream ships no LICENSE; kept with attribution):
+
+| | |
+|---|---|
+| **12** | minimal, left-aligned: welcome, clock, username + password pills |
+| **15** | centred clock; right column of music, weather, battery, avatar |
+| **18** | music-first: album art, transport, progress, cava visualiser |
+| **20** | widget dashboard: login card, clock + uptime, music, wifi/bt, battery |
+
+Switch by moving the uncommented `source` line at the bottom of
+`config/hypr/hyprlock.conf`. hyprlock re-reads it on every lock, so there is
+nothing to reload.
+
+Upstream hardcodes every colour. Here they are `$variables` resolved from three
+files, split by who writes them:
+
+| file | written by | holds |
+|---|---|---|
+| `colors.conf` | matugen | the 17 colour variables |
+| `wallpaper.conf` | `hyprlock-wallpaper.sh` | `$wall` |
+| `assets.conf` | you, tracked in git | `$avatar`, `$cover` |
+
+The first two are gitignored machine state, regenerated together on every
+wallpaper change, so the lock screen recolours with the wallpaper like the rest
+of the rice. `scripts/check-hyprlock-vars.py` (also a CI step) verifies every
+variable a layout references is actually defined — hyprlock renders an unknown
+one as nothing, which on a lock screen reads as black on black.
+
+Needs `playerctl` for the music widgets, `cava` for layout18's visualiser,
+`imagemagick` for album art, and `curl` for layout15's weather.
 
 Apollo does not use Moonlit's `awww` wallpaper daemon or its `lock.sh`.
-Wallpapers are handled by `~/.local/bin/restore-wallpaper.sh` /
-`wallpaper-switch.sh`, and `hyprlock.conf` lives outside this repo because it
-reads colours generated from the current wallpaper by
-`~/.local/bin/generate-hyprlock-colors.sh`. `hypridle.conf` calls `hyprlock`
-directly for the same reason.
+`hypridle.conf` calls `hyprlock` directly.
 
 Clipboard history is `copyq`, not Moonlit's `cliphist` watchers.
 
@@ -113,11 +144,12 @@ piece of it:
 2. matugen writes `~/.config/quickshell/colors.json`. That is the *parent* of
    `~/.config/quickshell/apollo`, not inside it, so clearing out a previous
    shell can delete it by accident.
-3. `local/bin/generate-hyprlock-colors.sh` reads that JSON and writes
-   `hyprlock-colors.conf`, which `hyprlock.conf` sources as `$accent`.
+3. matugen's second template writes `~/.config/hyprlock/colors.conf`, and
+   `hyprlock-wallpaper.sh` writes `wallpaper.conf` beside it, in the same
+   `wallpaper-switch.sh` run so the two can never disagree.
 
-Break any link and the lock screen silently falls back to a default blue.
-`apollo-doctor` checks for all three.
+Break any link and the lock screen loses its palette. `apollo-doctor` checks
+for all of it.
 
 Requires `hyprpaper`, `matugen`, and (for animated wallpapers) `mpvpaper` and
 `ffmpeg`.

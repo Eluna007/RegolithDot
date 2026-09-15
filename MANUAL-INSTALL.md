@@ -75,7 +75,8 @@ sudo pacman -S ttf-jetbrains-mono-nerd papirus-icon-theme noto-fonts-emoji
 ### 2.8 System utilities
 
 ```bash
-sudo pacman -S brightnessctl keyd htop pacman-contrib jq
+sudo pacman -S brightnessctl keyd htop pacman-contrib jq playerctl imagemagick
+# playerctl + imagemagick drive the lock screen's music widgets and album art
 # pacman-contrib provides `checkupdates` (bar update count) and `paccache`
 # jq drives the keybind cheatsheet's `hyprctl binds -j` parsing
 ```
@@ -100,6 +101,7 @@ sudo pacman -S upower            # battery stats in the system monitor panel
 sudo pacman -S w3m python-pillow # ranger image previews
 sudo pacman -S atool unrar unzip # ranger archive handling
 sudo pacman -S lua               # lets apollo-doctor syntax-check the config
+sudo pacman -S cava              # layout18's lock screen audio visualiser
 ```
 
 Airplane mode uses `rfkill`, already in `util-linux`.
@@ -176,6 +178,8 @@ ln -sfn ~/RegolithDot/config/Thunar                ~/.config/Thunar
 ln -sfn ~/RegolithDot/config/fastfetch             ~/.config/fastfetch
 ln -sfn ~/RegolithDot/config/dgop                  ~/.config/dgop
 ln -sfn ~/RegolithDot/config/xdg-desktop-portal    ~/.config/xdg-desktop-portal
+ln -sfn ~/RegolithDot/config/hyprlock             ~/.config/hyprlock
+ln -sfn ~/RegolithDot/config/matugen              ~/.config/matugen
 
 ln -sfn ~/RegolithDot/local/share/icons/Apollo-Terminal ~/.local/share/icons/Apollo-Terminal
 ln -sfn ~/RegolithDot/local/share/PrismLauncher         ~/.local/share/PrismLauncher
