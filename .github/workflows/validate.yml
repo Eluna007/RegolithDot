@@ -26,6 +26,7 @@ jobs:
           bash -n scripts/apollo-doctor
           bash -n local/bin/apollo-lock-layout
           bash -n scripts/test-battery.sh
+          bash -n scripts/test-network.sh
           for f in local/bin/*.sh; do bash -n "$f"; done
           for f in config/hyprlock/scripts/*.sh; do bash -n "$f"; done
 
@@ -38,7 +39,9 @@ jobs:
           shellcheck scripts/apollo-doctor
           shellcheck local/bin/apollo-lock-layout
           shellcheck scripts/test-battery.sh
+          shellcheck scripts/test-network.sh
           shellcheck config/hyprlock/scripts/battery.sh
+          shellcheck config/hyprlock/scripts/network.sh
           shellcheck local/bin/*.sh
 
       # A Lua syntax error takes the whole Hyprland config down and leaves you
@@ -115,6 +118,12 @@ jobs:
       - name: Check lock screen layout commands are declared
         run: python3 scripts/check-layout-commands.py
 
+      # layout20's wifi and bluetooth widgets. Both used to redirect stderr and
+      # fall back to "Disconnected", so a missing tool was indistinguishable
+      # from being offline - and both were in fact broken on a stock Arch box.
+      - name: Test network.sh
+        run: ./scripts/test-network.sh
+
       # /sys/class/power_supply/BAT0 is not a universal path - plenty of
       # laptops expose BAT1. Worse, the callers used to paper over a wrong
       # guess (`|| echo 100`, `2>/dev/null`), so the bar reported a confident,
@@ -156,7 +165,7 @@ jobs:
           test -f config/hypr/hyprlock.conf
           test -f config/hyprlock/assets.conf
           test -f config/hyprlock/assets/no-art.png
-          for s in playerctlock hlock_mpris; do test -x "config/hyprlock/scripts/$s.sh"; done
+          for s in playerctlock hlock_mpris battery network; do test -x "config/hyprlock/scripts/$s.sh"; done
           test -f config/matugen/templates/hyprlock-colors.conf.template
           test -f config/matugen/templates/hyprlock-colors.sh.template
           for n in 12 15 18 20; do test -f "config/hyprlock/layouts/layout$n.conf"; done
