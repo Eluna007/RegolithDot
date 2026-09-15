@@ -10,7 +10,8 @@ those are where the risk actually is.
 """
 import pathlib, re, sys
 
-PROPS = r'(?:border_)?color|inner_color|outer_color|font_color|shadow_color|path'
+PROPS = (r'(?:border_)?color|inner_color|outer_color|font_color|shadow_color'
+         r'|path|reload_cmd')
 USE = re.compile(rf'^\s*(?:{PROPS})\s*=\s*\$([A-Za-z_][A-Za-z0-9_]*)\s*$')
 DEF = re.compile(r'^\s*\$([A-Za-z_][A-Za-z0-9_]*)\s*=')
 
@@ -32,6 +33,36 @@ for f in sorted(pathlib.Path("config/hyprlock/layouts").glob("*.conf")):
         checked += 1
         if m.group(1) not in defined:
             bad.append(f"{f}:{i}: ${m.group(1)} is used but never defined")
+
+# placeholder_text is pango markup, so its colour is a #hex inside a span
+# rather than a colour property. Those variables need checking too.
+PLACEHOLDER = re.compile(r'placeholder_text\s*=.*foreground="\$([A-Za-z_][A-Za-z0-9_]*)"')
+for f in sorted(pathlib.Path("config/hyprlock/layouts").glob("*.conf")):
+    for i, line in enumerate(f.read_text().split("\n"), 1):
+        m = PLACEHOLDER.search(line)
+        if m:
+            checked += 1
+            if m.group(1) not in defined:
+                bad.append(f"{f}:{i}: ${m.group(1)} is used but never defined")
+
+# An input field filled with an accent needs on-accent text. matugen's dark-mode
+# accents are light pastels, so a light $fg here is unreadable - upstream's
+# saturated reds tolerated white text and these do not.
+FIELD = re.compile(r'^input-field\s*\{')
+for f in sorted(pathlib.Path("config/hyprlock/layouts").glob("*.conf")):
+    lines = f.read_text().split("\n")
+    for s_ in [n for n, l in enumerate(lines) if FIELD.match(l)]:
+        e = next((n for n in range(s_+1, len(lines)) if lines[n].strip() == "}"), len(lines)-1)
+        blk = lines[s_:e+1]
+        def val(prop):
+            for l in blk:
+                m = re.match(rf'\s*{prop}\s*=\s*\$(\w+)\s*$', l)
+                if m: return m.group(1)
+            return None
+        inner, font = val("inner_color"), val("font_color")
+        if inner and font and inner.startswith("accent") and not font.startswith("on_accent"):
+            bad.append(f"{f}:{s_+1}: input-field is filled with ${inner} "
+                       f"but its text is ${font}; accents are light, so this needs an $on_accent*")
 
 # brace balance - a stray brace silently swallows the rest of a layout
 for f in sorted(pathlib.Path("config/hyprlock/layouts").glob("*.conf")):

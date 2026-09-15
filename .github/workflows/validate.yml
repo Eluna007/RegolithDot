@@ -109,7 +109,10 @@ jobs:
           test -f config/rofi/themes/apollo-colors.rasi
           test -f config/hypr/hyprlock.conf
           test -f config/hyprlock/assets.conf
+          test -f config/hyprlock/assets/no-art.png
+          for s in playerctlock hlock_mpris; do test -x "config/hyprlock/scripts/$s.sh"; done
           test -f config/matugen/templates/hyprlock-colors.conf.template
+          test -f config/matugen/templates/hyprlock-colors.sh.template
           for n in 12 15 18 20; do test -f "config/hyprlock/layouts/layout$n.conf"; done
           test -x local/bin/hyprlock-wallpaper.sh
           for s in osd-report restore-wallpaper wallpaper-switch hyprlock-wallpaper; do

@@ -13,3 +13,8 @@ type = "SchemeExpressive"
 input_path = "~/.config/matugen/templates/hyprlock-colors.conf.template"
 output_path = "~/.config/hyprlock/colors.conf"
 type = "SchemeExpressive"
+
+[templates.hyprlock_sh]
+input_path = "~/.config/matugen/templates/hyprlock-colors.sh.template"
+output_path = "~/.config/hyprlock/colors.sh"
+type = "SchemeExpressive"
