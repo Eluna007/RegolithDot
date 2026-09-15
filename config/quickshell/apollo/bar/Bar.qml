@@ -61,6 +61,10 @@ PanelWindow {
     // per screen. Only rofi (a per-bar launcher) stays local.
     readonly property real   battPct:           shared.battPct
     readonly property bool   battCharging:       shared.battCharging
+    // battPct is -1 until the first reading lands, and stays there on a
+    // machine with no battery. Everything battery-related hides rather than
+    // rendering a number nobody measured.
+    readonly property bool   battKnown:          shared.battPct >= 0
     readonly property int    updateCount:        shared.updateCount
     readonly property int    pacmanUpdateCount:  shared.pacmanUpdateCount
     readonly property int    aurUpdateCount:     shared.aurUpdateCount
@@ -210,7 +214,7 @@ PanelWindow {
                         icon: root.battCharging ? String.fromCodePoint(0xf0084) : (root.battPct > 20 ? String.fromCodePoint(0xf0079) : String.fromCodePoint(0xf007a))
                         iconSize: 15
                         iconColor: root.battCharging ? root.green : (root.battPct <= 20 ? root.red : root.subtext0)
-                        visible: Config.showBattery
+                        visible: Config.showBattery && root.battKnown
                         barColors: root; onClicked: root.openPanel("sysmon"); Layout.alignment: Qt.AlignHCenter
                     }
                     TrayBtn { icon: String.fromCodePoint(0xf0928); iconSize: 15; active: root.activePanel === "net"; barColors: root; onClicked: root.openPanel("net"); Layout.alignment: Qt.AlignHCenter }
@@ -226,6 +230,7 @@ PanelWindow {
 
                     TrayBtn { icon: String.fromCodePoint(0xf00af); iconSize: 16; iconColor: root.btPowered ? root.mauve : root.overlay0; active: root.activePanel === "bt"; barColors: root; onClicked: root.openPanel("bt"); Layout.alignment: Qt.AlignHCenter }
                     TrayBtn { icon: (root.volMuted || root.volPct === 0) ? String.fromCodePoint(0xf0581) : String.fromCodePoint(0xf057e); iconSize: 18; active: root.activePanel === "audio"; barColors: root; onClicked: root.openPanel("audio"); Layout.alignment: Qt.AlignHCenter }
+                    TrayBtn { icon: String.fromCodePoint(0xf04d3); iconSize: 18; active: root.activePanel === "apolloku"; barColors: root; onClicked: root.openPanel("apolloku"); Layout.alignment: Qt.AlignHCenter }
                     TrayBtn { icon: String.fromCodePoint(0xf328); iconSize: 20; active: root.activePanel === "clip"; barColors: root; onClicked: root.openPanel("clip"); Layout.alignment: Qt.AlignHCenter }
                     TrayBtn { icon: String.fromCodePoint(0xf013); active: root.activePanel === "qs"; barColors: root; onClicked: root.openPanel("qs"); Layout.alignment: Qt.AlignHCenter }
                     TrayBtn { icon: String.fromCodePoint(0xf011); iconColor: root.maroon; barColors: root; onClicked: root.openPanel("power"); Layout.alignment: Qt.AlignHCenter }
@@ -319,7 +324,7 @@ PanelWindow {
                     icon: root.battCharging ? String.fromCodePoint(0xf0084) : (root.battPct > 20 ? String.fromCodePoint(0xf0079) : String.fromCodePoint(0xf007a))
                     iconSize: 15
                     iconColor: root.battCharging ? root.green : (root.battPct <= 20 ? root.red : root.subtext0)
-                    visible: Config.showBattery
+                    visible: Config.showBattery && root.battKnown
                     barColors: root; onClicked: root.openPanel("sysmon"); Layout.alignment: Qt.AlignHCenter
                 }
                 TrayBtn { icon: String.fromCodePoint(0xf0928); iconSize: 15; active: root.activePanel === "net"; barColors: root; onClicked: root.openPanel("net"); Layout.alignment: Qt.AlignHCenter }
@@ -335,6 +340,7 @@ PanelWindow {
 
                 TrayBtn { icon: String.fromCodePoint(0xf00af); iconSize: 16; iconColor: root.btPowered ? root.mauve : root.overlay0; active: root.activePanel === "bt"; barColors: root; onClicked: root.openPanel("bt"); Layout.alignment: Qt.AlignHCenter }
                 TrayBtn { icon: (root.volMuted || root.volPct === 0) ? String.fromCodePoint(0xf0581) : String.fromCodePoint(0xf057e); iconSize: 18; active: root.activePanel === "audio"; barColors: root; onClicked: root.openPanel("audio"); Layout.alignment: Qt.AlignHCenter }
+                TrayBtn { icon: String.fromCodePoint(0xf04d3); iconSize: 18; active: root.activePanel === "apolloku"; barColors: root; onClicked: root.openPanel("apolloku"); Layout.alignment: Qt.AlignHCenter }
                 TrayBtn { icon: String.fromCodePoint(0xf328); iconSize: 20; active: root.activePanel === "clip"; barColors: root; onClicked: root.openPanel("clip"); Layout.alignment: Qt.AlignHCenter }
                 TrayBtn { icon: String.fromCodePoint(0xf013); active: root.activePanel === "qs"; barColors: root; onClicked: root.openPanel("qs"); Layout.alignment: Qt.AlignHCenter }
                 TrayBtn { icon: String.fromCodePoint(0xf011); iconColor: root.maroon; barColors: root; onClicked: root.openPanel("power"); Layout.alignment: Qt.AlignHCenter }
@@ -507,7 +513,7 @@ PanelWindow {
                 icon: root.battCharging ? "󰂄" : (root.battPct > 20 ? "󰁹" : "󰁺")
                 label: ""
                 value: root.battPct + "%"
-                visible: Config.showBattery
+                visible: Config.showBattery && root.battKnown
                 iconSize: 14
                 iconColor: root.battCharging ? root.green
                          : root.battPct <= 20 ? root.red : root.subtext0
@@ -568,6 +574,15 @@ PanelWindow {
                 active: root.activePanel === "audio"
                 barColors: root
                 onClicked: root.openPanel("audio")
+            }
+
+            // Apolloku — sudoku in the bar (nf-md-view_grid)
+            TrayBtn {
+                icon: String.fromCodePoint(0xf04d3)
+                iconSize: 24
+                active: root.activePanel === "apolloku"
+                barColors: root
+                onClicked: root.openPanel("apolloku")
             }
 
             // Clipboard — nf-md-content_copy
@@ -724,7 +739,7 @@ PanelWindow {
                 icon: root.battCharging ? "󰂄" : (root.battPct > 20 ? "󰁹" : "󰁺")
                 label: ""
                 value: root.battPct + "%"
-                visible: Config.showBattery
+                visible: Config.showBattery && root.battKnown
                 iconSize: 14
                 iconColor: root.battCharging ? root.green
                          : root.battPct <= 20 ? root.red : root.subtext0
@@ -785,6 +800,15 @@ PanelWindow {
                 active: root.activePanel === "audio"
                 barColors: root
                 onClicked: root.openPanel("audio")
+            }
+
+            // Apolloku — sudoku in the bar (nf-md-view_grid)
+            TrayBtn {
+                icon: String.fromCodePoint(0xf04d3)
+                iconSize: 24
+                active: root.activePanel === "apolloku"
+                barColors: root
+                onClicked: root.openPanel("apolloku")
             }
 
             // Clipboard — nf-md-content_copy

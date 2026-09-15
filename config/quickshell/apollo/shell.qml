@@ -111,8 +111,17 @@ ShellRoot {
     QtObject {
         id: sharedSys
 
-        property real   battPct:           100
+        // -1 means "no reading yet". It started as 100, which is a plausible
+        // value: a bar stuck on a fake full battery is indistinguishable from
+        // a real one, and that is exactly how a stale shell instance drawing a
+        // pre-fix battery went unnoticed. An impossible sentinel makes the
+        // absence of data visible instead.
+        property real   battPct:           -1
         property bool   battCharging:       false
+        property string battStatus:         ""
+        property real   battSecs:           -1   // to empty, or to full when charging
+        property real   battHealth:         -1   // % of design capacity remaining
+        readonly property bool battKnown:   battPct >= 0
         property int    updateCount:        0
         property int    pacmanUpdateCount:  0
         property int    aurUpdateCount:     0
@@ -123,32 +132,33 @@ ShellRoot {
         // CPU/RAM/WiFi/temp — one instance for the whole shell.
         property var stats: SystemStats { }
 
-        // Battery via sysfs. Finds the battery rather than assuming BAT0:
-        // that name is not universal, and because the old command fell back to
-        // `echo 100` the bar read a confident, permanent 100% on any machine
-        // where it was wrong. Printing nothing on a real desktop is the honest
-        // answer, so the no-battery fallback stays only for the parse below.
+        // Battery. The reading comes from scripts/battery.sh next to this
+        // file - one implementation, shared with the system-monitor panel and
+        // covered by scripts/test-shell-battery.sh, rather than a sysfs loop
+        // inlined here where nothing can test it.
         //
-        // POSIX sh, no process substitution - `sh` is not guaranteed to be
-        // bash, and the old `paste <(...)` silently depended on it being so.
+        // Absolute path under the shell's own config dir: that directory is
+        // where this very file was loaded from, so the script can never be out
+        // of step with it, and nothing depends on PATH or an install step.
         property var battProc: Process {
             command: ["sh", "-c",
-                "for d in /sys/class/power_supply/*; do " +
-                "  [ -r \"$d/capacity\" ] || continue; " +
-                "  t=$(cat \"$d/type\" 2>/dev/null); " +
-                "  [ -z \"$t\" ] || [ \"$t\" = Battery ] || continue; " +
-                "  printf '%s\\t%s\\n' \"$(cat \"$d/capacity\")\" \"$(cat \"$d/status\" 2>/dev/null || echo Unknown)\"; " +
-                "  exit 0; " +
-                "done; printf '100\\tUnknown\\n'"]
+                "exec \"${XDG_CONFIG_HOME:-$HOME/.config}/quickshell/apollo/scripts/battery.sh\""]
             stdout: SplitParser {
                 onRead: d => {
-                    var p = d.trim().split("\t")
-                    if (p.length >= 2) {
-                        var n = parseInt(p[0])
-                        if (!isNaN(n)) sharedSys.battPct = n
-                        var s = p[1].trim()
-                        sharedSys.battCharging = (s === "Charging" || s === "Full")
-                    }
+                    // Do not trim before splitting: an empty leading field is
+                    // meaningful (no battery on this machine) and trim would
+                    // collapse it into the next one.
+                    var p = d.replace(/\n+$/, "").split("\t")
+                    if (p.length < 2) return
+                    var n = parseInt(p[0])
+                    sharedSys.battPct = isNaN(n) ? -1 : n
+                    var st = p[1].trim()
+                    sharedSys.battStatus = st
+                    sharedSys.battCharging = (st === "Charging" || st === "Full")
+                    var secs = parseInt(p[2])
+                    sharedSys.battSecs = isNaN(secs) ? -1 : secs
+                    var health = parseInt(p[3])
+                    sharedSys.battHealth = isNaN(health) ? -1 : health
                 }
             }
             running: true
@@ -384,6 +394,7 @@ ShellRoot {
 
             property var sysPanel: SysMonPanel {
                 screen:  scope.modelData
+                shared:  sharedSys
                 visible: scope.activePanel === "sysmon"
                 onClose: scope.closeAll()
             }
@@ -410,6 +421,12 @@ ShellRoot {
             property var clipPanel: ClipPanel {
                 screen:  scope.modelData
                 visible: scope.activePanel === "clip"
+                onClose: scope.closeAll()
+            }
+
+            property var apollokuPanel: ApollokuPanel {
+                screen:  scope.modelData
+                visible: scope.activePanel === "apolloku"
                 onClose: scope.closeAll()
             }
 
