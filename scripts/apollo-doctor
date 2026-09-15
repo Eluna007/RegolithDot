@@ -212,6 +212,35 @@ check_hypr_lua() {
   fi
 }
 
+# Which hyprlock layout is active. layout.conf is gitignored machine state,
+# so a fresh clone does not have one — and hyprlock with no layout sourced
+# still locks, it just draws the background and nothing else. That looks like
+# a broken lock screen, so it is worth naming.
+check_lock_layout() {
+  local dir="$HOME/.config/hyprlock"
+  local active="$dir/layout.conf"
+
+  if [[ ! -d "$dir/layouts" ]]; then
+    fail "hyprlock layouts missing ($dir/layouts) — the lock screen has nothing to draw"
+    return
+  fi
+
+  if [[ ! -f "$active" ]]; then
+    warn "no lock screen layout set — run 'apollo-lock-layout 12' (locking now shows only the background)"
+    return
+  fi
+
+  local n
+  n=$(sed -n 's#.*/layouts/layout\([0-9]\+\)\.conf.*#\1#p' "$active" | head -1)
+  if [[ -z "$n" ]]; then
+    warn "$active exists but names no layout — run 'apollo-lock-layout 12'"
+  elif [[ ! -f "$dir/layouts/layout$n.conf" ]]; then
+    fail "lock screen is set to layout$n, which is not installed — run 'apollo-lock-layout' to see what is"
+  else
+    ok "lock screen layout: layout$n"
+  fi
+}
+
 check_paths() {
   local repo="${1:-}"
   if [[ -n "$repo" && -d "$repo/.git" ]]; then
@@ -306,7 +335,14 @@ main() {
   for s in osd-report restore-wallpaper wallpaper-switch hyprlock-wallpaper; do
     if [[ -x "$HOME/.local/bin/$s.sh" ]]; then ok "$s.sh installed"; else fail "$s.sh missing from ~/.local/bin"; fi
   done
+  # No .sh suffix: this one is meant to be typed.
+  if [[ -x "$HOME/.local/bin/apollo-lock-layout" ]]; then
+    ok "apollo-lock-layout installed"
+  else
+    warn "apollo-lock-layout missing from ~/.local/bin — lock screen layouts can only be switched from apollo-settings"
+  fi
   check_hypr_lua
+  check_lock_layout
   check_file "$HOME/.config/rofi/config.rasi" "live Rofi config"
   check_version "$repo"
   check_paths "$repo"

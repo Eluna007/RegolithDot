@@ -1,11 +1,15 @@
 // apollo-settings — a small GUI for the safe, bounded knobs of Apollo Shell.
 //
-// Two kinds of change:
+// Three kinds of change:
 //   - Live  (theme, bar style) → written to ~/.config/apollo/config.json,
 //     which the shell reads instantly. Cannot break anything.
 //   - Hard  (Hyprland rounding/opacity, keybinds) → rendered into
 //     ~/.config/hypr/lua/generated.lua and applied with `hyprctl reload` behind an
 //     Apply button, with an at-your-own-risk note.
+//   - Lock screen layout → written to ~/.config/hyprlock/layout.conf, which
+//     hyprlock re-reads on every lock. Deliberately *not* mirrored into
+//     config.json: `apollo-lock-layout` writes the same file from a terminal,
+//     and a second copy of the answer would drift. See lock.go.
 //
 // Every screen has a Reset to defaults, so nothing is a one-way door.
 package main
@@ -104,6 +108,9 @@ func makeTabs(cfg *Config, w fyne.Window) *container.AppTabs {
 		container.NewTabItemWithIcon("Bar", theme.GridIcon(), barTab(cfg, w)),
 		container.NewTabItemWithIcon("Notifications", theme.MailComposeIcon(), notifTab(cfg, w)),
 		container.NewTabItemWithIcon("Wallpapers", theme.MediaPhotoIcon(), wallpaperTab(cfg, w)),
+		// lockTab takes no cfg: its state lives in hyprlock's layout.conf, not
+		// config.json, so that `apollo-lock-layout` and this tab cannot drift.
+		container.NewTabItemWithIcon("Lock", theme.VisibilityOffIcon(), lockTab(w)),
 		container.NewTabItemWithIcon("Power", theme.ComputerIcon(), powerTab(cfg, w)),
 		container.NewTabItemWithIcon("Hyprland", theme.DesktopIcon(), hyprTab(cfg, w)),
 		container.NewTabItemWithIcon("Keys", theme.ListIcon(), keybindTab(cfg, w)),

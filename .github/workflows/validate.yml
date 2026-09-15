@@ -24,6 +24,7 @@ jobs:
           bash -n config/rofi/scripts/keybinds.sh
           bash -n config/ranger/scope.sh
           bash -n scripts/apollo-doctor
+          bash -n local/bin/apollo-lock-layout
           for f in local/bin/*.sh; do bash -n "$f"; done
 
       - name: Run shellcheck
@@ -33,6 +34,7 @@ jobs:
           shellcheck config/rofi/scripts/keybinds.sh
           shellcheck -e SC2034,SC2317 config/ranger/scope.sh
           shellcheck scripts/apollo-doctor
+          shellcheck local/bin/apollo-lock-layout
           shellcheck local/bin/*.sh
 
       # A Lua syntax error takes the whole Hyprland config down and leaves you
@@ -89,6 +91,13 @@ jobs:
       - name: Check hyprlock layout variables
         run: python3 scripts/check-hyprlock-vars.py
 
+      # Which layout is active is machine state (config/hyprlock/layout.conf,
+      # gitignored), and three things have to agree on which layouts exist:
+      # the files, apollo-settings' Lock tab, and the apollo-lock-layout CLI.
+      # Drift is silent - you find out at the lock screen.
+      - name: Check lock screen layout wiring
+        run: python3 scripts/check-lock-layouts.py
+
       - name: Validate XML
         run: python3 -m xml.etree.ElementTree config/Thunar/uca.xml
 
@@ -114,6 +123,7 @@ jobs:
           test -f config/matugen/templates/hyprlock-colors.conf.template
           test -f config/matugen/templates/hyprlock-colors.sh.template
           for n in 12 15 18 20; do test -f "config/hyprlock/layouts/layout$n.conf"; done
+          test -x local/bin/apollo-lock-layout
           test -x local/bin/hyprlock-wallpaper.sh
           for s in osd-report restore-wallpaper wallpaper-switch hyprlock-wallpaper; do
             test -x "local/bin/$s.sh"
@@ -173,3 +183,4 @@ jobs:
           test -z "$(gofmt -l .)"
           go vet ./...
           go build ./...
+          go test ./...

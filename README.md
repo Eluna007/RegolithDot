@@ -106,9 +106,26 @@ Four layouts vendored from
 | **18** | music-first: album art, transport, progress, cava visualiser |
 | **20** | widget dashboard: login card, clock + uptime, music, wifi/bt, battery |
 
-Switch by moving the uncommented `source` line at the bottom of
-`config/hypr/hyprlock.conf`. hyprlock re-reads it on every lock, so there is
-nothing to reload.
+Switch from a terminal, or from apollo-settings' **Lock** tab:
+
+```sh
+apollo-lock-layout        # what is set now, and what else there is
+apollo-lock-layout 18     # switch
+```
+
+hyprlock re-reads its config on every lock, so there is nothing to reload —
+the next lock uses the new layout. To see it right away, run `hyprlock`.
+
+Both writers touch one file, `~/.config/hyprlock/layout.conf`: a single
+`source` line that `config/hypr/hyprlock.conf` pulls in. It is gitignored
+machine state, like `colors.conf` below, so switching layouts never shows up
+as a change to this repo. That indirection is also why the Lock tab keeps
+nothing in `config.json` — it reads and writes the same file the CLI does, so
+the two cannot disagree about which layout is active.
+
+`scripts/check-lock-layouts.py` (a CI step) keeps the three lists of layouts
+— the files, the CLI's `describe()`, and `lock.go`'s `lockLayouts` — from
+drifting apart, and `apollo-doctor` reports which layout is live.
 
 Upstream hardcodes every colour. Here they are `$variables` resolved from three
 files, split by who writes them:
