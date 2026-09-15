@@ -20,7 +20,7 @@ case "$selected" in
     FRAME="/tmp/wallpaper-frame.png"
     ffmpeg -y -ss 00:00:01 -i "$selected" -frames:v 1 "$FRAME" -loglevel error
     matugen image "$FRAME" --source-color-index 0
-    ~/.local/bin/generate-hyprlock-colors.sh
+    ~/.local/bin/hyprlock-wallpaper.sh
     ;;
   *)
     # Image-to-image: never restart hyprpaper. It swaps over its own IPC,
@@ -52,6 +52,6 @@ case "$selected" in
     fi
 
     matugen image "$selected" --source-color-index 0
-    ~/.local/bin/generate-hyprlock-colors.sh
+    ~/.local/bin/hyprlock-wallpaper.sh
     ;;
 esac

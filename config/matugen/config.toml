@@ -1,0 +1,15 @@
+[config]
+mode = "dark"
+
+[templates.quickshell]
+input_path = "~/.config/matugen/templates/colors.json.template"
+output_path = "~/.config/quickshell/colors.json"
+# Expressive spreads primary/secondary/tertiary hues further apart than the
+# default scheme, so they read as genuinely different colors instead of
+# tonal variants of one hue.
+type = "SchemeExpressive"
+
+[templates.hyprlock]
+input_path = "~/.config/matugen/templates/hyprlock-colors.conf.template"
+output_path = "~/.config/hyprlock/colors.conf"
+type = "SchemeExpressive"
