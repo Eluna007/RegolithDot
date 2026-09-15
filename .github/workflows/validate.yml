@@ -25,7 +25,9 @@ jobs:
           bash -n config/ranger/scope.sh
           bash -n scripts/apollo-doctor
           bash -n local/bin/apollo-lock-layout
+          bash -n scripts/test-battery.sh
           for f in local/bin/*.sh; do bash -n "$f"; done
+          for f in config/hyprlock/scripts/*.sh; do bash -n "$f"; done
 
       - name: Run shellcheck
         run: |
@@ -35,6 +37,8 @@ jobs:
           shellcheck -e SC2034,SC2317 config/ranger/scope.sh
           shellcheck scripts/apollo-doctor
           shellcheck local/bin/apollo-lock-layout
+          shellcheck scripts/test-battery.sh
+          shellcheck config/hyprlock/scripts/battery.sh
           shellcheck local/bin/*.sh
 
       # A Lua syntax error takes the whole Hyprland config down and leaves you
@@ -97,6 +101,32 @@ jobs:
       # Drift is silent - you find out at the lock screen.
       - name: Check lock screen layout wiring
         run: python3 scripts/check-lock-layouts.py
+
+      # battery.sh is read by layout15 and layout20, and none of its failure
+      # modes are visible until the screen is locked. All of these were live:
+      # BAT0 assumed to exist, the icon vanishing at exactly 100%, errors
+      # printed on a machine with no battery.
+      - name: Test battery.sh
+        run: ./scripts/test-battery.sh
+
+      # /sys/class/power_supply/BAT0 is not a universal path - plenty of
+      # laptops expose BAT1. Worse, the callers used to paper over a wrong
+      # guess (`|| echo 100`, `2>/dev/null`), so the bar reported a confident,
+      # permanent 100% instead of failing. Find the battery, never name it.
+      - name: Check for hardcoded battery paths
+        run: |
+          # Comments are allowed to name the path - explaining why it is wrong
+          # is the point. git grep prints path:line:content, so drop the hits
+          # whose content starts a comment rather than exempting whole files,
+          # which would blind the check to a real regression in them.
+          hits=$(git grep -nE 'power_supply/BAT[0-9]' \
+                   -- ':!old-apollo-shell/**' ':!.github/**' ':!scripts/test-battery.sh' \
+                 | grep -vE ':[0-9]+:[[:space:]]*(#|//|\*)' || true)
+          if [ -n "$hits" ]; then
+            echo "$hits"
+            echo "Hardcoded battery path. Discover it instead - see config/hyprlock/scripts/battery.sh."
+            exit 1
+          fi
 
       - name: Validate XML
         run: python3 -m xml.etree.ElementTree config/Thunar/uca.xml
