@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+# apollo-lock-layout - pick which hyprlock layout the lock screen uses.
+#
+#   apollo-lock-layout          show what is set now, and what else there is
+#   apollo-lock-layout 18       switch to layout18
+#   apollo-lock-layout --path   print the file that holds the choice
+#
+# All this writes is ~/.config/hyprlock/layout.conf, a single `source` line
+# that hyprlock.conf pulls in. That file is gitignored machine state, so
+# switching layouts never dirties the dotfiles repo.
+#
+# hyprlock reads its config fresh on every launch, so there is nothing to
+# reload - the next lock uses the new layout. To see it immediately, run
+# `hyprlock` (you will need your password to get back out).
+set -euo pipefail
+
+lock_dir="${XDG_CONFIG_HOME:-$HOME/.config}/hyprlock"
+active="$lock_dir/layout.conf"
+layouts_dir="$lock_dir/layouts"
+
+# Kept in step with config/hypr/hyprlock.conf and apollo-settings' Lock tab;
+# CI fails if these three disagree about which layouts exist.
+describe() {
+  case "$1" in
+    12) echo "minimal, left-aligned: welcome, clock, username + password pills" ;;
+    15) echo "centred clock; right column of music, weather, battery, avatar" ;;
+    18) echo "music-first: album art, transport, progress, cava visualiser" ;;
+    20) echo "widget dashboard: login card, clock + uptime, music, wifi/bt, battery" ;;
+    *)  echo "" ;;
+  esac
+}
+
+available() {
+  local f n
+  for f in "$layouts_dir"/layout*.conf; do
+    [ -e "$f" ] || continue
+    n="${f##*/layout}"
+    echo "${n%.conf}"
+  done
+}
+
+# The layout number currently sourced, or empty if unset/unreadable.
+current() {
+  [ -r "$active" ] || return 0
+  sed -n 's#.*/layouts/layout\([0-9]\+\)\.conf.*#\1#p' "$active" | head -1
+}
+
+usage() {
+  cat <<'USAGE'
+usage: apollo-lock-layout [NUMBER | --list | --path]
+
+  (no argument)  show the current layout and the alternatives
+  NUMBER         switch to that layout, e.g. `apollo-lock-layout 18`
+  --list         print just the available numbers, one per line
+  --path         print the file that records the choice
+USAGE
+}
+
+case "${1-}" in
+  -h|--help) usage; exit 0 ;;
+  --path)    echo "$active"; exit 0 ;;
+  --list)    available; exit 0 ;;
+esac
+
+if [ ! -d "$layouts_dir" ]; then
+  echo "apollo-lock-layout: no layouts at $layouts_dir" >&2
+  echo "  Is the hyprlock config deployed? Try: apollo-doctor" >&2
+  exit 1
+fi
+
+# No argument: report and stop.
+if [ $# -eq 0 ]; then
+  now="$(current)"
+  if [ -n "$now" ]; then
+    echo "current: layout$now - $(describe "$now")"
+  elif [ -e "$active" ]; then
+    echo "current: unset - $active exists but names no layout"
+  else
+    echo "current: unset - $active does not exist yet"
+  fi
+  echo
+  echo "available:"
+  while read -r n; do
+    [ -n "$n" ] || continue
+    marker="  "
+    [ "$n" = "$now" ] && marker="* "
+    printf '%s%-3s %s\n' "$marker" "$n" "$(describe "$n")"
+  done < <(available)
+  echo
+  echo "switch with: apollo-lock-layout <number>"
+  exit 0
+fi
+
+want="$1"
+target="$layouts_dir/layout$want.conf"
+
+if [ ! -f "$target" ]; then
+  echo "apollo-lock-layout: no such layout: $want" >&2
+  echo "  available: $(available | paste -sd' ' -)" >&2
+  exit 1
+fi
+
+mkdir -p "$lock_dir"
+
+# Write via a temp file in the same directory so a lock racing this never
+# reads a half-written config.
+tmp="$(mktemp "$active.XXXXXX")"
+trap 'rm -f "$tmp"' EXIT
+cat > "$tmp" <<CONF
+# Written by apollo-lock-layout. Gitignored machine state - not config.
+# Change it with \`apollo-lock-layout <number>\` or apollo-settings' Lock tab.
+source = \$hyprlockDir/layouts/layout$want.conf
+CONF
+chmod 644 "$tmp"
+mv "$tmp" "$active"
+trap - EXIT
+
+echo "lock screen: layout$want - $(describe "$want")"
+echo "takes effect on the next lock; run \`hyprlock\` to see it now"

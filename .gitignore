@@ -29,3 +29,5 @@ config/hypr/hyprlock-colors.conf
 config/hyprlock/colors.conf
 config/hyprlock/wallpaper.conf
 config/hyprlock/colors.sh
+# which layout is active - apollo-lock-layout / apollo-settings' Lock tab
+config/hyprlock/layout.conf

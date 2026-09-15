@@ -187,8 +187,11 @@ ln -sfn ~/RegolithDot/local/share/PrismLauncher         ~/.local/share/PrismLaun
 # Scripts the config calls by path: autostart.lua runs restore-wallpaper.sh,
 # the keybinds run osd-report.sh, and the wallpaper picker runs
 # wallpaper-switch.sh. Symlinked, so `git pull` updates them.
+# apollo-lock-layout has no .sh suffix (it is meant to be typed), so it needs
+# the second line.
 mkdir -p ~/.local/bin
 for s in ~/RegolithDot/local/bin/*.sh; do ln -sfn "$s" ~/.local/bin/"$(basename "$s")"; done
+ln -sfn ~/RegolithDot/local/bin/apollo-lock-layout ~/.local/bin/apollo-lock-layout
 
 # keyd is system-wide and needs a real copy, not a symlink
 sudo cp config/keyd/default.conf /etc/keyd/default.conf
