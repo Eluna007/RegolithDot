@@ -143,10 +143,18 @@ variable a layout references is actually defined — hyprlock renders an unknown
 one as nothing, which on a lock screen reads as black on black.
 
 Needs `playerctl` for the music widgets, `cava` for layout18's visualiser,
-`imagemagick` for album art, `curl` for layout15's weather, and `iw` +
-`bluez-utils` for layout20's wifi/bluetooth widgets. Those last two redirect
-stderr and fall back to "Disconnected", so a missing tool looks exactly like
-being offline — `apollo-doctor` tells them apart.
+`imagemagick` for album art, `curl` for layout15's weather, and `bluez-utils`
+for layout20's bluetooth widget.
+
+Its wifi widget reads `nmcli` rather than upstream's `iw`, which is not on a
+base Arch install at all; `iw` stays as a fallback for a machine not running
+NetworkManager. Both widgets say "Unavailable" when no tool is present rather
+than "Disconnected" — upstream reported a connected machine as offline, and
+because it redirected stderr there was nothing in the log to contradict it.
+Its bluetooth widget was wrong the same way: `bluetoothctl info` with no
+argument needs a default device selected and otherwise just errors, so it
+could never report a connected device. `scripts/test-network.sh` (a CI step)
+covers both against stubbed tools.
 
 `scripts/check-layout-commands.py` (a CI step) requires every command a layout
 shells out to be declared. The layouts are vendored from someone else's

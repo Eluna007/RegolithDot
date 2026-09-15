@@ -310,11 +310,10 @@ main() {
   check_cmd rfkill rfkill
   check_cmd pactl pactl
   check_cmd nmcli NetworkManager
-  # layout20's wifi and bluetooth widgets. Both redirect stderr and fall back
-  # to "Disconnected", so a missing tool is indistinguishable from being
-  # genuinely offline - worth naming here rather than at the lock screen.
-  check_optional_cmd iw "iw (layout20 wifi widget)"
-  check_optional_cmd bluetoothctl bluetoothctl
+  # layout20's wifi widget reads nmcli (checked above, and required anyway);
+  # iw is only the fallback for a machine not running NetworkManager, so its
+  # absence is not worth a warning on its own.
+  check_optional_cmd bluetoothctl "bluetoothctl (layout20 bluetooth widget)"
   check_service NetworkManager
   check_service bluetooth
   check_service keyd

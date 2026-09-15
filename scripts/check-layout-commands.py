@@ -31,19 +31,14 @@ BUILTIN = {
 DECLARED = {
     # coreutils / util-linux / procps-ng - part of a base install
     "date": "coreutils",
-    "cat": "coreutils",
     "cut": "coreutils",
     "head": "coreutils",
     "tr": "coreutils",
     "sed": "sed",
-    "awk": "awk",
-    "grep": "grep",
     "uname": "coreutils",
     "uptime": "procps-ng",
     # real dependencies - apollo-doctor checks each of these
     "playerctl": "playerctl (music widgets)",
-    "iw": "iw (layout20 wifi widget)",
-    "bluetoothctl": "bluez-utils (layout20 bluetooth widget)",
 }
 
 # A command position: the start of the string, or just after one of these.
@@ -76,6 +71,14 @@ for f in sorted(pathlib.Path("config/hyprlock/layouts").glob("*.conf")):
             if cmd not in DECLARED:
                 bad.append(f"{f}:{i}: `{cmd}` is not declared in "
                            f"scripts/check-layout-commands.py")
+
+# The reverse: a declaration nothing uses is a stale claim about what the
+# layouts need, and it would silently re-permit a command someone removed on
+# purpose. iw and bluetoothctl were both declared here until their widgets
+# moved into network.sh.
+for cmd in sorted(set(DECLARED) - seen):
+    bad.append(f"scripts/check-layout-commands.py: `{cmd}` is declared but no "
+               f"layout uses it; remove it")
 
 if bad:
     print("\n".join(sorted(set(bad))))
