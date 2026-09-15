@@ -31,13 +31,6 @@ $surface_a30 = rgba({{colors.surface.default.hex_stripped}}4D)
 $surface_a40 = rgba({{colors.surface.default.hex_stripped}}66)
 $surface_a80 = rgba({{colors.surface.default.hex_stripped}}CC)
 
-# ── Hex forms, for pango spans in placeholder_text ──────────────────────
-# placeholder_text is pango markup, which wants #RRGGBB and does not
-# understand rgb(). The doubled ## is hyprlang's escape for a literal #.
-$fg_dim_hex      = ##{{colors.on_surface_variant.default.hex_stripped}}
-$on_accent_hex   = ##{{colors.on_primary.default.hex_stripped}}
-$on_accent_2_hex = ##{{colors.on_tertiary.default.hex_stripped}}
-
 # ── Fixed ───────────────────────────────────────────────────────────────
 # Shadows stay black whatever the palette; transparent is transparent.
 $shadow      = rgba(00000080)

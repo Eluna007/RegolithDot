@@ -69,13 +69,18 @@ esac
 [ -s "$tmp" ] || no_art
 
 if command -v magick >/dev/null 2>&1; then
-    magick "$tmp" -quality 50 "$ART" 2>/dev/null || no_art
+    # Crop to a square. hyprlock's image `size` scales "the lesser side of the
+    # image", so a 16:9 source - a YouTube thumbnail, say - renders about 1.8x
+    # wider than the layout budgeted for and overlaps whatever sits beside it.
+    # Album art is square, which is why upstream never hit this.
+    magick "$tmp" -resize 512x512^ -gravity center -extent 512x512 \
+        -quality 50 "$ART" 2>/dev/null || no_art
     # Blurred full-screen version, for layouts that use it as a backdrop.
     magick "$ART" -blur 200x7 -resize 1920x^ -gravity center \
         -extent 1920x1080 "$BLUR" 2>/dev/null
 else
-    # No ImageMagick: use the download as-is. Most cover art is already a
-    # reasonable PNG or JPEG, and hyprlock reads both.
+    # No ImageMagick: use the download as-is and accept that a non-square
+    # source will render wide. Squaring it is exactly what magick is for.
     cp -- "$tmp" "$ART" || no_art
 fi
 
