@@ -109,6 +109,12 @@ jobs:
       - name: Test battery.sh
         run: ./scripts/test-battery.sh
 
+      # The layouts are vendored from someone else's machine and shell out
+      # constantly. `hostname` is not on a base Arch install; the only symptom
+      # was an error in hyprlock's log, on a locked screen.
+      - name: Check lock screen layout commands are declared
+        run: python3 scripts/check-layout-commands.py
+
       # /sys/class/power_supply/BAT0 is not a universal path - plenty of
       # laptops expose BAT1. Worse, the callers used to paper over a wrong
       # guess (`|| echo 100`, `2>/dev/null`), so the bar reported a confident,
@@ -121,6 +127,7 @@ jobs:
           # which would blind the check to a real regression in them.
           hits=$(git grep -nE 'power_supply/BAT[0-9]' \
                    -- ':!old-apollo-shell/**' ':!.github/**' ':!scripts/test-battery.sh' \
+                      ':!README.md' ':!MANUAL-INSTALL.md' \
                  | grep -vE ':[0-9]+:[[:space:]]*(#|//|\*)' || true)
           if [ -n "$hits" ]; then
             echo "$hits"

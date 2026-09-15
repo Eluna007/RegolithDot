@@ -143,7 +143,16 @@ variable a layout references is actually defined — hyprlock renders an unknown
 one as nothing, which on a lock screen reads as black on black.
 
 Needs `playerctl` for the music widgets, `cava` for layout18's visualiser,
-`imagemagick` for album art, and `curl` for layout15's weather.
+`imagemagick` for album art, `curl` for layout15's weather, and `iw` +
+`bluez-utils` for layout20's wifi/bluetooth widgets. Those last two redirect
+stderr and fall back to "Disconnected", so a missing tool looks exactly like
+being offline — `apollo-doctor` tells them apart.
+
+`scripts/check-layout-commands.py` (a CI step) requires every command a layout
+shells out to be declared. The layouts are vendored from someone else's
+machine and assume its binaries: `hostname` was one (it lives in `inetutils`,
+not a base Arch install), and the only symptom was an error in hyprlock's log
+— on a locked screen, where nobody is reading logs.
 
 `battery.sh` (layout15 and layout20) finds the battery instead of assuming
 `/sys/class/power_supply/BAT0`. That name is not universal — plenty of
