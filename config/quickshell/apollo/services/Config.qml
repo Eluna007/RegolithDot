@@ -33,6 +33,9 @@ Singleton {
     readonly property int    maxToasts:      adapter.maxToasts
     readonly property string toastPosition:  adapter.toastPosition
     readonly property string wallpaperDir:   adapter.wallpaperDir
+    // chess.com handle for the chess widget's ratings. Empty means the widget
+    // simply does not show that section - it is never required to play.
+    readonly property string chessUsername:  adapter.chessUsername
 
     function resolvePath(p) {
         if (p === undefined || p === "") return ""
@@ -148,6 +151,7 @@ Singleton {
             property int    maxToasts: 5
             property string toastPosition: "auto"
             property string wallpaperDir: "~/Pictures/Wallpapers"
+            property string chessUsername: ""
             // Wallust "full palette" neutral ramp; empty object = use `flavor`.
             property var palette: ({})
         }

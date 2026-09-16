@@ -37,8 +37,10 @@ function shim(name) {
 }
 shim("Chess.js");
 shim("Engine.js");
+shim("Model.js");
 const C = require(path.join(TMP, "Chess.js"));
 const E = require(path.join(TMP, "Engine.js"));
+const M = require(path.join(TMP, "Model.js"));
 
 let failures = 0;
 function ok(label, cond, detail) {
@@ -255,6 +257,104 @@ console.log("engine:");
     while (!E.step(g, 20000)) { /* run out */ }
     ok("no move when checkmated", g.done && g.best === null);
 }
+
+// ── model ───────────────────────────────────────────────────────────────
+console.log("formatting:");
+ok("clock under an hour", M.formatClock(125000) === "2:05", M.formatClock(125000));
+ok("clock over an hour", M.formatClock(3725000) === "1:02:05", M.formatClock(3725000));
+ok("negative clock clamps", M.formatClock(-5) === "0:00");
+{
+    const rows = M.movePairs(["e4", "e5", "Nf3"]);
+    ok("move pairs number from one", rows.length === 2 && rows[0].number === 1);
+    ok("a trailing white move leaves black empty", rows[1].white === "Nf3" && rows[1].black === "");
+}
+ok("checkmate names the winner", M.outcomeText("checkmate", true) === "Black wins by checkmate");
+ok("draws read as draws", M.outcomeText("repetition").indexOf("Draw") === 0);
+ok("no outcome, no text", M.outcomeText("") === "");
+ok("draws are draws", M.isDraw("stalemate") && M.isDraw("fifty") && !M.isDraw("checkmate"));
+
+console.log("save/load:");
+{
+    const state = {
+        fen: C.START_FEN, startFen: C.START_FEN,
+        sans: ["e4", "e5"], moves: [{from: 20, to: 52, promotion: 0}, {from: 100, to: 68, promotion: 0}],
+        keys: ["a", "b"], mode: "engine", engineColor: 1, level: 4,
+        flipped: false, elapsedMs: 9000
+    };
+    const back = M.parse(M.serialize(state));
+    ok("round-trips", back !== null);
+    ok("keeps the level", back && back.level === 4);
+    ok("keeps elapsed time", back && back.elapsedMs === 9000);
+    ok("rejects junk", M.parse("{{{") === null);
+    ok("rejects an empty string", M.parse("") === null);
+
+    // A save whose move list and notation disagree would render a move list
+    // that does not describe the board.
+    const bad = JSON.parse(M.serialize(state));
+    bad.sans = ["e4"];
+    ok("rejects a mismatched move list", M.parse(JSON.stringify(bad)) === null);
+
+    const offBoard = JSON.parse(M.serialize(state));
+    offBoard.moves[0].from = 999;
+    ok("rejects an off-board square", M.parse(JSON.stringify(offBoard)) === null);
+
+    const clamped = JSON.parse(M.serialize(state));
+    clamped.level = 99;
+    ok("clamps an absurd level", M.parse(JSON.stringify(clamped)).level === 5);
+}
+
+console.log("stats:");
+{
+    let st = M.emptyStats();
+    st = M.recordResult(st, 3, "won");
+    st = M.recordResult(st, 3, "lost");
+    st = M.recordResult(st, 5, "drawn");
+    ok("counts games", st.played === 3);
+    ok("counts by level", st.byLevel[3].played === 2 && st.byLevel[5].drawn === 1);
+    ok("ignores a nonsense result", M.recordResult(st, 3, "exploded").played === 3);
+    ok("round-trips", M.parseStats(M.serializeStats(st)).byLevel[3].won === 1);
+    ok("junk falls back to empty", M.parseStats("nope").played === 0);
+}
+
+console.log("chess.com parsing — this data comes off the network:");
+{
+    const good = M.parseChessStats(JSON.stringify({
+        chess_blitz: { last: { rating: 1523 }, record: { win: 10, loss: 5, draw: 1 } },
+        chess_rapid: { last: { rating: 1610 }, record: { win: 3, loss: 1, draw: 0 } },
+        tactics: { highest: { rating: 2100 } },
+        puzzle_rush: { best: { score: 31 } }
+    }));
+    ok("reads ratings", good.ok && good.blitz.rating === 1523 && good.rapid.rating === 1610);
+    ok("reads the puzzle rating", good.puzzleRating === 2100);
+    ok("reads puzzle rush", good.puzzleRushBest === 31);
+    const rows = M.ratingRows(good);
+    ok("skips formats never played", rows.length === 2, JSON.stringify(rows.map(r => r.label)));
+    ok("computes a win rate", rows[0].winRate === 63, String(rows[0].winRate));
+
+    ok("junk yields empty, not a crash", M.parseChessStats("<html>404</html>").ok === false);
+    ok("an empty body yields empty", M.parseChessStats("").ok === false);
+    ok("a JSON array yields empty", M.parseChessStats("[1,2,3]").ok === false);
+
+    // Hostile or broken values must not reach the UI as-is.
+    const hostile = M.parseChessStats(JSON.stringify({
+        chess_blitz: { last: { rating: 1e9 }, record: { win: -5, loss: "x", draw: null } }
+    }));
+    ok("an absurd rating is dropped", hostile.blitz.rating === 0, String(hostile.blitz.rating));
+    ok("a negative record is dropped", hostile.blitz.record.win === 0);
+    ok("a non-numeric record is dropped", hostile.blitz.record.loss === 0);
+}
+
+console.log("username validation — this string goes into a curl argument:");
+ok("accepts a normal name", M.validUsername("luna_42"));
+ok("accepts hyphens", M.validUsername("a-b-c"));
+ok("rejects too short", !M.validUsername("ab"));
+ok("rejects too long", !M.validUsername("x".repeat(26)));
+ok("rejects a path traversal", !M.validUsername("../../etc/passwd"));
+ok("rejects a slash", !M.validUsername("a/b"));
+ok("rejects a space", !M.validUsername("a b"));
+ok("rejects shell metacharacters", !M.validUsername("a;rm -rf /"));
+ok("rejects a query string", !M.validUsername("bob?x=1"));
+ok("rejects a non-string", !M.validUsername(null) && !M.validUsername(42));
 
 if (failures > 0) {
     console.log(`\n${failures} failure(s)`);

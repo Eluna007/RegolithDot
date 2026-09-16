@@ -213,6 +213,8 @@ jobs:
           test -x config/quickshell/apollo/scripts/battery.sh
           test -f config/quickshell/apollo/panels/ApollokuPanel.qml
           for j in Sudoku Model; do test -f "config/quickshell/apollo/panels/apolloku/$j.js"; done
+          test -f config/quickshell/apollo/panels/ChessPanel.qml
+          for j in Chess Engine Model; do test -f "config/quickshell/apollo/panels/chess/$j.js"; done
           test -x local/bin/hyprlock-wallpaper.sh
           for s in osd-report restore-wallpaper wallpaper-switch hyprlock-wallpaper; do
             test -x "local/bin/$s.sh"

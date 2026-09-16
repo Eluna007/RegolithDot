@@ -430,6 +430,12 @@ ShellRoot {
                 onClose: scope.closeAll()
             }
 
+            property var chessPanel: ChessPanel {
+                screen:  scope.modelData
+                visible: scope.activePanel === "chess"
+                onClose: scope.closeAll()
+            }
+
             property var powerPanel: PowerPanel {
                 screen:  scope.modelData
                 visible: scope.activePanel === "power"
