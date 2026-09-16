@@ -158,6 +158,12 @@ jobs:
       - name: Test Apolloku logic
         run: node scripts/test-apolloku.js
 
+      # perft against the published node counts for the standard positions.
+      # A generator that mishandles en passant, castling through check or a
+      # pinned piece cannot match ~11.7M nodes by accident.
+      - name: Test chess logic
+        run: node scripts/test-chess.js
+
       # /sys/class/power_supply/BAT0 is not a universal path - plenty of
       # laptops expose BAT1. Worse, the callers used to paper over a wrong
       # guess (`|| echo 100`, `2>/dev/null`), so the bar reported a confident,
