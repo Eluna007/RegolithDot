@@ -134,7 +134,21 @@ PanelWindow {
         clip: true
 
         Rectangle { anchors.top: parent.top; anchors.right: parent.right; width: 22; height: 22; color: parent.color }
-        NumberAnimation on opacity { from: 0; to: 1; duration: 200; running: true; easing.type: Easing.OutCubic }
+        // Grows out of the bar edge instead of fading in, so the edge
+        // you clicked stays put while the rest of the card unfolds.
+        // Curves are Caelestia's Material 3 expressive set; see
+        // services/Motion.qml for the measured overshoot and why it cannot clip.
+        transformOrigin: Motion.originFor(Config.barPosition)
+        NumberAnimation on opacity {
+            from: 0; to: 1; running: true
+            duration: Motion.effects
+            easing.type: Easing.Bezier; easing.bezierCurve: Motion.curveDefaultEffects
+        }
+        NumberAnimation on scale {
+            from: Motion.fromScale; to: 1; running: true
+            duration: Motion.spatial
+            easing.type: Easing.Bezier; easing.bezierCurve: Motion.curveDefaultSpatial
+        }
 
         ColumnLayout {
             id: tsCol

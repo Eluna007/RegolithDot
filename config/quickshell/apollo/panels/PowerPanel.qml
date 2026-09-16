@@ -28,7 +28,11 @@ PanelWindow {
         anchors.fill: parent
         color: Qt.rgba(Config.crust.r, Config.crust.g, Config.crust.b, 0.7)
 
-        NumberAnimation on opacity { from: 0; to: 1; duration: 180; running: true; easing.type: Easing.OutCubic }
+        NumberAnimation on opacity {
+            from: 0; to: 1; running: true
+            duration: Motion.fastEffects
+            easing.type: Easing.Bezier; easing.bezierCurve: Motion.curveDefaultEffects
+        }
 
         MouseArea { anchors.fill: parent; onClicked: root.close() }
 

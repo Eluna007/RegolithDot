@@ -287,7 +287,11 @@ main() {
   check_cmd grim grim
   check_cmd slurp slurp
   check_cmd wl-copy wl-clipboard
-  check_cmd cliphist cliphist
+  # copyq, not cliphist. autostart.lua runs copyq and the bar's clipboard panel
+  # queries it (scripts/clipboard.sh); cliphist is deliberately absent, and
+  # this check used to demand it anyway - telling you to install a second
+  # clipboard manager the shell never speaks to.
+  check_cmd copyq copyq
   check_optional_cmd hyprsunset hyprsunset
   check_cmd jq jq
   # The wallpaper pipeline: hyprpaper for stills, mpvpaper+ffmpeg for

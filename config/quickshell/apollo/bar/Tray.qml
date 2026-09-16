@@ -23,6 +23,10 @@ Item {
     // shell has not already used.
     readonly property bool populated: trayGrid.implicitHeight > 0
 
+    // Tray ids the bar has its own control for. Lowercase; matched as a
+    // substring of the item's id.
+    readonly property var shadowed: ["copyq"]
+
     implicitWidth: trayGrid.implicitWidth
     implicitHeight: trayGrid.implicitHeight
 
@@ -34,7 +38,27 @@ Item {
       columns: root.vertical ? 1 : 999
 
       Repeater {
-        model: SystemTray.items
+        // Not SystemTray.items directly: an app whose job the bar already does
+        // would otherwise show up twice, side by side. copyq is the case —
+        // autostart runs it for clipboard history, the bar has a clipboard
+        // button that opens the shell's own panel, and copyq's tray icon sat
+        // next to it doing the same thing with a different UI.
+        //
+        // Matched on `id` (the SNI Id), which is what the item registers
+        // itself as; substring rather than equality because an app is free to
+        // register "copyq-1" or similar per instance.
+        // Falls back to the unfiltered model if `.values` is not there: a tray
+        // showing one icon too many beats a tray showing none.
+        model: {
+            var vals = SystemTray.items && SystemTray.items.values
+            if (!vals) return SystemTray.items
+            return vals.filter(item => {
+                var id = (item.id || "").toLowerCase()
+                for (var i = 0; i < root.shadowed.length; i++)
+                    if (id.indexOf(root.shadowed[i]) !== -1) return false
+                return true
+            })
+        }
 
         delegate: Item {
             id: entry

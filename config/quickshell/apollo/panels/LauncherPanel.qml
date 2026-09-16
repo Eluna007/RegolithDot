@@ -130,6 +130,10 @@ PanelWindow {
         if (n < 0) n = results.length - 1
         if (n >= results.length) n = 0
         selected = n
+        // Stop any wheel glide first: it and positionViewAtIndex both write
+        // contentY, and the animation would otherwise drag the view back off
+        // the row that was just selected.
+        glide.stop()
         resultList.positionViewAtIndex(n, ListView.Contain)
     }
 
@@ -137,7 +141,11 @@ PanelWindow {
     Rectangle {
         anchors.fill: parent
         color: Qt.rgba(Config.crust.r, Config.crust.g, Config.crust.b, 0.35)
-        NumberAnimation on opacity { from: 0; to: 1; duration: 140; running: true }
+        NumberAnimation on opacity {
+            from: 0; to: 1; running: true
+            duration: Motion.fastEffects
+            easing.type: Easing.Bezier; easing.bezierCurve: Motion.curveDefaultEffects
+        }
         MouseArea { anchors.fill: parent; onClicked: root.close() }
     }
 
@@ -158,12 +166,20 @@ PanelWindow {
         border.color: Qt.rgba(Config.text.r, Config.text.g, Config.text.b, 0.10)
         clip: true
 
-        // Rises slightly as it appears, rather than snapping in.
-        NumberAnimation on opacity { from: 0; to: 1; duration: 160; running: true; easing.type: Easing.OutCubic }
-        NumberAnimation on y {
-            from: Math.round(root.height * 0.18) + 14
-            to: Math.round(root.height * 0.18)
-            duration: 200; running: true; easing.type: Easing.OutCubic
+        // A centred sheet: it grows from its own middle, since it is not
+        // attached to any bar edge.
+        // Curves are Caelestia's Material 3 expressive set; see
+        // services/Motion.qml for the measured overshoot and why it cannot clip.
+        transformOrigin: Item.Center
+        NumberAnimation on opacity {
+            from: 0; to: 1; running: true
+            duration: Motion.effects
+            easing.type: Easing.Bezier; easing.bezierCurve: Motion.curveDefaultEffects
+        }
+        NumberAnimation on scale {
+            from: Motion.fromScale; to: 1; running: true
+            duration: Motion.spatial
+            easing.type: Easing.Bezier; easing.bezierCurve: Motion.curveDefaultSpatial
         }
 
         ColumnLayout {
@@ -238,6 +254,46 @@ PanelWindow {
                 clip: true
                 model: root.results
                 currentIndex: root.selected
+
+                // A trackpad two-finger drag is the Flickable's own physics;
+                // a lower deceleration lets it coast the way a Mac does rather
+                // than stopping the moment you lift off.
+                boundsBehavior: Flickable.StopAtBounds
+                flickDeceleration: 900
+                maximumFlickVelocity: 4000
+
+                // A mouse wheel is the other half, and Flickable jumps a notch
+                // at a time for it. Each notch glides to its destination
+                // instead, and notches spun in quick succession retarget the
+                // same animation rather than fighting over contentY.
+                property real glideTarget: 0
+                NumberAnimation {
+                    id: glide
+                    target: resultList
+                    property: "contentY"
+                    duration: Motion.slowEffects
+                    easing.type: Easing.Bezier
+                    easing.bezierCurve: Motion.curveDefaultEffects
+                }
+                function glideBy(dy) {
+                    var maxY = Math.max(0, contentHeight - height)
+                    if (maxY <= 0) return
+                    var from = glide.running ? glideTarget : contentY
+                    glideTarget = Math.max(0, Math.min(maxY, from + dy))
+                    glide.stop()
+                    glide.from = contentY
+                    glide.to = glideTarget
+                    glide.start()
+                }
+
+                WheelHandler {
+                    acceptedDevices: PointerDevice.Mouse
+                    onWheel: e => {
+                        var notches = (e.angleDelta.y || 0) / 120
+                        if (notches === 0) return
+                        resultList.glideBy(-notches * 104)   // two rows a notch
+                    }
+                }
 
                 delegate: Rectangle {
                     required property var modelData

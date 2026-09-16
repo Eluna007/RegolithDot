@@ -261,14 +261,17 @@ function isCommandQuery(query) {
     return !!query && query.charAt(0) === COMMAND_PREFIX;
 }
 
-// The order sources are concatenated in only decides ties: Match.filter sorts
-// by score and is stable, so an exact app name still beats a window whose
-// title happens to contain the same word. With no query at all it is the
-// whole ordering, which is why windows come first - at rest the launcher is
-// a task switcher, and the app list is one keystroke away.
+// With no query the launcher is an app list, full stop. That is what opening a
+// launcher is for, and with two hundred apps in the list anything appended
+// after them is unreachable anyway. Windows and actions join in as soon as you
+// type, where ranking decides the order rather than concatenation.
+//
+// Past the empty case the order here only breaks ties: Match.filter sorts by
+// score and is stable, so an exact app name still beats a window whose title
+// happens to contain the same word.
 function sources(query, apps, windows) {
     if (isCommandQuery(query)) return actionEntries();
-    if (!query) return windowEntries(windows).concat(apps || []);
+    if (!query) return (apps || []).slice();
     return windowEntries(windows).concat(apps || [], actionEntries());
 }
 
