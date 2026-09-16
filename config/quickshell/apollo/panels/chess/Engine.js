@@ -209,86 +209,149 @@ function search(state, pos, depth, alpha, beta, ply) {
 }
 
 // ---------------------------------------------------------------- slicing
+//
+// The search is spread across frames because it shares the thread that draws
+// the bar. The unit of work is ONE ROOT MOVE, not one depth iteration.
+//
+// The first version sliced by iteration and abandoned the search whenever a
+// slice ran out of budget, keeping the last completed depth. On a fast engine
+// that looks fine. Measured under QML's V4 - about 50x slower than V8 - it
+// meant depth 3 never finished inside a slice, so levels 3, 4 and 5 all
+// returned the same depth-2 move and the levels above 3 did not exist. The
+// slices that did run took ~240ms each, which is fourteen dropped frames.
+//
+// Slicing per root move fixes both: a root subtree is roughly a thirty-fifth
+// of an iteration, and alpha carries across slices so nothing is re-searched
+// and no pruning is lost.
 
-// `level` 1..5. Lower levels look shallower and are allowed to pick a move
-// that is merely close to best, so the engine is beatable without being
-// obviously broken.
+// Depth is capped at 4, and the top two levels differ by how much slack they
+// allow rather than by depth. Measured on the target machine - QML's V4 at
+// ~94k nodes/sec - depth 4 is about 1.2 seconds of thinking and depth 5 is
+// fourteen. A level nobody can wait for is not a level; better to offer four
+// that all answer and say so honestly.
 var LEVELS = [
   null,
   { depth: 1, slack: 120 },
   { depth: 2, slack: 70 },
   { depth: 3, slack: 30 },
-  { depth: 4, slack: 0 },
-  { depth: 5, slack: 0 }
+  { depth: 3, slack: 0 },
+  { depth: 4, slack: 0 }
 ];
+
+// Ceiling on how far a slice may stretch for one stubborn subtree. Without a
+// cap the doubling runs away: at depth 5 a single root subtree needs ~25k
+// nodes, and the escalation turned a 26ms slice into a two-second freeze.
+var MAX_BUDGET_SCALE = 16;
 
 function createSearch(pos, level, rng) {
   var lv = LEVELS[Math.max(1, Math.min(5, level | 0))] || LEVELS[3];
+  var moves = orderMoves(Chess.legalMoves(pos));
   return {
     pos: Chess.clone(pos),
     maxDepth: lv.depth,
     slack: lv.slack,
     rng: rng || Math.random,
+
+    rootMoves: moves,
     depth: 1,
+    rootIndex: 0,
+    alpha: -MATE * 2,
+    depthBest: null,
+    depthBestScore: -MATE * 2,
+
     best: null,
     bestScore: 0,
+    reachedDepth: 0,      // what actually completed, which is what the UI shows
+
     nodes: 0,
     budget: 0,
+    budgetScale: 1,       // grows when a single subtree will not fit, so a
+                          // pathological position still makes progress
     aborted: false,
-    rootBest: null,
-    done: false,
-    // Every legal move, scored once the first iteration completes, so a
-    // weaker level can choose among near-best moves.
-    rootMoves: Chess.legalMoves(pos)
+    done: false
   };
 }
 
-// One iteration of iterative deepening, bounded to `nodeBudget` nodes. If the
-// budget runs out mid-iteration the partial result is discarded and whatever
-// the last completed depth found is used - that is why this is safe to
-// interrupt at all.
+// Search root moves until the node budget for this slice runs out. Returns
+// true when a move is final.
 function step(gen, nodeBudget) {
   if (gen.done) return true;
 
-  if (gen.rootMoves.length === 0) { gen.done = true; gen.best = null; return true; }
-  if (gen.rootMoves.length === 1) { gen.best = gen.rootMoves[0]; gen.done = true; return true; }
+  if (gen.rootMoves.length === 0) { gen.best = null; gen.done = true; return true; }
+  if (gen.rootMoves.length === 1) {
+    gen.best = gen.rootMoves[0];
+    gen.reachedDepth = 1;
+    gen.done = true;
+    return true;
+  }
 
   gen.nodes = 0;
-  gen.budget = nodeBudget || 20000;
+  gen.budget = (nodeBudget || 20000) * gen.budgetScale;
   gen.aborted = false;
-  gen.rootBest = null;
 
-  var score = search(gen, gen.pos, gen.depth, -MATE * 2, MATE * 2, 0);
+  while (gen.rootIndex < gen.rootMoves.length) {
+    var m = gen.rootMoves[gen.rootIndex];
+    var undo = Chess.make(gen.pos, m);
+    var score = -search(gen, gen.pos, gen.depth - 1, -MATE * 2, -gen.alpha, 1);
+    Chess.unmake(gen.pos, m, undo);
 
-  if (!gen.aborted && gen.rootBest) {
-    gen.best = gen.rootBest;
-    gen.bestScore = score;
-    gen.depth++;
-    if (gen.depth > gen.maxDepth) gen.done = true;
-  } else if (gen.aborted) {
-    // Out of budget at this depth. Keep the last completed result rather than
-    // a half-searched one; searching deeper would only cost more.
-    gen.done = gen.best !== null;
-    if (!gen.best) {
-      // Not even depth 1 finished. Take the best-ordered legal move so the
-      // engine always answers rather than hanging.
-      gen.best = orderMoves(gen.rootMoves.slice())[0];
-      gen.done = true;
+    if (gen.aborted) {
+      // This subtree did not fit. Its score is truncated and cannot be
+      // trusted, so retry it next slice with a bigger allowance - otherwise a
+      // single expensive move could stall the search forever.
+      gen.budgetScale = Math.min(MAX_BUDGET_SCALE, gen.budgetScale * 2);
+      return false;
+    }
+
+    if (score > gen.depthBestScore) { gen.depthBestScore = score; gen.depthBest = m; }
+    if (score > gen.alpha) gen.alpha = score;
+    gen.rootIndex++;
+
+    if (gen.nodes >= gen.budget) return false;   // pause between root moves
+  }
+
+  // The iteration finished: this depth's answer is complete and usable.
+  gen.best = gen.depthBest;
+  gen.bestScore = gen.depthBestScore;
+  gen.reachedDepth = gen.depth;
+
+  // Search the previous best first next time round - it is usually best
+  // again, and it makes alpha useful immediately.
+  if (gen.depthBest) {
+    var i = gen.rootMoves.indexOf(gen.depthBest);
+    if (i > 0) {
+      gen.rootMoves.splice(i, 1);
+      gen.rootMoves.unshift(gen.depthBest);
     }
   }
 
-  if (gen.done) applySlack(gen);
+  gen.depth++;
+  gen.rootIndex = 0;
+  gen.alpha = -MATE * 2;
+  gen.depthBest = null;
+  gen.depthBestScore = -MATE * 2;
+
+  if (gen.depth > gen.maxDepth) {
+    applySlack(gen);
+    gen.done = true;
+  }
   return gen.done;
 }
 
-// At easier levels, pick randomly among moves close to the best score rather
-// than always the top one. Playing the single best move every time is what
-// makes a weak engine feel unbeatable in the openings and stupid later.
+// How far along the current iteration is, 0..1, for a progress indicator.
+function progress(gen) {
+  if (gen.done) return 1;
+  if (gen.rootMoves.length === 0) return 1;
+  return Math.min(1, gen.rootIndex / gen.rootMoves.length);
+}
+
+// At easier levels, pick randomly among moves close to the best rather than
+// always the top one. Always playing the single best move is what makes a
+// weak engine feel unbeatable in the opening and stupid later.
 function applySlack(gen) {
   if (gen.slack <= 0 || !gen.best || gen.rootMoves.length < 2) return;
   var pos = gen.pos;
   var scored = [];
-  var us = pos.turn;
   for (var i = 0; i < gen.rootMoves.length; i++) {
     var m = gen.rootMoves[i];
     var undo = Chess.make(pos, m);
@@ -303,10 +366,11 @@ function applySlack(gen) {
   gen.best = pool[Math.floor(gen.rng() * pool.length)].move;
 }
 
-// Blocking convenience for tests.
+// Blocking convenience for tests. Runs the whole search in one call, which is
+// fine anywhere that is not the thread drawing the bar.
 function bestMove(pos, level, rng) {
   var gen = createSearch(pos, level, rng);
   var guard = 0;
-  while (!step(gen, 1000000) && guard++ < 64) { /* run it out */ }
+  while (!step(gen, 1000000) && guard++ < 10000) { /* run it out */ }
   return gen.best;
 }

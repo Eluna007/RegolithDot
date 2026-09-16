@@ -229,7 +229,11 @@ PanelWindow {
         running: root.thinking
         onTriggered: {
             if (!root.searchState) { root.thinking = false; return }
-            if (Engine.step(root.searchState, 6000)) {
+            // 800 nodes a slice. Measured on this shell's QML engine (~94k
+            // nodes/sec, about 50x slower than V8) that is ~12ms at the low
+            // levels and ~60ms at level 4. The unit of work is one root move,
+            // so this cannot go much lower without splitting a subtree.
+            if (Engine.step(root.searchState, 800)) {
                 var best = root.searchState.best
                 root.thinking = false
                 root.searchState = null

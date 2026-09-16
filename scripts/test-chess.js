@@ -242,8 +242,8 @@ console.log("engine:");
     const fen = "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 1";
     const gen = E.createSearch(C.loadFen(fen), 4);
     let slices = 0;
-    while (!E.step(gen, 6000) && slices < 200) slices++;
-    ok("sliced search terminates", gen.done && slices < 200, `${slices} slices`);
+    while (!E.step(gen, 800) && slices < 2000) slices++;
+    ok("sliced search terminates", gen.done && slices < 2000, `${slices} slices`);
     ok("sliced search produces a legal move",
        gen.best && C.legalMoves(C.loadFen(fen)).some(l => l.from === gen.best.from && l.to === gen.best.to));
     ok("a one-node budget still returns a move",
@@ -400,6 +400,39 @@ console.log("panel move loop:");
     ok("a full engine game runs without stalling", plies > 20, `${plies} plies, outcome ${outcome || "cut off"}`);
     ok("every position reached was legal", g.pos.kings[0] >= 0 && g.pos.kings[1] >= 0);
     ok("notation matches the move count", g.sans.length === plies);
+}
+
+// ── slicing stays bounded ───────────────────────────────────────────────
+// The first slicing design abandoned the whole search whenever a slice ran
+// out of budget, so on a slow engine levels 3, 4 and 5 all returned the same
+// depth-2 move: the deeper levels silently did not exist. Slicing is per root
+// move now, and a level must actually reach its depth.
+console.log("slicing:");
+{
+    const fen = "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 1";
+    const depths = [];
+    for (let lv = 1; lv <= 5; lv++) {
+        const g = E.createSearch(C.loadFen(fen), lv);
+        let guard = 0;
+        while (!E.step(g, 800) && guard++ < 20000) { /* slice */ }
+        depths.push(g.reachedDepth);
+        ok(`level ${lv} finishes and returns a legal move`,
+           g.done && g.best !== null &&
+           C.legalMoves(C.loadFen(fen)).some(m => m.from === g.best.from && m.to === g.best.to));
+    }
+    // Deeper levels must search at least as deep - never less.
+    let monotonic = true;
+    for (let i = 1; i < depths.length; i++) if (depths[i] < depths[i - 1]) monotonic = false;
+    ok("depth never decreases as the level rises", monotonic, JSON.stringify(depths));
+    ok("the top level searches deeper than the bottom", depths[4] > depths[0], JSON.stringify(depths));
+
+    // No slice may be unbounded: the escalation for a stubborn subtree is
+    // capped, or one slice becomes a multi-second freeze.
+    const g2 = E.createSearch(C.loadFen(fen), 5);
+    let worst = 0, guard2 = 0;
+    while (!E.step(g2, 800) && guard2++ < 20000) { if (g2.nodes > worst) worst = g2.nodes; }
+    if (g2.nodes > worst) worst = g2.nodes;
+    ok("no slice exceeds the escalation cap", worst <= 800 * 16, `${worst} nodes`);
 }
 
 if (failures > 0) {

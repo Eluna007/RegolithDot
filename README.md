@@ -110,9 +110,19 @@ promotion or a pinned piece cannot reproduce those by accident.
 MVV-LVA ordering, over material plus piece-square tables. Club strength at
 best, deliberately: Stockfish plays far better but is a separate process to
 find, launch and speak UCI to, where this is a few hundred lines node can test
-directly. Five levels; the lower ones pick among near-best moves so they are
-beatable rather than erratic. The search runs in slices, like Apolloku's
-generator and for the same reason — it shares the thread that draws the bar.
+directly. Five levels; the lower ones pick among near-best moves so they are beatable
+rather than erratic. The search runs in slices, like Apolloku's generator and
+for the same reason — it shares the thread that draws the bar — but the unit
+of work is one **root move**, not one depth. Slicing per depth meant that
+whenever a slice ran out of budget the whole search was abandoned, so on this
+machine levels 3, 4 and 5 all returned the same depth-2 move: the deeper
+levels silently did not exist. A root subtree is roughly a thirty-fifth of an
+iteration, and alpha carries across slices, so nothing is re-searched.
+
+Depth is capped at 4 because the numbers say so. Measured in this shell's QML
+engine, it runs at ~94k nodes/sec — about fifty times slower than the same
+code under node — which puts depth 4 at roughly a second of thinking and
+depth 5 at fourteen. A level nobody will wait for is not a level.
 
 Ratings are optional. Set `chessUsername` in `~/.config/apollo/config.json`
 and the panel fetches `api.chess.com/pub/player/<name>/stats` every five
