@@ -114,21 +114,30 @@ PanelWindow {
     }
 
     function applyMove(from, to, promotion) {
-        var m = Chess.findMove(pos, from, to, promotion || 0)
+        // Play the move on a copy and assign that, rather than mutating `pos`
+        // in place. Chess.make mutates, and QML emits no change signal when a
+        // property is assigned the value it already holds - so `pos = pos`
+        // after a mutation updates nothing. The internal turn flipped while
+        // the board, the status line and whose pieces were selectable all
+        // stayed frozen at the previous position.
+        var next = Chess.clone(pos)
+        var m = Chess.findMove(next, from, to, promotion || 0)
         if (!m) return
-        sans = sans.concat([Chess.toSan(pos, m)])
-        Chess.make(pos, m)
+
+        var san = Chess.toSan(next, m)      // before the move: SAN describes it
+        Chess.make(next, m)
+
+        sans = sans.concat([san])
         moveLog = moveLog.concat([{ from: from, to: to, promotion: m.promotion || 0 }])
-        keys = keys.concat([Chess.positionKey(pos)])
+        keys = keys.concat([Chess.positionKey(next)])
         lastFrom = from
         lastTo = to
         selected = -1
         destinations = []
         promoFrom = -1
         promoTo = -1
-        // Reassigning pos is what makes every binding on the board re-evaluate;
-        // Chess.make mutates in place and QML cannot see that.
-        pos = pos
+        pos = next                          // a new object, so bindings fire
+
         refreshOutcome()
         persist()
         maybeStartEngine()
@@ -302,7 +311,19 @@ PanelWindow {
     }
     function saveStats() { queueWrite(statsFile.path, Model.serializeStats(stats)) }
 
-    onVisibleChanged: if (!visible) { stopEngine(); persist() }
+    onVisibleChanged: {
+        if (visible) {
+            // Resume a game saved on the engine's turn. Without this the board
+            // is deadlocked: humanToMove is false because it is not your turn,
+            // and nothing is thinking because loading deliberately does not
+            // start the search. Doing it here rather than on load means the
+            // move happens while you are looking at the board.
+            maybeStartEngine()
+        } else {
+            stopEngine()
+            persist()
+        }
+    }
 
     // ── chess.com ratings ───────────────────────────────────────────────
     property var chessStats: Model.emptyChessStats()

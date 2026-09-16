@@ -356,6 +356,52 @@ ok("rejects shell metacharacters", !M.validUsername("a;rm -rf /"));
 ok("rejects a query string", !M.validUsername("bob?x=1"));
 ok("rejects a non-string", !M.validUsername(null) && !M.validUsername(42));
 
+// ── the panel's move loop ───────────────────────────────────────────────
+// Not the QML, but the exact sequence ChessPanel performs for each move:
+// clone, find, notate, make, assign. The first version mutated in place and
+// then wrote `pos = pos`, which in QML notifies nothing - the board froze
+// while the game carried on underneath it.
+console.log("panel move loop:");
+{
+    function applyMove(state, from, to, promotion) {
+        const next = C.clone(state.pos);
+        const m = C.findMove(next, from, to, promotion || 0);
+        if (!m) return false;
+        const san = C.toSan(next, m);
+        C.make(next, m);
+        state.sans.push(san);
+        state.keys.push(C.positionKey(next));
+        state.pos = next;                 // a *new* object, as the panel does
+        return true;
+    }
+
+    const state = { pos: C.startPosition(), sans: [], keys: [] };
+    const before = C.toFen(state.pos);
+    ok("a move is applied", applyMove(state, C.fromAlgebraic("e2"), C.fromAlgebraic("e4")));
+    ok("the new position differs", C.toFen(state.pos) !== before);
+    ok("the turn changes hands", state.pos.turn === C.BLACK);
+    ok("and a second move follows", applyMove(state, C.fromAlgebraic("e7"), C.fromAlgebraic("e5")));
+    ok("back to white", state.pos.turn === C.WHITE);
+    ok("notation accumulates", state.sans.join(" ") === "e4 e5", state.sans.join(" "));
+
+    // A full game, both sides played by the engine, through the same loop.
+    // This is what "no other moves can follow" would have failed.
+    const g = { pos: C.startPosition(), sans: [], keys: [] };
+    let plies = 0;
+    let outcome = "";
+    while (plies < 160) {
+        outcome = C.outcome(g.pos, g.keys);
+        if (outcome !== "") break;
+        const m = E.bestMove(C.clone(g.pos), 1);
+        if (!m) break;
+        if (!applyMove(g, m.from, m.to, m.promotion)) { ok("engine move was applicable", false); break; }
+        plies++;
+    }
+    ok("a full engine game runs without stalling", plies > 20, `${plies} plies, outcome ${outcome || "cut off"}`);
+    ok("every position reached was legal", g.pos.kings[0] >= 0 && g.pos.kings[1] >= 0);
+    ok("notation matches the move count", g.sans.length === plies);
+}
+
 if (failures > 0) {
     console.log(`\n${failures} failure(s)`);
     process.exit(1);
