@@ -93,6 +93,35 @@ had no equivalent for.
 
 Nothing else in `lua/` imports these three, so they stay easy to swap.
 
+## Chess
+
+Play the built-in engine or a second person at the same keyboard, with your
+chess.com ratings alongside when you set one. The checkerboard mark in the
+tray opens it; `U` undoes, `F` flips the board, `N` starts a new game.
+
+`chess/Chess.js` is a 0x88 move generator with make/unmake, SAN, FEN and the
+draw rules. Correctness here is not a matter of taste, so it is measured:
+`scripts/test-chess.js` runs **perft** against the published node counts for
+the six standard test positions — 11.7 million nodes, matching exactly. A
+generator that mishandles en passant, castling through an attacked square,
+promotion or a pinned piece cannot reproduce those by accident.
+
+`chess/Engine.js` is alpha-beta with quiescence, iterative deepening and
+MVV-LVA ordering, over material plus piece-square tables. Club strength at
+best, deliberately: Stockfish plays far better but is a separate process to
+find, launch and speak UCI to, where this is a few hundred lines node can test
+directly. Five levels; the lower ones pick among near-best moves so they are
+beatable rather than erratic. The search runs in slices, like Apolloku's
+generator and for the same reason — it shares the thread that draws the bar.
+
+Ratings are optional. Set `chessUsername` in `~/.config/apollo/config.json`
+and the panel fetches `api.chess.com/pub/player/<name>/stats` every five
+minutes with curl — public data, no login. That response is treated as
+untrusted: every field is range-checked, strings are stripped of control
+characters and clamped, and it is all rendered as `Text.PlainText`. The
+username is validated against `^[A-Za-z0-9_-]{3,25}$` before it goes near
+curl, and is passed as an argv entry rather than pasted into the URL.
+
 ## Apolloku
 
 Sudoku in the bar, remade from the version on the `pre-apollo-shell` branch.

@@ -231,6 +231,7 @@ PanelWindow {
                     TrayBtn { icon: String.fromCodePoint(0xf00af); iconSize: 16; iconColor: root.btPowered ? root.mauve : root.overlay0; active: root.activePanel === "bt"; barColors: root; onClicked: root.openPanel("bt"); Layout.alignment: Qt.AlignHCenter }
                     TrayBtn { icon: (root.volMuted || root.volPct === 0) ? String.fromCodePoint(0xf0581) : String.fromCodePoint(0xf057e); iconSize: 18; active: root.activePanel === "audio"; barColors: root; onClicked: root.openPanel("audio"); Layout.alignment: Qt.AlignHCenter }
                     ApollokuBtn { active: root.activePanel === "apolloku"; barColors: root; onClicked: root.openPanel("apolloku"); Layout.alignment: Qt.AlignHCenter }
+                    ChessBtn { active: root.activePanel === "chess"; barColors: root; onClicked: root.openPanel("chess"); Layout.alignment: Qt.AlignHCenter }
                     TrayBtn { icon: String.fromCodePoint(0xf328); iconSize: 20; active: root.activePanel === "clip"; barColors: root; onClicked: root.openPanel("clip"); Layout.alignment: Qt.AlignHCenter }
                     TrayBtn { icon: String.fromCodePoint(0xf013); active: root.activePanel === "qs"; barColors: root; onClicked: root.openPanel("qs"); Layout.alignment: Qt.AlignHCenter }
                     TrayBtn { icon: String.fromCodePoint(0xf011); iconColor: root.maroon; barColors: root; onClicked: root.openPanel("power"); Layout.alignment: Qt.AlignHCenter }
@@ -341,6 +342,7 @@ PanelWindow {
                 TrayBtn { icon: String.fromCodePoint(0xf00af); iconSize: 16; iconColor: root.btPowered ? root.mauve : root.overlay0; active: root.activePanel === "bt"; barColors: root; onClicked: root.openPanel("bt"); Layout.alignment: Qt.AlignHCenter }
                 TrayBtn { icon: (root.volMuted || root.volPct === 0) ? String.fromCodePoint(0xf0581) : String.fromCodePoint(0xf057e); iconSize: 18; active: root.activePanel === "audio"; barColors: root; onClicked: root.openPanel("audio"); Layout.alignment: Qt.AlignHCenter }
                 ApollokuBtn { active: root.activePanel === "apolloku"; barColors: root; onClicked: root.openPanel("apolloku"); Layout.alignment: Qt.AlignHCenter }
+                ChessBtn { active: root.activePanel === "chess"; barColors: root; onClicked: root.openPanel("chess"); Layout.alignment: Qt.AlignHCenter }
                 TrayBtn { icon: String.fromCodePoint(0xf328); iconSize: 20; active: root.activePanel === "clip"; barColors: root; onClicked: root.openPanel("clip"); Layout.alignment: Qt.AlignHCenter }
                 TrayBtn { icon: String.fromCodePoint(0xf013); active: root.activePanel === "qs"; barColors: root; onClicked: root.openPanel("qs"); Layout.alignment: Qt.AlignHCenter }
                 TrayBtn { icon: String.fromCodePoint(0xf011); iconColor: root.maroon; barColors: root; onClicked: root.openPanel("power"); Layout.alignment: Qt.AlignHCenter }
@@ -583,6 +585,12 @@ PanelWindow {
                 onClicked: root.openPanel("apolloku")
             }
 
+            ChessBtn {
+                active: root.activePanel === "chess"
+                barColors: root
+                onClicked: root.openPanel("chess")
+            }
+
             // Clipboard — nf-md-content_copy
             TrayBtn {
                 icon: ""
@@ -807,6 +815,12 @@ PanelWindow {
                 onClicked: root.openPanel("apolloku")
             }
 
+            ChessBtn {
+                active: root.activePanel === "chess"
+                barColors: root
+                onClicked: root.openPanel("chess")
+            }
+
             // Clipboard — nf-md-content_copy
             TrayBtn {
                 icon: ""
@@ -975,6 +989,39 @@ PanelWindow {
 
         MouseArea {
             id: akHov
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: parent.clicked()
+        }
+    }
+
+    // The chess mark, same chrome as ApollokuBtn.
+    component ChessBtn: Item {
+        property bool active: false
+        property var barColors
+        signal clicked()
+
+        implicitWidth: 32; implicitHeight: 32
+        Layout.alignment: Qt.AlignVCenter
+
+        Rectangle {
+            anchors.fill: parent; radius: 9
+            color: parent.active ? root.accentSoft
+                 : chHov.containsMouse ? Qt.rgba(Config.text.r, Config.text.g, Config.text.b, 0.07)
+                 : "transparent"
+            Behavior on color { ColorAnimation { duration: 140 } }
+        }
+
+        ChessIcon {
+            anchors.centerIn: parent
+            width: 18; height: 18
+            stroke: parent.active ? root.accent : root.subtext0
+            Behavior on stroke { ColorAnimation { duration: 140 } }
+        }
+
+        MouseArea {
+            id: chHov
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor

@@ -34,6 +34,7 @@ jobs:
           bash -n scripts/test-battery.sh
           bash -n scripts/test-network.sh
           bash -n scripts/test-shell-battery.sh
+          bash -n scripts/test-playerctlock.sh
           bash -n config/quickshell/apollo/scripts/battery.sh
           for f in local/bin/*.sh; do bash -n "$f"; done
           for f in config/hyprlock/scripts/*.sh; do bash -n "$f"; done
@@ -49,6 +50,7 @@ jobs:
           shellcheck scripts/test-battery.sh
           shellcheck scripts/test-network.sh
           shellcheck scripts/test-shell-battery.sh
+          shellcheck scripts/test-playerctlock.sh
           shellcheck config/quickshell/apollo/scripts/battery.sh
           shellcheck config/hyprlock/scripts/battery.sh
           shellcheck config/hyprlock/scripts/network.sh
@@ -138,6 +140,12 @@ jobs:
       - name: Test the shell's battery script
         run: ./scripts/test-shell-battery.sh
 
+      # Upstream gated every music widget behind an is_spotify() check, so on
+      # a machine without Spotify they all printed "Not playing on Spotify"
+      # instead of the track. The widget looks populated either way.
+      - name: Test playerctlock.sh
+        run: ./scripts/test-playerctlock.sh
+
       # A QML error is not contained: an unresolved import or a stray brace
       # stops the whole shell loading, so the bar, every panel and the
       # notification daemon vanish together.
@@ -149,6 +157,12 @@ jobs:
       # would look completely fine in the UI.
       - name: Test Apolloku logic
         run: node scripts/test-apolloku.js
+
+      # perft against the published node counts for the standard positions.
+      # A generator that mishandles en passant, castling through check or a
+      # pinned piece cannot match ~11.7M nodes by accident.
+      - name: Test chess logic
+        run: node scripts/test-chess.js
 
       # /sys/class/power_supply/BAT0 is not a universal path - plenty of
       # laptops expose BAT1. Worse, the callers used to paper over a wrong
@@ -199,6 +213,8 @@ jobs:
           test -x config/quickshell/apollo/scripts/battery.sh
           test -f config/quickshell/apollo/panels/ApollokuPanel.qml
           for j in Sudoku Model; do test -f "config/quickshell/apollo/panels/apolloku/$j.js"; done
+          test -f config/quickshell/apollo/panels/ChessPanel.qml
+          for j in Chess Engine Model; do test -f "config/quickshell/apollo/panels/chess/$j.js"; done
           test -x local/bin/hyprlock-wallpaper.sh
           for s in osd-report restore-wallpaper wallpaper-switch hyprlock-wallpaper; do
             test -x "local/bin/$s.sh"
