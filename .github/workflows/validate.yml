@@ -37,6 +37,8 @@ jobs:
           bash -n scripts/test-playerctlock.sh
           bash -n scripts/test-clipboard.sh
           bash -n config/quickshell/apollo/scripts/clipboard.sh
+          bash -n config/quickshell/apollo/scripts/apps.sh
+          bash -n scripts/test-apps.sh
           bash -n config/quickshell/apollo/scripts/battery.sh
           for f in local/bin/*.sh; do bash -n "$f"; done
           for f in config/hyprlock/scripts/*.sh; do bash -n "$f"; done
@@ -55,6 +57,8 @@ jobs:
           shellcheck scripts/test-playerctlock.sh
           shellcheck scripts/test-clipboard.sh
           shellcheck config/quickshell/apollo/scripts/clipboard.sh
+          shellcheck config/quickshell/apollo/scripts/apps.sh
+          shellcheck scripts/test-apps.sh
           shellcheck config/quickshell/apollo/scripts/battery.sh
           shellcheck config/hyprlock/scripts/battery.sh
           shellcheck config/hyprlock/scripts/network.sh
@@ -156,6 +160,17 @@ jobs:
       - name: Test clipboard.sh
         run: ./scripts/test-clipboard.sh
 
+      # Desktop-entry parsing. Every case in the fixture is something that
+      # really sits in /usr/share/applications and would otherwise show up as
+      # a broken launcher row.
+      - name: Test apps.sh
+        run: ./scripts/test-apps.sh
+
+      # Ranking is the whole product of a launcher: the orderings that matter
+      # are asserted rather than eyeballed.
+      - name: Test launcher matching
+        run: node scripts/test-launcher.js
+
       # A QML error is not contained: an unresolved import or a stray brace
       # stops the whole shell loading, so the bar, every panel and the
       # notification daemon vanish together.
@@ -228,6 +243,9 @@ jobs:
           test -x local/bin/apollo-lock-layout
           test -x config/quickshell/apollo/scripts/battery.sh
           test -x config/quickshell/apollo/scripts/clipboard.sh
+          test -x config/quickshell/apollo/scripts/apps.sh
+          test -f config/quickshell/apollo/panels/LauncherPanel.qml
+          test -f config/quickshell/apollo/panels/launcher/Match.js
           test -f config/quickshell/apollo/panels/ApollokuPanel.qml
           for j in Sudoku Model; do test -f "config/quickshell/apollo/panels/apolloku/$j.js"; done
           test -f config/quickshell/apollo/panels/ChessPanel.qml

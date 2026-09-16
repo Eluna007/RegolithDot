@@ -469,6 +469,12 @@ ShellRoot {
                 onClose: scope.closeAll()
             }
 
+            property var launcherPanel: LauncherPanel {
+                screen:  scope.modelData
+                visible: scope.activePanel === "launcher"
+                onClose: scope.closeAll()
+            }
+
             property var tailscalePanel: TailscalePanel {
                 screen:  scope.modelData
                 shared:  sharedSys

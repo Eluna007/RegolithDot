@@ -36,7 +36,10 @@ local p = M.palette
 -- ── Core apps ────────────────────────────────────────────────────────────
 M.terminal    = "kitty"
 M.filemanager = "thunar"
-M.launcher    = "wofi --show drun"
+-- The bar's own launcher, opened through the shell's IPC like every other
+-- panel. wofi and `rofi -show combi` both did this job before; one launcher is
+-- enough, and this one matches the rest of the shell.
+M.launcher    = "qs -c apollo ipc call panel toggle launcher"
 M.settings    = "apollo-settings"
 
 -- ── Layout ───────────────────────────────────────────────────────────────
