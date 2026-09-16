@@ -9,6 +9,7 @@ Checked here:
   - balanced braces/parens/brackets, ignoring strings and comments
   - every relative `import "..."` resolves to a real directory or file
   - every panel the bar can open is actually instantiated by the shell
+  - no `x = x` self-assignment, which in QML notifies nothing
 
 Stripping strings and comments needs a real scanner rather than regexes. A
 regex pass that removes quoted text first will start a "string" at the
@@ -62,6 +63,16 @@ for f in qml_files:
     for open_c, close_c, name in [("{", "}", "braces"), ("(", ")", "parens"), ("[", "]", "brackets")]:
         if body.count(open_c) != body.count(close_c):
             bad.append(f"{f}: unbalanced {name} ({body.count(open_c)} open, {body.count(close_c)} close)")
+
+    # `foo = foo` looks like "re-notify this property" and does nothing at
+    # all: QML emits no change signal when a property is assigned the value it
+    # already holds. Written after a mutated-in-place object was "refreshed"
+    # this way, leaving the chess board frozen while the game moved on.
+    for m in re.finditer(r'^\s*(?:root\.)?(\w+)\s*=\s*(?:root\.)?(\w+)\s*$', strip(text), re.M):
+        if m.group(1) == m.group(2):
+            line = strip(text)[:m.start()].count("\n") + 1
+            bad.append(f"{f}:{line}: `{m.group(1)} = {m.group(1)}` notifies nothing; "
+                       f"assign a new value")
 
     # relative imports must resolve
     for m in re.finditer(r'^\s*import\s+"([^"]+)"(?:\s+as\s+(\w+))?', text, re.M):
