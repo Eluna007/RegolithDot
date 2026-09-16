@@ -31,14 +31,13 @@ BUILTIN = {
 DECLARED = {
     # coreutils / util-linux / procps-ng - part of a base install
     "date": "coreutils",
-    "cut": "coreutils",
-    "head": "coreutils",
     "tr": "coreutils",
     "sed": "sed",
     "uname": "coreutils",
     "uptime": "procps-ng",
-    # real dependencies - apollo-doctor checks each of these
-    "playerctl": "playerctl (music widgets)",
+    # Nothing else. The layouts now reach playerctl and the battery only
+    # through $music / $battery / $network, so their dependencies are the
+    # scripts' business and apollo-doctor's to check - not a layout's.
 }
 
 # A command position: the start of the string, or just after one of these.

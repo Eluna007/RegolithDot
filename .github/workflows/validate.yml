@@ -34,6 +34,7 @@ jobs:
           bash -n scripts/test-battery.sh
           bash -n scripts/test-network.sh
           bash -n scripts/test-shell-battery.sh
+          bash -n scripts/test-playerctlock.sh
           bash -n config/quickshell/apollo/scripts/battery.sh
           for f in local/bin/*.sh; do bash -n "$f"; done
           for f in config/hyprlock/scripts/*.sh; do bash -n "$f"; done
@@ -49,6 +50,7 @@ jobs:
           shellcheck scripts/test-battery.sh
           shellcheck scripts/test-network.sh
           shellcheck scripts/test-shell-battery.sh
+          shellcheck scripts/test-playerctlock.sh
           shellcheck config/quickshell/apollo/scripts/battery.sh
           shellcheck config/hyprlock/scripts/battery.sh
           shellcheck config/hyprlock/scripts/network.sh
@@ -137,6 +139,12 @@ jobs:
       # The bar and the system-monitor panel both parse this one line.
       - name: Test the shell's battery script
         run: ./scripts/test-shell-battery.sh
+
+      # Upstream gated every music widget behind an is_spotify() check, so on
+      # a machine without Spotify they all printed "Not playing on Spotify"
+      # instead of the track. The widget looks populated either way.
+      - name: Test playerctlock.sh
+        run: ./scripts/test-playerctlock.sh
 
       # A QML error is not contained: an unresolved import or a stray brace
       # stops the whole shell loading, so the bar, every panel and the

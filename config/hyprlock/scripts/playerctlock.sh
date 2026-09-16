@@ -13,11 +13,22 @@
 set -uo pipefail
 
 if [ $# -eq 0 ]; then
-    echo "Usage: $0 --title | --artist | --album | --position | --length | --status | --source"
+    echo "Usage: $0 --title [W] | --artist [W] | --icon | --album | --position | --length | --status | --source"
     exit 1
 fi
 
-command -v playerctl >/dev/null 2>&1 || { echo ""; exit 0; }
+# Nothing to report. --icon still answers, because layout20 draws a pill that
+# needs a glyph whether or not anything is playing; every other mode renders as
+# an empty label, which is what the layouts want.
+idle() {
+    case "${1-}" in
+        --icon) echo "󰎆" ;;
+        *)      echo "" ;;
+    esac
+    exit 0
+}
+
+command -v playerctl >/dev/null 2>&1 || idle "$1"
 
 # First player that is playing or paused. `playerctl -l` lists every MPRIS
 # client - browsers register one per tab - so status is what picks the real one.
@@ -31,7 +42,7 @@ done < <(playerctl -l 2>/dev/null)
 
 # Nothing playing: every field is blank, so the widgets simply render empty
 # rather than showing an error string.
-[ -n "$player" ] || { echo ""; exit 0; }
+[ -n "$player" ] || idle "$1"
 
 meta() { playerctl -p "$player" metadata --format "{{ $1 }}" 2>/dev/null; }
 
@@ -42,11 +53,30 @@ fmt_pos() { local s=${1%.*}; printf "%d:%02d" $((s/60)) $((s%60)); }
 
 case "$1" in
 --title)
+    # Optional width. Defaults to the value the other layouts were built
+    # around, so adding the argument changes nothing for them.
+    w="${2:-15}"
     t="$(meta "xesam:title")"
-    [ -n "$t" ] && { [ ${#t} -gt 15 ] && echo "${t:0:15}..." || echo "$t"; } || echo ""
+    if [ -z "$t" ]; then
+        echo ""
+    elif [ "${#t}" -gt "$w" ]; then
+        echo "${t:0:$w}..."
+    else
+        echo "$t"
+    fi
     ;;
 --artist)
-    a="$(meta "xesam:artist")"; echo "${a:0:20}"
+    w="${2:-20}"
+    a="$(meta "xesam:artist")"; echo "${a:0:$w}"
+    ;;
+--icon)
+    # Just the player's glyph, for a pill with no room for a name.
+    case "${player%%.*}" in
+        spotify) echo "" ;;
+        firefox) echo "󰈹" ;;
+        vlc)     echo "󰕼" ;;
+        *)       echo "" ;;
+    esac
     ;;
 --album)
     meta "xesam:album"
@@ -76,12 +106,12 @@ case "$1" in
     # playerctl's player name is the bus name: "spotify", "firefox",
     # "mpv.instance123", "chromium.instance456".
     case "${player%%.*}" in
-        spotify)            echo "Spotify " ;;
+        spotify)            echo "Spotify " ;;
         firefox)            echo "Firefox 󰈹" ;;
-        chromium|chrome|brave) echo "Browser " ;;
-        mpv)                echo "mpv " ;;
+        chromium|chrome|brave) echo "Browser " ;;
+        mpv)                echo "mpv " ;;
         vlc)                echo "VLC 󰕼" ;;
-        *)                  echo "${player%%.*} " ;;
+        *)                  echo "${player%%.*} " ;;
     esac
     ;;
 *)
