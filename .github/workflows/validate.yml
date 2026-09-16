@@ -164,6 +164,12 @@ jobs:
       - name: Test chess logic
         run: node scripts/test-chess.js
 
+      # `tailscale status --json` comes from a binary that updates on its own
+      # schedule. A field that changes type across a release should blank a
+      # widget, not take the bar down with a TypeError.
+      - name: Test Tailscale parsing
+        run: node scripts/test-tailscale.js
+
       # /sys/class/power_supply/BAT0 is not a universal path - plenty of
       # laptops expose BAT1. Worse, the callers used to paper over a wrong
       # guess (`|| echo 100`, `2>/dev/null`), so the bar reported a confident,
@@ -215,6 +221,8 @@ jobs:
           for j in Sudoku Model; do test -f "config/quickshell/apollo/panels/apolloku/$j.js"; done
           test -f config/quickshell/apollo/panels/ChessPanel.qml
           for j in Chess Engine Model; do test -f "config/quickshell/apollo/panels/chess/$j.js"; done
+          test -f config/quickshell/apollo/panels/TailscalePanel.qml
+          test -f config/quickshell/apollo/panels/tailscale/Tailscale.js
           test -x local/bin/hyprlock-wallpaper.sh
           for s in osd-report restore-wallpaper wallpaper-switch hyprlock-wallpaper; do
             test -x "local/bin/$s.sh"
