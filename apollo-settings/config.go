@@ -84,7 +84,7 @@ type Config struct {
 func curatedKeybinds() map[string]Keybind {
 	return map[string]Keybind{
 		"terminal":   {Label: "Terminal", Default: "SUPER, Return", Combo: "SUPER, Return", Dispatcher: `hl.dsp.exec_cmd("kitty")`},
-		"launcher":   {Label: "App launcher", Default: "SUPER, Space", Combo: "SUPER, Space", Dispatcher: `hl.dsp.exec_cmd("wofi --show drun")`},
+		"launcher":   {Label: "App launcher", Default: "SUPER, Space", Combo: "SUPER, Space", Dispatcher: `hl.dsp.exec_cmd("qs -c apollo ipc call panel toggle launcher")`},
 		"close":      {Label: "Close window", Default: "SUPER, Q", Combo: "SUPER, Q", Dispatcher: "hl.dsp.window.close()"},
 		"fullscreen": {Label: "Fullscreen", Default: "SUPER, F", Combo: "SUPER, F", Dispatcher: `hl.dsp.window.fullscreen({ mode = "fullscreen" })`},
 		"float":      {Label: "Toggle floating", Default: "SUPER, V", Combo: "SUPER, V", Dispatcher: "hl.dsp.window.float()"},

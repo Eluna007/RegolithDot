@@ -81,6 +81,21 @@ for f in qml_files:
             bad.append(f"{f}: import \"{m.group(1)}\" does not exist")
 
 
+# An import alias shadows anything of the same name, attached properties
+# included. `import "keys/Keys.js" as Keys` next to `Keys.onPressed` resolves
+# to the file, not to QtQuick, and the element silently stops handling keys -
+# no error, no warning, it just never fires.
+RESERVED = {
+    "Keys", "Layout", "Component", "ListView", "GridView", "Drag", "Screen",
+    "Window", "KeyNavigation", "LayoutMirroring", "Accessible", "Positioner",
+    "Qt", "Behavior", "Binding", "Transition", "StackView", "SplitView",
+}
+for f in qml_files:
+    for m in re.finditer(r'^\s*import\s+"[^"]+"\s+as\s+(\w+)', f.read_text(), re.M):
+        if m.group(1) in RESERVED:
+            bad.append(f"{f}: import alias \"{m.group(1)}\" shadows a QtQuick "
+                       f"attached property of the same name")
+
 # Every panel the shell switches to must actually be instantiated, or clicking
 # its button opens nothing and says nothing.
 shell = (ROOT / "shell.qml").read_text()

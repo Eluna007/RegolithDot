@@ -210,6 +210,7 @@ function actionEntries() {
         { name: "Clipboard",       comment: "Clipboard history", kind: "action", panel: "clip" },
         { name: "System monitor",  comment: "CPU, memory, battery", kind: "action", panel: "sysmon" },
         { name: "Window overview", comment: "All open windows", kind: "action", panel: "overview" },
+        { name: "Keybinds",        comment: "Every shortcut",  kind: "action", panel: "keys" },
         { name: "Wi-Fi",           comment: "Networks",        kind: "action", panel: "net" },
         { name: "Bluetooth",       comment: "Devices",         kind: "action", panel: "bt" },
         { name: "Tailscale",       comment: "Mesh peers",      kind: "action", panel: "tailscale" },

@@ -479,6 +479,12 @@ ShellRoot {
                 onOpenPanel: p => scope.open(p)
             }
 
+            property var keysPanel: KeysPanel {
+                screen:  scope.modelData
+                visible: scope.activePanel === "keys"
+                onClose: scope.closeAll()
+            }
+
             property var tailscalePanel: TailscalePanel {
                 screen:  scope.modelData
                 shared:  sharedSys

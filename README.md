@@ -128,8 +128,9 @@ answered `Infinity`. A bare `5` is not treated as a sum — `=5` asks for it —
 so numbers in app names still reach the apps.
 
 It replaces two launchers. `SUPER+Space` ran wofi and the Arch logo ran
-`rofi -show combi`, which merged a custom script mode with drun; rofi stays
-only for the emoji and keybind pickers, which are genuinely different tools.
+`rofi -show combi`, which merged a custom script mode with drun. With the
+keybind cheatsheet moved into the shell too, rofi is left with the emoji
+picker — genuinely a different tool.
 
 `scripts/apps.sh` reads the `.desktop` files. It honours the things that make
 a launcher list wrong: `NoDisplay` and `Hidden` entries stay hidden, `%U` and
@@ -151,6 +152,29 @@ are scored at a quarter weight, so a long description never outranks an app
 whose name you typed. `scripts/test-launcher.js` asserts those orderings and
 that ties stay in alphabetical order — a list that reshuffles under the
 cursor is how you launch the wrong thing.
+
+## The keybind cheatsheet
+
+`ALT+/`, or "Keybinds" in the launcher. Search, then click a shortcut (or press
+Enter) to copy it.
+
+It asks `hyprctl binds -j` rather than reading `keybinds.lua`, and that is the
+part worth keeping from the rofi mode it replaces: binds are Lua function calls
+now, their arguments are tables, and a `for i = 1, 4` loop registers four binds
+that appear nowhere in the file as text. What the compositor reports is what is
+actually bound — `apollo-settings`' rebinds included.
+
+Rows are grouped by their modifier half (`Super`, `Super + Shift`, …), which is
+a fact about the bind rather than a guessed category, and is how people look a
+shortcut up. Inside a group the keys sort naturally: 1, 2, 10, not 1, 10, 2.
+
+`scripts/test-keys.js` covers the parts you cannot check by opening the panel
+once — you look a shortcut up precisely when you do not know it, so a wrong
+sheet reads exactly like a right one. It pins the modmask bitfield (CAPS is bit
+2 and NumLock bit 16; neither may be mistaken for Shift), the deduplication
+(hyprctl reports a bind per submap), the natural sort, and that `hyprctl`
+missing leaves an empty sheet that says so rather than a panel that fails to
+open.
 
 ## Tailscale
 
