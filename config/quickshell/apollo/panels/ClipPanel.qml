@@ -33,14 +33,26 @@ PanelWindow {
     ListModel { id: clipModel }
     property int copiedIdx: -1
 
+    // copyq, not cliphist. autostart.lua runs copyq and says cliphist is
+    // deliberately absent, so querying cliphist here showed an empty list
+    // forever beside a copyq that was catching everything.
+    //
+    // Absolute path under the shell's own config dir, so the script cannot
+    // drift from this file and nothing depends on PATH.
+    readonly property string clipScript:
+        (Quickshell.env("XDG_CONFIG_HOME") !== ""
+            ? Quickshell.env("XDG_CONFIG_HOME")
+            : Quickshell.env("HOME") + "/.config")
+        + "/quickshell/apollo/scripts/clipboard.sh"
+
     Process {
         id: clipProc
-        command: ["sh", "-c", "cliphist list 2>/dev/null | head -20"]
+        command: [root.clipScript, "--list"]
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: data => {
                 if (data.trim() !== "") {
-                    // cliphist format: "ID\tCONTENT"
+                    // "row<TAB>preview"
                     var tab = data.indexOf("\t")
                     var id = tab >= 0 ? data.substring(0, tab) : ""
                     var txt = tab >= 0 ? data.substring(tab + 1) : data
@@ -91,7 +103,7 @@ PanelWindow {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            Quickshell.execDetached(["cliphist", "wipe"])
+                            Quickshell.execDetached([root.clipScript, "--clear"])
                             clipModel.clear()
                         }
                     }
@@ -169,7 +181,7 @@ PanelWindow {
                             onClicked: {
                                 root.copiedIdx = parent.index
                                 var id = parent.model.clipId
-                                Quickshell.execDetached(["sh", "-c", "cliphist decode " + id + " | wl-copy"])
+                                Quickshell.execDetached([root.clipScript, "--use", String(id)])
                                 copiedTimer.restart()
                             }
                         }

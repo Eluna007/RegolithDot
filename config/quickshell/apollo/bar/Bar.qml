@@ -75,11 +75,6 @@ PanelWindow {
     readonly property var    sysStats:           shared.stats
 
     // ── Rofi via Hyprland dispatch (gets proper Wayland env) ─────────────
-    Process {
-        id: rofiProc
-        command: ["hyprctl", "dispatch", 'hl.dsp.exec_cmd("rofi -show combi")']
-    }
-
     // ── Window setup ─────────────────────────────────────────────────────
     // barPosition drives the anchoring: top = horizontal strip, left/right =
     // vertical side bar. Reserve height (top) or width (side) accordingly.
@@ -138,7 +133,7 @@ PanelWindow {
                         icon: String.fromCodePoint(0xf303)
                         iconColor: root.archLogo
                         iconSize: 20; barColors: root
-                        onClicked: rofiProc.running = true
+                        onClicked: root.openPanel("launcher")
                         Layout.alignment: Qt.AlignHCenter
                     }
                     Workspaces { vertical: true; chrome: false; barColors: root; Layout.alignment: Qt.AlignHCenter }
@@ -289,7 +284,7 @@ PanelWindow {
                     icon: String.fromCodePoint(0xf303)
                     iconColor: root.archLogo
                     iconSize: 20; barColors: root
-                    onClicked: rofiProc.running = true
+                    onClicked: root.openPanel("launcher")
                     Layout.alignment: Qt.AlignHCenter
                 }
                 Workspaces { vertical: true; barColors: root; Layout.alignment: Qt.AlignHCenter }
@@ -421,7 +416,7 @@ PanelWindow {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: rofiProc.running = true
+                    onClicked: root.openPanel("launcher")
                 }
             }
 
@@ -708,7 +703,7 @@ PanelWindow {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: rofiProc.running = true
+                    onClicked: root.openPanel("launcher")
                 }
             }
 

@@ -93,6 +93,38 @@ had no equivalent for.
 
 Nothing else in `lua/` imports these three, so they stay easy to swap.
 
+## The launcher
+
+A Spotlight-style app launcher: `SUPER+Space`, or the Arch logo in the bar.
+Type to filter, arrows to move, Enter to launch. The card is translucent and
+`rules.lua` already blurs the `quickshell` layer namespace, so the compositor
+does the glass rather than QML faking it.
+
+It replaces two launchers. `SUPER+Space` ran wofi and the Arch logo ran
+`rofi -show combi`, which merged a custom script mode with drun; rofi stays
+only for the emoji and keybind pickers, which are genuinely different tools.
+
+`scripts/apps.sh` reads the `.desktop` files. It honours the things that make
+a launcher list wrong: `NoDisplay` and `Hidden` entries stay hidden, `%U` and
+friends are stripped from `Exec` so they do not land on the command line, a
+`TryExec` naming an uninstalled binary drops the entry, `[Desktop Action]`
+groups do not overwrite the application's own `Name`, and the first directory
+in the XDG search order wins a duplicate. Icons are resolved by one indexed
+pass rather than a stat storm, and an app whose icon is missing gets a
+lettered tile instead of a broken-image box.
+
+Two hundred apps scan in about 30ms. It was 356ms before the icon lookup
+stopped spawning a process per app, and 175ms per *nine* apps before the
+parser stopped spawning a `sed` per field.
+
+Ranking lives in `launcher/Match.js`: exact name, then prefix, then word
+boundary, then initials (`vsc` finds Visual Studio Code), then substring, then
+a packed subsequence (`gimp` finds GNU Image Manipulation Program). Comments
+are scored at a quarter weight, so a long description never outranks an app
+whose name you typed. `scripts/test-launcher.js` asserts those orderings and
+that ties stay in alphabetical order — a list that reshuffles under the
+cursor is how you launch the wrong thing.
+
 ## Tailscale
 
 The mesh mark in the tray opens it. Connect and disconnect with the switch,
