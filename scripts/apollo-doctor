@@ -317,6 +317,9 @@ main() {
   # The bar's Tailscale widget hides itself when this is absent, so its absence
   # is informational rather than a fault.
   check_optional_cmd tailscale "tailscale (bar widget)"
+  # autostart runs copyq and the bar's clipboard panel reads it. Without it the
+  # panel is empty, which looks like an empty history rather than a missing tool.
+  check_cmd copyq "copyq (clipboard history)"
   check_service NetworkManager
   check_service bluetooth
   check_service keyd
