@@ -119,6 +119,7 @@ PanelWindow {
 
             // TOP — logo + workspaces
             Rectangle {
+                id: vTopIsland
                 anchors { top: parent.top; horizontalCenter: parent.horizontalCenter; topMargin: 8 }
                 width: 34; radius: width / 2
                 implicitHeight: vTopCol.implicitHeight + 14
@@ -138,7 +139,28 @@ PanelWindow {
                         onClicked: rofiProc.running = true
                         Layout.alignment: Qt.AlignHCenter
                     }
-                    Workspaces { vertical: true; barColors: root; Layout.alignment: Qt.AlignHCenter }
+                    Workspaces { vertical: true; chrome: false; barColors: root; Layout.alignment: Qt.AlignHCenter }
+                }
+            }
+
+            // TRAY — its own island under the workspaces, so running apps read
+            // as a separate group rather than more workspace dots. Absent
+            // entirely when nothing is in the tray, rather than an empty pill.
+            Rectangle {
+                anchors { top: vTopIsland.bottom; horizontalCenter: parent.horizontalCenter; topMargin: 8 }
+                width: 34; radius: width / 2
+                implicitHeight: vTrayItems.implicitHeight + 14
+                height: implicitHeight
+                visible: vTrayItems.populated
+                color: Qt.rgba(Config.mantle.r, Config.mantle.g, Config.mantle.b, Config.barOpacity)
+                border.width: 1
+                border.color: Qt.rgba(Config.text.r, Config.text.g, Config.text.b, 0.08)
+
+                Tray {
+                    id: vTrayItems
+                    anchors.centerIn: parent
+                    vertical: true
+                    barColors: root
                 }
             }
 
@@ -268,6 +290,19 @@ PanelWindow {
                     Layout.alignment: Qt.AlignHCenter
                 }
                 Workspaces { vertical: true; barColors: root; Layout.alignment: Qt.AlignHCenter }
+
+                Rectangle {
+                    visible: vcTrayItems.populated
+                    Layout.alignment: Qt.AlignHCenter
+                    implicitWidth: 18; implicitHeight: 1
+                    color: Qt.rgba(Config.text.r, Config.text.g, Config.text.b, 0.12)
+                }
+                Tray {
+                    id: vcTrayItems
+                    vertical: true
+                    barColors: root
+                    Layout.alignment: Qt.AlignHCenter
+                }
             }
 
             // CENTER — moon-clock (moon / HH / MM)
@@ -388,6 +423,7 @@ PanelWindow {
 
             Workspaces {
                 Layout.alignment: Qt.AlignVCenter
+                chrome: false          // already inside an Island
                 barColors: root
             }
 

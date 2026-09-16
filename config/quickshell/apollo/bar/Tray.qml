@@ -7,15 +7,33 @@ import QtQuick.Layouts
 import "../services"
 
 // System tray icons (StatusNotifierItem). Populates when apps that use a tray
-// are running (Discord, Steam, nm-applet, …). Click an icon → the app's menu
-// opens (Windows-style), styled to match; click away to dismiss.
-RowLayout {
+// are running (Zoom, Steam, Discord, nm-applet, …). Click an icon → the app's
+// menu opens (Windows-style), styled to match; click away to dismiss.
+//
+// A Grid rather than a RowLayout, so the side bar can stack the icons instead
+// of running them off the edge of a 34px-wide column.
+Item {
     id: root
-    spacing: 3
 
     required property var barColors
+    property bool vertical: false
 
-    Repeater {
+    // Whether there is anything to show, without asking SystemTray.items for a
+    // count - an empty Grid has no implicit size, and that needs no API this
+    // shell has not already used.
+    readonly property bool populated: trayGrid.implicitHeight > 0
+
+    implicitWidth: trayGrid.implicitWidth
+    implicitHeight: trayGrid.implicitHeight
+
+    Grid {
+      id: trayGrid
+      anchors.centerIn: parent
+      spacing: 3
+      // Grid wraps at `columns`; a single column stacks, a huge one never wraps.
+      columns: root.vertical ? 1 : 999
+
+      Repeater {
         model: SystemTray.items
 
         delegate: Item {
@@ -24,7 +42,6 @@ RowLayout {
 
             implicitWidth: 28
             implicitHeight: 28
-            Layout.alignment: Qt.AlignVCenter
 
             property double lastDismiss: 0
             property bool   grabActive:  false
@@ -129,5 +146,6 @@ RowLayout {
                 onCleared: entry.closeMenu()
             }
         }
+      }
     }
 }
