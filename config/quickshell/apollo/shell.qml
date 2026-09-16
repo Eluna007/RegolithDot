@@ -473,6 +473,10 @@ ShellRoot {
                 screen:  scope.modelData
                 visible: scope.activePanel === "launcher"
                 onClose: scope.closeAll()
+                // A launcher action that opens a panel hands the name back
+                // here. scope.open() switches activePanel, which closes the
+                // launcher on its own - so this must not also closeAll().
+                onOpenPanel: p => scope.open(p)
             }
 
             property var tailscalePanel: TailscalePanel {

@@ -95,10 +95,37 @@ Nothing else in `lua/` imports these three, so they stay easy to swap.
 
 ## The launcher
 
-A Spotlight-style app launcher: `SUPER+Space`, or the Arch logo in the bar.
-Type to filter, arrows to move, Enter to launch. The card is translucent and
+A Spotlight-style launcher: `SUPER+Space`, or the Arch logo in the bar. Type
+to filter, arrows to move, Enter to act. The card is translucent and
 `rules.lua` already blurs the `quickshell` layer namespace, so the compositor
 does the glass rather than QML faking it.
+
+One field searches four things, ranked together:
+
+| Type | Finds | Enter |
+|---|---|---|
+| an app name | installed applications | launches it |
+| a window title | what is open right now | focuses it, switching workspace |
+| a sum (`2+2`, `sqrt(16)`, `=5`) | the answer, pinned on top | copies it |
+| anything else | shell actions — lock, Wi-Fi, wallpaper, chess… | runs or opens it |
+
+`>` on its own lists the actions, the way a command palette does. With the
+field empty the open windows come first, so at rest it is a task switcher and
+the app list is one keystroke away.
+
+Windows come from `Hyprland.toplevels`, the same live list the overview uses,
+so a keystroke costs no process. Actions that open one of the shell's own
+panels hand the name back to `shell.qml` rather than shelling out to the IPC.
+Those names are data, not `openPanel()` calls, so `check-qml.py` cross-checks
+them against the panels `shell.qml` instantiates — a typo there would be
+silent: the row appears, you pick it, nothing happens.
+
+The calculator is a tokenizer and a recursive-descent parser, not `eval`.
+`scripts/test-launcher.js` pins the parts that look right and are wrong:
+`2 + 2 * 3` is 8, `2^3^2` is 512 and not 64, `0.1 + 0.2` reads `0.3` while
+`1/3` is not rounded to `0.33`, and division by zero is refused rather than
+answered `Infinity`. A bare `5` is not treated as a sum — `=5` asks for it —
+so numbers in app names still reach the apps.
 
 It replaces two launchers. `SUPER+Space` ran wofi and the Arch logo ran
 `rofi -show combi`, which merged a custom script mode with drun; rofi stays

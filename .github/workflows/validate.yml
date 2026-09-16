@@ -262,6 +262,7 @@ jobs:
           test -x config/quickshell/apollo/scripts/apps.sh
           test -f config/quickshell/apollo/panels/LauncherPanel.qml
           test -f config/quickshell/apollo/panels/launcher/Match.js
+          test -f config/quickshell/apollo/panels/launcher/Commands.js
           test -f config/quickshell/apollo/panels/ApollokuPanel.qml
           for j in Sudoku Model; do test -f "config/quickshell/apollo/panels/apolloku/$j.js"; done
           test -f config/quickshell/apollo/panels/ChessPanel.qml

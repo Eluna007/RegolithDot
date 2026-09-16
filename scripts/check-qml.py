@@ -92,7 +92,15 @@ wired |= {"launcher", "overview"}
 for name in sorted(opened - wired):
     bad.append(f"Bar.qml opens panel \"{name}\" but shell.qml never instantiates it")
 
+# The launcher's actions name panels as data rather than as openPanel() calls,
+# so the check above cannot see them. A typo there is silent: the row is
+# offered, you pick it, and nothing happens.
+commands = (ROOT / "panels" / "launcher" / "Commands.js").read_text()
+named = set(re.findall(r'panel:\s*"(\w+)"', commands))
+for name in sorted(named - wired):
+    bad.append(f"Commands.js offers panel \"{name}\" but shell.qml never instantiates it")
+
 if bad:
     print("\n".join(bad)); sys.exit(1)
 print(f"ok - {len(qml_files)} QML files: balanced, imports resolve, "
-      f"{len(opened)} bar panels all wired")
+      f"{len(opened)} bar panels and {len(named)} launcher actions all wired")
