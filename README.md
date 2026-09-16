@@ -356,6 +356,44 @@ Requires `hyprpaper`, `matugen`, and (for animated wallpapers) `mpvpaper` and
 
 ---
 
+## Colors follow the palette
+
+One palette, fanned out. `apollo-settings` › Theme is where it is decided:
+
+- **Flavor** picks a whole Catppuccin palette — the neutral ramp (`base`…`text`)
+  *and* the accent family (`red`, `green`, `blue`, …).
+- **Accent** is your own highlight on top of it, independent of the flavor.
+- **Dynamic colors** (needs `wallust`) derives both from the current wallpaper.
+  *Accent only* touches the highlight; *Full palette* also re-tints the neutral
+  surfaces, keeping each slot's lightness so text stays readable. It never
+  touches the accent family: a terminal whose red, green and yellow are all one
+  wallpaper hue cannot show a diff.
+
+Every write of `config.json` fans that palette out (`apollo-settings/apps.go`):
+
+| Surface | File | Picks it up |
+|---|---|---|
+| The shell | `~/.config/apollo/config.json` | live, `Config.qml` watches it |
+| kitty | `kitty/apollo-colors.conf` | `ctrl+shift+f5`, or the next window |
+| Thunar / GTK | `gtk-{3,4}.0/apollo-colors.css` | next app start |
+| rofi | `rofi/themes/apollo-colors.rasi` | next launch |
+
+Each generated file is `include`d or `@import`ed by the real config, and each
+one is **checked in** — so a fresh clone is fully themed before `apollo-settings`
+has ever run, and your palette shows up as a tracked change, which is the point.
+
+The lock screen is the exception: it sits *on* the wallpaper, so it takes its
+colors straight from it via matugen (see [The lock screen](#the-lock-screen)),
+regardless of the flavor.
+
+`scripts/check-palettes.py` fails the build if the three tables that spell the
+palette out — `Config.qml`'s `_flavors`, `palette.go`'s `flavorRamps` and
+`apps.go`'s `flavorAccents` — ever disagree, or if a GTK stylesheet uses a color
+name nothing defines. GTK does not report an undefined color; the widget just
+draws wrong.
+
+---
+
 ## Not included
 
 Deliberately left out of this repo:

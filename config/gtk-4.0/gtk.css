@@ -1,12 +1,7 @@
-@define-color moon_bg rgba(17, 24, 32, 0.14);
-@define-color moon_panel rgba(23, 33, 44, 0.24);
-@define-color moon_panel_alt rgba(28, 39, 52, 0.22);
-@define-color moon_line rgba(137, 220, 235, 0.26);
-@define-color moon_text #cdd6f4;
-@define-color moon_muted #7f849c;
-@define-color moon_green #a6e3a1;
-@define-color moon_cyan #89dceb;
-@define-color moon_mauve #cba6f7;
+/* The moon_* names below are generated from the Apollo palette by
+   apollo-settings; the import is resolved against this file's directory.
+   Checked in, so a fresh clone is themed before it has ever run. */
+@import url("apollo-colors.css");
 
 filechooser,
 filechooser box,

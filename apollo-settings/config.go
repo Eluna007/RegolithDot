@@ -189,5 +189,15 @@ func saveConfig(c Config) error {
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(p, data, 0o644)
+	if err := os.WriteFile(p, data, 0o644); err != nil {
+		return err
+	}
+
+	// Fan the palette out to the apps that draw beside the shell (see apps.go).
+	// This hangs off the write rather than off an Apply button because the
+	// Theme tab's controls each call saveConfig directly and let the shell
+	// notice config.json change — so anything else would be one control away
+	// from being forgotten. config.json is already on disk by here: a failure
+	// to write kitty's colours is reported, but never costs you the save.
+	return applyApps(c)
 }
