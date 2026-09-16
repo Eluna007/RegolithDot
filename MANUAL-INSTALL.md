@@ -262,7 +262,7 @@ and Hyprland falls back to a handful of emergency binds.
 | SDDM | Catppuccin login screen with your wallpaper |
 | Hyprland | Rotating gradient borders, frosted blur, workspaces sliding |
 | Quickshell | Top bar: workspaces, stats, tray, clock |
-| Keybinds | `SUPER+Space` rofi, `SUPER+,` settings, `SUPER+B` wallpaper, `SUPER+Q` kitty |
+| Keybinds | `SUPER+Space` launcher, `SUPER+,` settings, `SUPER+B` wallpaper, `SUPER+Q` kitty |
 | Panels | Clock → calendar, gear → quick settings, power → power menu |
 | Cheatsheet | `ALT+/` lists live binds (needs `jq`) |
 | Hyprlock | Idle lock — wallpaper with frosted glass |

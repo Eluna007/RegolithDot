@@ -95,14 +95,42 @@ Nothing else in `lua/` imports these three, so they stay easy to swap.
 
 ## The launcher
 
-A Spotlight-style app launcher: `SUPER+Space`, or the Arch logo in the bar.
-Type to filter, arrows to move, Enter to launch. The card is translucent and
+A Spotlight-style launcher: `SUPER+Space`, or the Arch logo in the bar. Type
+to filter, arrows to move, Enter to act. The card is translucent and
 `rules.lua` already blurs the `quickshell` layer namespace, so the compositor
 does the glass rather than QML faking it.
 
+One field searches four things, ranked together:
+
+| Type | Finds | Enter |
+|---|---|---|
+| an app name | installed applications | launches it |
+| a window title | what is open right now | focuses it, switching workspace |
+| a sum (`2+2`, `sqrt(16)`, `=5`) | the answer, pinned on top | copies it |
+| anything else | shell actions — lock, Wi-Fi, wallpaper, chess… | runs or opens it |
+
+`>` on its own lists the actions, the way a command palette does. With the
+field empty the open windows come first, so at rest it is a task switcher and
+the app list is one keystroke away.
+
+Windows come from `Hyprland.toplevels`, the same live list the overview uses,
+so a keystroke costs no process. Actions that open one of the shell's own
+panels hand the name back to `shell.qml` rather than shelling out to the IPC.
+Those names are data, not `openPanel()` calls, so `check-qml.py` cross-checks
+them against the panels `shell.qml` instantiates — a typo there would be
+silent: the row appears, you pick it, nothing happens.
+
+The calculator is a tokenizer and a recursive-descent parser, not `eval`.
+`scripts/test-launcher.js` pins the parts that look right and are wrong:
+`2 + 2 * 3` is 8, `2^3^2` is 512 and not 64, `0.1 + 0.2` reads `0.3` while
+`1/3` is not rounded to `0.33`, and division by zero is refused rather than
+answered `Infinity`. A bare `5` is not treated as a sum — `=5` asks for it —
+so numbers in app names still reach the apps.
+
 It replaces two launchers. `SUPER+Space` ran wofi and the Arch logo ran
-`rofi -show combi`, which merged a custom script mode with drun; rofi stays
-only for the emoji and keybind pickers, which are genuinely different tools.
+`rofi -show combi`, which merged a custom script mode with drun. With the
+keybind cheatsheet moved into the shell too, rofi is left with the emoji
+picker — genuinely a different tool.
 
 `scripts/apps.sh` reads the `.desktop` files. It honours the things that make
 a launcher list wrong: `NoDisplay` and `Hidden` entries stay hidden, `%U` and
@@ -124,6 +152,42 @@ are scored at a quarter weight, so a long description never outranks an app
 whose name you typed. `scripts/test-launcher.js` asserts those orderings and
 that ties stay in alphabetical order — a list that reshuffles under the
 cursor is how you launch the wrong thing.
+
+## The desktop layer
+
+A clock and the date, drawn on the wallpaper beneath every window
+(`panels/Desktop.qml`). On a tiling compositor that means you see it on an
+empty workspace and nowhere else, which is when a screen has nothing else to
+say. Apollo Settings › Bar › Desktop turns it off.
+
+It sits on `WlrLayer.Bottom` — above the wallpaper, below windows — and its
+input region is empty (`mask: Region {}`), so every click goes through to
+whatever is behind it. Its layer namespace is deliberately **not**
+`quickshell`: `rules.lua` blurs `^(quickshell)$`, and blurring a surface that
+sits directly on the wallpaper would blur the wallpaper through it.
+
+## The keybind cheatsheet
+
+`ALT+/`, or "Keybinds" in the launcher. Search, then click a shortcut (or press
+Enter) to copy it.
+
+It asks `hyprctl binds -j` rather than reading `keybinds.lua`, and that is the
+part worth keeping from the rofi mode it replaces: binds are Lua function calls
+now, their arguments are tables, and a `for i = 1, 4` loop registers four binds
+that appear nowhere in the file as text. What the compositor reports is what is
+actually bound — `apollo-settings`' rebinds included.
+
+Rows are grouped by their modifier half (`Super`, `Super + Shift`, …), which is
+a fact about the bind rather than a guessed category, and is how people look a
+shortcut up. Inside a group the keys sort naturally: 1, 2, 10, not 1, 10, 2.
+
+`scripts/test-keys.js` covers the parts you cannot check by opening the panel
+once — you look a shortcut up precisely when you do not know it, so a wrong
+sheet reads exactly like a right one. It pins the modmask bitfield (CAPS is bit
+2 and NumLock bit 16; neither may be mistaken for Shift), the deduplication
+(hyprctl reports a bind per submap), the natural sort, and that `hyprctl`
+missing leaves an empty sheet that says so rather than a panel that fails to
+open.
 
 ## Tailscale
 
@@ -335,18 +399,62 @@ piece of it:
    about what's set. It uses `hyprpaper` for
    stills, `mpvpaper` for gifs and video (hyprpaper can only show one frame of
    a gif) — then runs `matugen` over it.
-2. matugen writes `~/.config/quickshell/colors.json`. That is the *parent* of
-   `~/.config/quickshell/apollo`, not inside it, so clearing out a previous
-   shell can delete it by accident.
-3. matugen's second template writes `~/.config/hyprlock/colors.conf`, and
-   `hyprlock-wallpaper.sh` writes `wallpaper.conf` beside it, in the same
-   `wallpaper-switch.sh` run so the two can never disagree.
+2. matugen renders `~/.config/hyprlock/colors.conf` (hyprlang `$variables` the
+   layouts reference) and `colors.sh` (the same palette in a form the scripts
+   that emit pango markup themselves can source).
+3. `hyprlock-wallpaper.sh` writes `wallpaper.conf` beside them, in the same
+   `wallpaper-switch.sh` run, so the palette and the image can never disagree.
 
 Break any link and the lock screen loses its palette. `apollo-doctor` checks
-for all of it.
+for all of it, and `scripts/check-matugen-templates.py` checks the inputs:
+`config/matugen` is symlinked whole into `~/.config`, so a `[templates.*]`
+block naming a file that is not in this repo makes matugen fail on every
+wallpaper change.
+
+The lock screen is matugen's only consumer. **The shell does not read this
+palette** — it takes its colors from `~/.config/apollo/config.json`, which
+`apollo-settings` writes (see "Colors follow the palette" below).
 
 Requires `hyprpaper`, `matugen`, and (for animated wallpapers) `mpvpaper` and
 `ffmpeg`.
+
+---
+
+## Colors follow the palette
+
+One palette, fanned out. `apollo-settings` › Theme is where it is decided:
+
+- **Flavor** picks a whole Catppuccin palette — the neutral ramp (`base`…`text`)
+  *and* the accent family (`red`, `green`, `blue`, …).
+- **Accent** is your own highlight on top of it, independent of the flavor.
+- **Dynamic colors** (needs `wallust`) derives both from the current wallpaper.
+  *Accent only* touches the highlight; *Full palette* also re-tints the neutral
+  surfaces, keeping each slot's lightness so text stays readable. It never
+  touches the accent family: a terminal whose red, green and yellow are all one
+  wallpaper hue cannot show a diff.
+
+Every write of `config.json` fans that palette out (`apollo-settings/apps.go`):
+
+| Surface | File | Picks it up |
+|---|---|---|
+| The shell | `~/.config/apollo/config.json` | live, `Config.qml` watches it |
+| kitty | `kitty/apollo-colors.conf` | `ctrl+shift+f5`, or the next window |
+| Thunar / GTK | `gtk-{3,4}.0/apollo-colors.css` | next app start |
+| rofi | `rofi/themes/apollo-colors.rasi` | next launch |
+
+Each generated file is `include`d or `@import`ed by the real config, and each
+one is **checked in** — so a fresh clone is fully themed before `apollo-settings`
+has ever run, and your palette shows up as a tracked change, which is the point.
+
+The lock screen is the exception: it sits *on* the wallpaper, so it takes its
+colors straight from it via matugen (see [The lock screen](#the-lock-screen)),
+regardless of the flavor.
+
+`scripts/check-palettes.py` fails the build if the three tables that spell the
+palette out — `Config.qml`'s `_flavors`, `palette.go`'s `flavorRamps` and
+`apps.go`'s `flavorAccents` — ever disagree, or if a GTK stylesheet uses a color
+name nothing defines. GTK does not report an undefined color; the widget just
+draws wrong.
 
 ---
 

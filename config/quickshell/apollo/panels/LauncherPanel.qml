@@ -1,17 +1,23 @@
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "../services"
 import "launcher/Match.js" as Match
+import "launcher/Commands.js" as Commands
 
-// Spotlight-style app launcher: a floating glass card, type to filter, Enter
-// to launch.
+// Spotlight-style launcher: a floating glass card, type to filter, Enter to
+// act. It searches installed applications, the windows that are open right
+// now, a calculator, and the things the shell can do itself - one list, one
+// ranking. Typing ">" on its own lists the actions, the way a command palette
+// does.
 //
-// Matching and ranking live in launcher/Match.js and are covered by
-// scripts/test-launcher.js; the app list comes from scripts/apps.sh, covered
+// Matching and ranking live in launcher/Match.js, and everything that is not
+// an installed application in launcher/Commands.js; both are covered by
+// scripts/test-launcher.js. The app list comes from scripts/apps.sh, covered
 // by scripts/test-apps.sh. This file is presentation and input.
 //
 // The card is translucent rather than blurred in QML: rules.lua already blurs
@@ -20,6 +26,10 @@ import "launcher/Match.js" as Match
 PanelWindow {
     id: root
     signal close()
+    // Panel actions hand back to shell.qml, which owns which panel is open.
+    // The launcher does not close itself afterwards: opening another panel
+    // already makes `activePanel === "launcher"` false.
+    signal openPanel(string name)
 
     // Full-screen: the launcher owns the screen while it is up, which is what
     // makes click-anywhere-to-dismiss and keyboard capture work.
@@ -41,7 +51,15 @@ PanelWindow {
     property string query: ""
     property int selected: 0
 
-    readonly property var results: Match.filter(query, apps)
+    // Windows come from the same live list WindowOverview.qml uses, so a
+    // keystroke costs no process. A calculation is pinned above the ranking
+    // rather than scored into it - when a sum parses, it is what you meant.
+    readonly property var results: {
+        var ranked = Match.filter(Commands.searchTerm(query),
+                                  Commands.sources(query, apps, Hyprland.toplevels.values))
+        var sum = Commands.calc(query)
+        return sum ? [sum].concat(ranked) : ranked
+    }
 
     readonly property string appsScript:
         (Quickshell.env("XDG_CONFIG_HOME") !== ""
@@ -79,9 +97,29 @@ PanelWindow {
 
     function launch(entry) {
         if (!entry) return
-        // The Exec line is a command line, so it goes through a shell. It comes
-        // from the .desktop file, which is the same trust level as the binary
-        // it names.
+
+        if (entry.kind === "calc") {
+            // Argv, not a shell string: the result is a number, but it reaches
+            // wl-copy without a shell either way.
+            Quickshell.execDetached(["wl-copy", "--", entry.value])
+            root.close()
+            return
+        }
+        if (entry.kind === "window") {
+            // Toplevel.activate() only requests surface activation and does not
+            // reliably bring the workspace with it - see WindowOverview.qml.
+            Hypr.focusWindow(entry.address)
+            root.close()
+            return
+        }
+        if (entry.kind === "action" && entry.panel) {
+            root.openPanel(entry.panel)
+            return
+        }
+
+        // Applications, and the actions that are a command. The Exec line is a
+        // command line, so it goes through a shell. It comes from the .desktop
+        // file, which is the same trust level as the binary it names.
         Quickshell.execDetached(["sh", "-c", entry.exec])
         root.close()
     }
@@ -159,7 +197,7 @@ PanelWindow {
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         visible: input.text === ""
-                        text: "Search applications"
+                        text: "Search apps, windows, actions — or do a sum"
                         color: root.overlay0
                         font { pixelSize: 21; family: root.nfFont }
                     }
@@ -240,7 +278,8 @@ PanelWindow {
                                 color: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.22)
                                 Text {
                                     anchors.centerIn: parent
-                                    text: Match.initial(modelData.name)
+                                    text: modelData.kind === "calc"
+                                          ? "=" : Match.initial(modelData.name)
                                     color: root.accent
                                     font { pixelSize: 16; bold: true; family: root.nfFont }
                                 }
@@ -297,7 +336,7 @@ PanelWindow {
                 Text {
                     anchors.centerIn: parent
                     textFormat: Text.PlainText
-                    text: "No application matches “" + root.query + "”"
+                    text: "Nothing matches “" + root.query + "”"
                     color: root.overlay0
                     font { pixelSize: 12; family: root.nfFont }
                 }

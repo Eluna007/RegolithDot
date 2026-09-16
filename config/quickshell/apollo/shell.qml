@@ -371,6 +371,16 @@ ShellRoot {
                 enabled: sys.caffeine
             }
 
+            // ── Desktop layer ────────────────────────────────────────────
+            // Sits on WlrLayer.Bottom, so it is above the wallpaper and below
+            // every window: on a tiling compositor it only shows on an empty
+            // workspace. Takes no input at all (see panels/Desktop.qml).
+            // Desktop.qml owns its own `visible` — shell.qml does not import
+            // "services", so Config is not in scope here.
+            property var desktop: Desktop {
+                screen: scope.modelData
+            }
+
             // ── Click-outside catcher ────────────────────────────────────
             property var catcher: PanelWindow {
                 screen: scope.modelData
@@ -472,6 +482,16 @@ ShellRoot {
             property var launcherPanel: LauncherPanel {
                 screen:  scope.modelData
                 visible: scope.activePanel === "launcher"
+                onClose: scope.closeAll()
+                // A launcher action that opens a panel hands the name back
+                // here. scope.open() switches activePanel, which closes the
+                // launcher on its own - so this must not also closeAll().
+                onOpenPanel: p => scope.open(p)
+            }
+
+            property var keysPanel: KeysPanel {
+                screen:  scope.modelData
+                visible: scope.activePanel === "keys"
                 onClose: scope.closeAll()
             }
 

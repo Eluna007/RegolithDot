@@ -67,20 +67,20 @@ hl.bind(mainMod .. " + SHIFT + SPACE", function()
     end
 end, { description = "Toggle dwindle/master layout" })
 
--- Rofi extras. The launcher stays wofi (see lua/config.lua); rofi is here
--- only for these two modes. The cheatsheet reads `hyprctl binds -j`, so it
--- lists what is actually registered — including the ten workspace binds this
--- file generates in a loop, which no config-file parser would ever see.
--- Needs `rofi` and `jq`.
+-- The emoji picker is the last rofi mode. The launcher and the keybind
+-- cheatsheet both moved into the shell; an emoji grid is genuinely a different
+-- tool, so rofi stays for this one. Needs `rofi`.
 hl.bind("ALT + period", hl.dsp.exec_cmd(
     [[rofi -show emoji -modes "emoji:$HOME/.config/rofi/scripts/emoji.sh" ]] ..
     [[-theme $HOME/.config/rofi/themes/emoji.rasi]]
 ), { description = "Emoji picker" })
 
-hl.bind("ALT + slash", hl.dsp.exec_cmd(
-    [[rofi -show keybinds -modes "keybinds:$HOME/.config/rofi/scripts/keybinds.sh" ]] ..
-    [[-theme $HOME/.config/rofi/themes/keybinds.rasi]]
-), { description = "Keybind cheatsheet" })
+-- The cheatsheet still reads `hyprctl binds -j`, so it lists what is actually
+-- registered — including the ten workspace binds this file generates in a
+-- loop, which no config-file parser would ever see. It just draws in the shell
+-- now, with the rest of the panels.
+hl.bind("ALT + slash", hl.dsp.exec_cmd("qs -c apollo ipc call panel toggle keys"),
+    { description = "Keybind cheatsheet" })
 
 -- Media keys (volume/mute) — routed through osd-report.sh so the shell's
 -- OSD pops up for any trigger, not just clicking the bar icon.

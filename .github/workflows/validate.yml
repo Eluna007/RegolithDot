@@ -27,7 +27,6 @@ jobs:
         run: |
           bash -n config/rofi/scripts/launcher.sh
           bash -n config/rofi/scripts/emoji.sh
-          bash -n config/rofi/scripts/keybinds.sh
           bash -n config/ranger/scope.sh
           bash -n scripts/apollo-doctor
           bash -n local/bin/apollo-lock-layout
@@ -47,7 +46,6 @@ jobs:
         run: |
           shellcheck config/rofi/scripts/launcher.sh
           shellcheck config/rofi/scripts/emoji.sh
-          shellcheck config/rofi/scripts/keybinds.sh
           shellcheck -e SC2034,SC2317 config/ranger/scope.sh
           shellcheck scripts/apollo-doctor
           shellcheck local/bin/apollo-lock-layout
@@ -96,6 +94,21 @@ jobs:
               re.findall(r'mainMod \.\. " \+ (\S+?)".*?description = "([^"]+)"', lua))
           assert bound, "no described binds parsed from keybinds.lua"
 
+          # The COMBO is only half of it. A curated bind also carries the
+          # dispatcher apollo-settings emits when you rebind it, and that is
+          # what broke once already: the launcher moved into the shell, and
+          # config.go still said `wofi --show drun` — so rebinding SUPER+Space
+          # in the settings app would have resurrected wofi. Where keybinds.lua
+          # spends an `env.NAME`, resolve M.NAME from config.lua and require
+          # config.go to name the same command.
+          dispatchers = dict(re.findall(
+              r'"(\w+)":\s*\{Label:[^}]*?Dispatcher:\s*`([^`]+)`', block))
+          cfg = pathlib.Path("config/hypr/lua/config.lua").read_text()
+          env_of = dict(
+              (m[1], m[0]) for m in
+              re.findall(r'hl\.dsp\.exec_cmd\(env\.(\w+)\).*?description = "([^"]+)"', lua))
+          label_of = dict((label, name) for name, label, _ in curated)
+
           bad = []
           for name, label, combo in curated:
               mods, _, key = combo.partition(",")
@@ -106,10 +119,49 @@ jobs:
                   bad.append(
                       f"{name}: config.go Default is SUPER+{key}, but {label!r} "
                       f"is bound to SUPER+{bound[label]} in keybinds.lua")
+
+          checked = 0
+          for label, var in env_of.items():
+              name = label_of.get(label)
+              if name is None:
+                  continue
+              m = re.search(r'^M\.%s\s*=\s*"([^"]*)"' % var, cfg, re.M)
+              if not m:
+                  bad.append(f"{name}: keybinds.lua uses env.{var}, which config.lua does not define")
+                  continue
+              want = 'hl.dsp.exec_cmd("%s")' % m.group(1)
+              got = dispatchers.get(name, "")
+              if got != want:
+                  bad.append(
+                      f"{name}: config.go Dispatcher is {got!r}, but keybinds.lua runs "
+                      f"env.{var}, which config.lua defines as {m.group(1)!r}")
+              checked += 1
+
           if bad:
               print("\n".join(bad)); sys.exit(1)
-          print(f"ok - {len(curated)} curated keybind defaults match keybinds.lua")
+          print(f"ok - {len(curated)} curated keybind defaults match keybinds.lua "
+                f"({checked} dispatchers cross-checked against config.lua)")
           PY
+
+      # config.json has two ends, and saveConfig marshals a struct: a key the
+      # shell reads but config.go has no field for is dropped on the next save,
+      # silently and not by the control that was touched. chessUsername, which
+      # the README tells you to add by hand, was exactly that.
+      - name: Check config.json keys round-trip
+        run: python3 scripts/check-config-keys.py
+
+      # The palette is declared in Config.qml, palette.go and apps.go. Drift is
+      # silent: the bar renders one Mocha and the terminal another, or a flavor
+      # the shell knows about produces empty colours in kitty's generated file.
+      - name: Check palette tables agree
+        run: python3 scripts/check-palettes.py
+
+      # config/matugen is symlinked whole into ~/.config, so a template
+      # input_path resolves back into this tree. A block naming a file that was
+      # never committed makes matugen fail on every wallpaper change - which is
+      # what [templates.quickshell] did, silently, for as long as it existed.
+      - name: Check matugen templates resolve
+        run: python3 scripts/check-matugen-templates.py
 
       # An undefined $variable is not an error to hyprlock - it renders as
       # nothing, i.e. black text on a black card, with no diagnostic. Since the
@@ -170,6 +222,13 @@ jobs:
       # are asserted rather than eyeballed.
       - name: Test launcher matching
         run: node scripts/test-launcher.js
+
+      # A cheatsheet that is wrong is worse than none: you look a shortcut up
+      # precisely when you do not know it, so you cannot tell. The modmask is a
+      # bitfield, hyprctl repeats a bind per submap, and a sheet listing
+      # workspaces 1, 10, 2, 3 looks broken.
+      - name: Test keybind cheatsheet
+        run: node scripts/test-keys.js
 
       # A QML error is not contained: an unresolved import or a stray brace
       # stops the whole shell loading, so the bar, every panel and the
@@ -233,6 +292,9 @@ jobs:
           test -f config/hypr/hyprland.lua
           test -f config/rofi/config.rasi
           test -f config/rofi/themes/apollo-colors.rasi
+          test -f config/kitty/apollo-colors.conf
+          test -f config/gtk-3.0/apollo-colors.css
+          test -f config/gtk-4.0/apollo-colors.css
           test -f config/hypr/hyprlock.conf
           test -f config/hyprlock/assets.conf
           test -f config/hyprlock/assets/no-art.png
@@ -246,6 +308,10 @@ jobs:
           test -x config/quickshell/apollo/scripts/apps.sh
           test -f config/quickshell/apollo/panels/LauncherPanel.qml
           test -f config/quickshell/apollo/panels/launcher/Match.js
+          test -f config/quickshell/apollo/panels/launcher/Commands.js
+          test -f config/quickshell/apollo/panels/KeysPanel.qml
+          test -f config/quickshell/apollo/panels/keys/Keys.js
+          test -f config/quickshell/apollo/panels/Desktop.qml
           test -f config/quickshell/apollo/panels/ApollokuPanel.qml
           for j in Sudoku Model; do test -f "config/quickshell/apollo/panels/apolloku/$j.js"; done
           test -f config/quickshell/apollo/panels/ChessPanel.qml

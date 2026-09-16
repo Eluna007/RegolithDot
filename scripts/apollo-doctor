@@ -338,9 +338,20 @@ main() {
   check_aur_helper
   check_wallpapers
   check_file "$HOME/.config/quickshell/apollo/shell.qml" "live quickshell config"
-  # matugen writes this next to the shell dir, and the hyprlock template
-  # reads it. It is easy to delete by accident when swapping shells.
-  check_file "$HOME/.config/quickshell/colors.json" "matugen colors.json (lock screen accent)"
+  # The two files matugen renders from the wallpaper, and the path
+  # hyprlock-wallpaper.sh writes beside them. All three are regenerated in one
+  # wallpaper-switch.sh run, so a missing one means that run failed: the lock
+  # screen then either loses its palette or falls back to a screenshot.
+  #
+  # These are absent on a fresh clone until the first wallpaper change, which
+  # is why they warn rather than fail.
+  for f in colors.conf colors.sh wallpaper.conf; do
+    if [[ -f "$HOME/.config/hyprlock/$f" ]]; then
+      ok "hyprlock/$f generated"
+    else
+      warn "hyprlock/$f missing — switch a wallpaper (SUPER+W) to generate it"
+    fi
+  done
   for s in osd-report restore-wallpaper wallpaper-switch hyprlock-wallpaper; do
     if [[ -x "$HOME/.local/bin/$s.sh" ]]; then ok "$s.sh installed"; else fail "$s.sh missing from ~/.local/bin"; fi
   done

@@ -462,6 +462,8 @@ func barTab(cfg *Config, w fyne.Window) fyne.CanvasObject {
 	tmp := widget.NewCheck("Temperature warning", func(b bool) { cfg.ShowTemp = b; save() })
 	bat := widget.NewCheck("Battery", func(b bool) { cfg.ShowBattery = b; save() })
 	rec := widget.NewCheck("Recording indicator", func(b bool) { cfg.ShowRecording = b; save() })
+	net := widget.NewCheck("Network name", func(b bool) { cfg.ShowNetworkName = b; save() })
+	desk := widget.NewCheck("Clock on the wallpaper", func(b bool) { cfg.ShowDesktop = b; save() })
 
 	sync := func() {
 		if cfg.BarStyle == "classic" {
@@ -477,6 +479,8 @@ func barTab(cfg *Config, w fyne.Window) fyne.CanvasObject {
 		tmp.SetChecked(cfg.ShowTemp)
 		bat.SetChecked(cfg.ShowBattery)
 		rec.SetChecked(cfg.ShowRecording)
+		net.SetChecked(cfg.ShowNetworkName)
+		desk.SetChecked(cfg.ShowDesktop)
 	}
 	sync()
 
@@ -489,7 +493,12 @@ func barTab(cfg *Config, w fyne.Window) fyne.CanvasObject {
 		clock,
 	))
 	widgetsCard := widget.NewCard("Widgets", "Show or hide bar items",
-		container.NewVBox(upd, tmp, bat, rec))
+		container.NewVBox(upd, tmp, bat, rec, net))
+	// Not a bar item: it draws under the windows, so it is only ever visible
+	// on an empty workspace. It lives here because it is the same kind of
+	// decision - which pieces of the shell you want on screen.
+	desktopCard := widget.NewCard("Desktop", "Drawn on the wallpaper, beneath every window",
+		container.NewVBox(desk))
 
 	reset := resetButton(func() {
 		d := defaultConfig()
@@ -501,11 +510,13 @@ func barTab(cfg *Config, w fyne.Window) fyne.CanvasObject {
 		cfg.ShowTemp = d.ShowTemp
 		cfg.ShowBattery = d.ShowBattery
 		cfg.ShowRecording = d.ShowRecording
+		cfg.ShowNetworkName = d.ShowNetworkName
+		cfg.ShowDesktop = d.ShowDesktop
 		sync()
 		save()
 	})
 
-	body := container.NewVBox(lookCard, widgetsCard, hintText("Bar changes apply instantly."))
+	body := container.NewVBox(lookCard, widgetsCard, desktopCard, hintText("Bar changes apply instantly."))
 	return container.NewBorder(nil, footer(reset), nil, nil, container.NewPadded(body))
 }
 

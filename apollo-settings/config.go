@@ -43,26 +43,34 @@ type Keybind struct {
 // live; `hyprland` and `keybinds` are rendered into ~/.config/hypr/lua/generated.lua
 // only when the user hits Apply.
 type Config struct {
-	Accent         string  `json:"accent"`
-	ArchLogoColor  string  `json:"archLogoColor"` // bar's Arch logo — independent of accent
-	Flavor         string  `json:"flavor"`        // mocha | macchiato | frappe | latte
-	BarStyle       string  `json:"barStyle"`      // "islands" | "classic"
-	BarPosition    string  `json:"barPosition"`   // "top" | "left" | "right"
-	BarOpacity     float64 `json:"barOpacity"`
-	Clock24h       bool    `json:"clock24h"`
-	ShowUpdates    bool    `json:"showUpdates"`
-	ShowTemp       bool    `json:"showTemp"`
-	ShowBattery    bool    `json:"showBattery"`
-	ShowRecording  bool    `json:"showRecording"`
-	ToastDuration  int     `json:"toastDuration"`  // ms, 1000-10000
-	MaxToasts      int     `json:"maxToasts"`      // 1-10
-	ToastPosition  string  `json:"toastPosition"`  // "auto" | "top-right" | ...
-	WallpaperDir   string  `json:"wallpaperDir"`   // path, default ~/Pictures/Wallpapers
-	PowerProfile   string  `json:"powerProfile"`   // powersave | schedutil | performance
-	PowerPersist   bool    `json:"powerPersist"`   // enable systemd service for reboot survival
-	WallustEnabled bool    `json:"wallustEnabled"` // auto-generate colors from wallpaper
-	WallustMode    string  `json:"wallustMode"`    // "accent" (accent only) | "full" (accent + tinted palette)
-	RofiAccent     string  `json:"rofiAccent"`     // rofi prompt icon + selected-item border
+	Accent          string  `json:"accent"`
+	ArchLogoColor   string  `json:"archLogoColor"` // bar's Arch logo — independent of accent
+	Flavor          string  `json:"flavor"`        // mocha | macchiato | frappe | latte
+	BarStyle        string  `json:"barStyle"`      // "islands" | "classic"
+	BarPosition     string  `json:"barPosition"`   // "top" | "left" | "right"
+	BarOpacity      float64 `json:"barOpacity"`
+	Clock24h        bool    `json:"clock24h"`
+	ShowUpdates     bool    `json:"showUpdates"`
+	ShowTemp        bool    `json:"showTemp"`
+	ShowBattery     bool    `json:"showBattery"`
+	ShowRecording   bool    `json:"showRecording"`
+	ShowDesktop     bool    `json:"showDesktop"`     // clock on the wallpaper, under the windows
+	ShowNetworkName bool    `json:"showNetworkName"` // SSID next to the wifi icon
+
+	// Set by hand (README, "Chess"), not by this app — but it has to exist
+	// here all the same. saveConfig marshals this struct, so a key with no
+	// field is dropped on the next save: set a chess handle, change any
+	// setting, lose the handle.
+	ChessUsername  string `json:"chessUsername"`
+	ToastDuration  int    `json:"toastDuration"`  // ms, 1000-10000
+	MaxToasts      int    `json:"maxToasts"`      // 1-10
+	ToastPosition  string `json:"toastPosition"`  // "auto" | "top-right" | ...
+	WallpaperDir   string `json:"wallpaperDir"`   // path, default ~/Pictures/Wallpapers
+	PowerProfile   string `json:"powerProfile"`   // powersave | schedutil | performance
+	PowerPersist   bool   `json:"powerPersist"`   // enable systemd service for reboot survival
+	WallustEnabled bool   `json:"wallustEnabled"` // auto-generate colors from wallpaper
+	WallustMode    string `json:"wallustMode"`    // "accent" (accent only) | "full" (accent + tinted palette)
+	RofiAccent     string `json:"rofiAccent"`     // rofi prompt icon + selected-item border
 	// Palette is a wallust-generated neutral ramp (base…text). Populated only
 	// in "full" wallust mode; empty means the shell falls back to the Flavor
 	// ramp. Keys mirror services/Config.qml (base, mantle, crust, surface0-2,
@@ -84,7 +92,7 @@ type Config struct {
 func curatedKeybinds() map[string]Keybind {
 	return map[string]Keybind{
 		"terminal":   {Label: "Terminal", Default: "SUPER, Return", Combo: "SUPER, Return", Dispatcher: `hl.dsp.exec_cmd("kitty")`},
-		"launcher":   {Label: "App launcher", Default: "SUPER, Space", Combo: "SUPER, Space", Dispatcher: `hl.dsp.exec_cmd("wofi --show drun")`},
+		"launcher":   {Label: "App launcher", Default: "SUPER, Space", Combo: "SUPER, Space", Dispatcher: `hl.dsp.exec_cmd("qs -c apollo ipc call panel toggle launcher")`},
 		"close":      {Label: "Close window", Default: "SUPER, Q", Combo: "SUPER, Q", Dispatcher: "hl.dsp.window.close()"},
 		"fullscreen": {Label: "Fullscreen", Default: "SUPER, F", Combo: "SUPER, F", Dispatcher: `hl.dsp.window.fullscreen({ mode = "fullscreen" })`},
 		"float":      {Label: "Toggle floating", Default: "SUPER, V", Combo: "SUPER, V", Dispatcher: "hl.dsp.window.float()"},
@@ -93,27 +101,29 @@ func curatedKeybinds() map[string]Keybind {
 
 func defaultConfig() Config {
 	return Config{
-		Accent:         "#cba6f7", // moonlight mauve
-		ArchLogoColor:  "#eba0ac", // Catppuccin maroon (rose/red)
-		RofiAccent:     "#f38ba8", // Catppuccin pink — matches the theme's current default
-		Flavor:         "mocha",
-		BarStyle:       "islands",
-		BarPosition:    "top",
-		BarOpacity:     0.72,
-		Clock24h:       true,
-		ShowUpdates:    true,
-		ShowTemp:       true,
-		ShowBattery:    true,
-		ShowRecording:  true,
-		ToastDuration:  4200,
-		MaxToasts:      5,
-		ToastPosition:  "auto",
-		WallpaperDir:   "~/Pictures/Wallpapers",
-		PowerProfile:   "schedutil",
-		PowerPersist:   false,
-		WallustEnabled: false,
-		WallustMode:    "accent",
-		Palette:        map[string]string{},
+		Accent:          "#cba6f7", // moonlight mauve
+		ArchLogoColor:   "#eba0ac", // Catppuccin maroon (rose/red)
+		RofiAccent:      "#f38ba8", // Catppuccin pink — matches the theme's current default
+		Flavor:          "mocha",
+		BarStyle:        "islands",
+		BarPosition:     "top",
+		BarOpacity:      0.72,
+		Clock24h:        true,
+		ShowUpdates:     true,
+		ShowTemp:        true,
+		ShowBattery:     true,
+		ShowRecording:   true,
+		ShowDesktop:     true,
+		ShowNetworkName: true,
+		ToastDuration:   4200,
+		MaxToasts:       5,
+		ToastPosition:   "auto",
+		WallpaperDir:    "~/Pictures/Wallpapers",
+		PowerProfile:    "schedutil",
+		PowerPersist:    false,
+		WallustEnabled:  false,
+		WallustMode:     "accent",
+		Palette:         map[string]string{},
 		Hypr: HyprSettings{
 			Rounding: 10, ActiveOpacity: 1.0, InactiveOpacity: 0.92,
 			GapsIn: 3, GapsOut: 8, BorderSize: 2,
@@ -189,5 +199,15 @@ func saveConfig(c Config) error {
 	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(p, data, 0o644)
+	if err := os.WriteFile(p, data, 0o644); err != nil {
+		return err
+	}
+
+	// Fan the palette out to the apps that draw beside the shell (see apps.go).
+	// This hangs off the write rather than off an Apply button because the
+	// Theme tab's controls each call saveConfig directly and let the shell
+	// notice config.json change — so anything else would be one control away
+	// from being forgotten. config.json is already on disk by here: a failure
+	// to write kitty's colours is reported, but never costs you the save.
+	return applyApps(c)
 }

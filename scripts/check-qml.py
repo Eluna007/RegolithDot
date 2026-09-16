@@ -81,6 +81,21 @@ for f in qml_files:
             bad.append(f"{f}: import \"{m.group(1)}\" does not exist")
 
 
+# An import alias shadows anything of the same name, attached properties
+# included. `import "keys/Keys.js" as Keys` next to `Keys.onPressed` resolves
+# to the file, not to QtQuick, and the element silently stops handling keys -
+# no error, no warning, it just never fires.
+RESERVED = {
+    "Keys", "Layout", "Component", "ListView", "GridView", "Drag", "Screen",
+    "Window", "KeyNavigation", "LayoutMirroring", "Accessible", "Positioner",
+    "Qt", "Behavior", "Binding", "Transition", "StackView", "SplitView",
+}
+for f in qml_files:
+    for m in re.finditer(r'^\s*import\s+"[^"]+"\s+as\s+(\w+)', f.read_text(), re.M):
+        if m.group(1) in RESERVED:
+            bad.append(f"{f}: import alias \"{m.group(1)}\" shadows a QtQuick "
+                       f"attached property of the same name")
+
 # Every panel the shell switches to must actually be instantiated, or clicking
 # its button opens nothing and says nothing.
 shell = (ROOT / "shell.qml").read_text()
@@ -92,7 +107,15 @@ wired |= {"launcher", "overview"}
 for name in sorted(opened - wired):
     bad.append(f"Bar.qml opens panel \"{name}\" but shell.qml never instantiates it")
 
+# The launcher's actions name panels as data rather than as openPanel() calls,
+# so the check above cannot see them. A typo there is silent: the row is
+# offered, you pick it, and nothing happens.
+commands = (ROOT / "panels" / "launcher" / "Commands.js").read_text()
+named = set(re.findall(r'panel:\s*"(\w+)"', commands))
+for name in sorted(named - wired):
+    bad.append(f"Commands.js offers panel \"{name}\" but shell.qml never instantiates it")
+
 if bad:
     print("\n".join(bad)); sys.exit(1)
 print(f"ok - {len(qml_files)} QML files: balanced, imports resolve, "
-      f"{len(opened)} bar panels all wired")
+      f"{len(opened)} bar panels and {len(named)} launcher actions all wired")
