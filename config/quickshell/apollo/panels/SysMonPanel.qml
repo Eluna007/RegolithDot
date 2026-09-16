@@ -288,48 +288,116 @@ PanelWindow {
                 // this panel said nothing whatsoever about the battery.
                 Rectangle {
                     Layout.fillWidth: true
-                    implicitHeight: 52
+                    implicitHeight: 74
                     radius: 16
                     color: root.surface0
                     visible: root.battKnown
 
                     RowLayout {
                         anchors { fill: parent; leftMargin: 15; rightMargin: 15 }
-                        spacing: 8
+                        spacing: 14
 
-                        Text {
-                            text: root.battCharging ? "\u{f0084}"
-                                : root.battPct <= 20 ? "\u{f007a}" : "\u{f0079}"
-                            color: root.battCharging ? root.teal
-                                 : root.battPct <= 20 ? root.maroon : root.subtext0
-                            font { pixelSize: 14; family: root.nfFont }
+                        // Charge ring. Canvas rather than QtQuick.Shapes: it is
+                        // part of QtQuick itself, so this adds no import that
+                        // could fail to resolve and take the shell down.
+                        Item {
+                            implicitWidth: 46
+                            implicitHeight: 46
+                            Layout.alignment: Qt.AlignVCenter
+
+                            readonly property color ringColor:
+                                  root.battCharging ? root.teal
+                                : root.battPct <= 20 ? root.maroon
+                                : root.accent
+
+                            Canvas {
+                                id: ring
+                                anchors.fill: parent
+                                // Repaint whenever anything it draws changes;
+                                // a Canvas does not track bindings by itself.
+                                property real pct: Math.max(0, Math.min(100, root.battPct))
+                                property color arcColor: parent.ringColor
+                                property color trackColor: root.surface2
+                                onPctChanged: requestPaint()
+                                onArcColorChanged: requestPaint()
+                                onTrackColorChanged: requestPaint()
+
+                                onPaint: {
+                                    var ctx = getContext("2d")
+                                    ctx.reset()
+                                    var w = width, h = height
+                                    var r = Math.min(w, h) / 2 - 3
+                                    var cx = w / 2, cy = h / 2
+                                    var start = -Math.PI / 2
+
+                                    ctx.lineWidth = 4
+                                    ctx.lineCap = "round"
+
+                                    ctx.beginPath()
+                                    ctx.strokeStyle = trackColor
+                                    ctx.arc(cx, cy, r, 0, Math.PI * 2)
+                                    ctx.stroke()
+
+                                    if (pct > 0) {
+                                        ctx.beginPath()
+                                        ctx.strokeStyle = arcColor
+                                        ctx.arc(cx, cy, r, start, start + Math.PI * 2 * (pct / 100))
+                                        ctx.stroke()
+                                    }
+                                }
+                            }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: Math.round(root.battPct)
+                                color: parent.ringColor
+                                font { pixelSize: 14; bold: true; family: root.nfFont }
+                            }
                         }
-                        Text { text: "Battery"; color: root.subtext0; font { pixelSize: 12; family: root.nfFont } }
 
-                        // Health is only worth the space once the pack has
-                        // measurably aged; a healthy battery says nothing.
-                        Text {
-                            text: root.battHealth >= 0 && root.battHealth < 90
-                                  ? root.battHealth + "% health" : ""
-                            visible: text !== ""
-                            color: root.overlay0
-                            font { pixelSize: 10; family: root.nfFont }
-                        }
+                        ColumnLayout {
+                            spacing: 2
+                            Layout.fillWidth: true
 
-                        Item { Layout.fillWidth: true }
+                            RowLayout {
+                                spacing: 6
+                                Text {
+                                    text: Config.batteryIcon(root.battPct, root.battCharging)
+                                    color: root.battCharging ? root.teal
+                                         : root.battPct <= 20 ? root.maroon : root.subtext0
+                                    font { pixelSize: 14; family: root.nfFont }
+                                }
+                                Text {
+                                    text: "Battery"
+                                    color: root.subtext0
+                                    font { pixelSize: 12; family: root.nfFont }
+                                }
+                                Item { Layout.fillWidth: true }
+                            }
 
-                        Text {
-                            text: root.battEta(root.battSecs) === "" ? ""
-                                : root.battEta(root.battSecs) + (root.battCharging ? " to full" : " left")
-                            visible: text !== ""
-                            color: root.overlay0
-                            font { pixelSize: 10; family: root.nfFont }
-                        }
-                        Text {
-                            text: root.battPct + "%"
-                            color: root.battCharging ? root.teal
-                                 : root.battPct <= 20 ? root.maroon : root.accent
-                            font { pixelSize: 14; bold: true; family: root.nfFont }
+                            Text {
+                                text: {
+                                    var eta = root.battEta(root.battSecs)
+                                    if (eta !== "") return eta + (root.battCharging ? " until full" : " remaining")
+                                    // No estimate is the honest answer while
+                                    // idle or full - do not invent "0m".
+                                    return root.battStatus === "Full" ? "Fully charged"
+                                         : root.battCharging ? "Charging"
+                                         : "Estimating…"
+                                }
+                                color: root.overlay0
+                                font { pixelSize: 10; family: root.nfFont }
+                            }
+
+                            // Health is only worth the space once the pack has
+                            // measurably aged; a healthy battery says nothing.
+                            Text {
+                                text: root.battHealth >= 0 && root.battHealth < 90
+                                      ? root.battHealth + "% of design capacity" : ""
+                                visible: text !== ""
+                                color: root.battHealth < 75 ? root.peach : root.overlay0
+                                font { pixelSize: 10; family: root.nfFont }
+                            }
                         }
                     }
                 }

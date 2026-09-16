@@ -106,6 +106,16 @@ node in CI. That matters because the two properties that make a sudoku a
 sudoku are invisible in the UI: a puzzle with two solutions and a puzzle with
 one look identical until you have spent ten minutes on the wrong branch.
 
+The bar mark is drawn (`bar/ApollokuIcon.qml`), not a font glyph: a 3x3 board
+with two rules each way and four lit cells. The Nerd Font grid glyph it
+replaced read as a generic tile grid rather than a sudoku.
+
+Solving a puzzle sets off the celebration from the original — ~320 confetti
+pieces launched from the cells in a shuffled cascade, then a card with the
+time, the rating and whether it beat your best. One `NumberAnimation` drives
+every piece through arithmetic on a single progress value, so it costs one
+animation rather than 320.
+
 Two things changed from the original, both flagged by its own comments:
 
 **Difficulty is measured, not assumed.** The original carved to a clue count
@@ -168,7 +178,12 @@ files, split by who writes them:
 
 The first two are gitignored machine state, regenerated together on every
 wallpaper change, so the lock screen recolours with the wallpaper like the rest
-of the rice. `scripts/check-hyprlock-vars.py` (also a CI step) verifies every
+of the rice. The bar's battery icon steps through the Nerd Font ramp per decile rather
+than switching between two glyphs at 20%, and the system-monitor panel draws
+a charge ring beside the time remaining and pack health. Both read
+`Config.batteryIcon()`, so the pill and the panel cannot disagree.
+
+`scripts/check-hyprlock-vars.py` (also a CI step) verifies every
 variable a layout references is actually defined — hyprlock renders an unknown
 one as nothing, which on a lock screen reads as black on black.
 

@@ -211,7 +211,7 @@ PanelWindow {
                     TrayBtn { icon: String.fromCodePoint(0xf4bc); iconSize: 17; active: root.activePanel === "sysmon"; barColors: root; onClicked: root.openPanel("sysmon"); Layout.alignment: Qt.AlignHCenter }
                     TrayBtn { icon: String.fromCodePoint(0xe266); iconSize: 15; active: root.activePanel === "sysmon"; barColors: root; onClicked: root.openPanel("sysmon"); Layout.alignment: Qt.AlignHCenter }
                     TrayBtn {
-                        icon: root.battCharging ? String.fromCodePoint(0xf0084) : (root.battPct > 20 ? String.fromCodePoint(0xf0079) : String.fromCodePoint(0xf007a))
+                        icon: Config.batteryIcon(root.battPct, root.battCharging)
                         iconSize: 15
                         iconColor: root.battCharging ? root.green : (root.battPct <= 20 ? root.red : root.subtext0)
                         visible: Config.showBattery && root.battKnown
@@ -230,7 +230,7 @@ PanelWindow {
 
                     TrayBtn { icon: String.fromCodePoint(0xf00af); iconSize: 16; iconColor: root.btPowered ? root.mauve : root.overlay0; active: root.activePanel === "bt"; barColors: root; onClicked: root.openPanel("bt"); Layout.alignment: Qt.AlignHCenter }
                     TrayBtn { icon: (root.volMuted || root.volPct === 0) ? String.fromCodePoint(0xf0581) : String.fromCodePoint(0xf057e); iconSize: 18; active: root.activePanel === "audio"; barColors: root; onClicked: root.openPanel("audio"); Layout.alignment: Qt.AlignHCenter }
-                    TrayBtn { icon: String.fromCodePoint(0xf04d3); iconSize: 18; active: root.activePanel === "apolloku"; barColors: root; onClicked: root.openPanel("apolloku"); Layout.alignment: Qt.AlignHCenter }
+                    ApollokuBtn { active: root.activePanel === "apolloku"; barColors: root; onClicked: root.openPanel("apolloku"); Layout.alignment: Qt.AlignHCenter }
                     TrayBtn { icon: String.fromCodePoint(0xf328); iconSize: 20; active: root.activePanel === "clip"; barColors: root; onClicked: root.openPanel("clip"); Layout.alignment: Qt.AlignHCenter }
                     TrayBtn { icon: String.fromCodePoint(0xf013); active: root.activePanel === "qs"; barColors: root; onClicked: root.openPanel("qs"); Layout.alignment: Qt.AlignHCenter }
                     TrayBtn { icon: String.fromCodePoint(0xf011); iconColor: root.maroon; barColors: root; onClicked: root.openPanel("power"); Layout.alignment: Qt.AlignHCenter }
@@ -321,7 +321,7 @@ PanelWindow {
                 TrayBtn { icon: String.fromCodePoint(0xf4bc); iconSize: 17; active: root.activePanel === "sysmon"; barColors: root; onClicked: root.openPanel("sysmon"); Layout.alignment: Qt.AlignHCenter }
                 TrayBtn { icon: String.fromCodePoint(0xe266); iconSize: 15; active: root.activePanel === "sysmon"; barColors: root; onClicked: root.openPanel("sysmon"); Layout.alignment: Qt.AlignHCenter }
                 TrayBtn {
-                    icon: root.battCharging ? String.fromCodePoint(0xf0084) : (root.battPct > 20 ? String.fromCodePoint(0xf0079) : String.fromCodePoint(0xf007a))
+                    icon: Config.batteryIcon(root.battPct, root.battCharging)
                     iconSize: 15
                     iconColor: root.battCharging ? root.green : (root.battPct <= 20 ? root.red : root.subtext0)
                     visible: Config.showBattery && root.battKnown
@@ -340,7 +340,7 @@ PanelWindow {
 
                 TrayBtn { icon: String.fromCodePoint(0xf00af); iconSize: 16; iconColor: root.btPowered ? root.mauve : root.overlay0; active: root.activePanel === "bt"; barColors: root; onClicked: root.openPanel("bt"); Layout.alignment: Qt.AlignHCenter }
                 TrayBtn { icon: (root.volMuted || root.volPct === 0) ? String.fromCodePoint(0xf0581) : String.fromCodePoint(0xf057e); iconSize: 18; active: root.activePanel === "audio"; barColors: root; onClicked: root.openPanel("audio"); Layout.alignment: Qt.AlignHCenter }
-                TrayBtn { icon: String.fromCodePoint(0xf04d3); iconSize: 18; active: root.activePanel === "apolloku"; barColors: root; onClicked: root.openPanel("apolloku"); Layout.alignment: Qt.AlignHCenter }
+                ApollokuBtn { active: root.activePanel === "apolloku"; barColors: root; onClicked: root.openPanel("apolloku"); Layout.alignment: Qt.AlignHCenter }
                 TrayBtn { icon: String.fromCodePoint(0xf328); iconSize: 20; active: root.activePanel === "clip"; barColors: root; onClicked: root.openPanel("clip"); Layout.alignment: Qt.AlignHCenter }
                 TrayBtn { icon: String.fromCodePoint(0xf013); active: root.activePanel === "qs"; barColors: root; onClicked: root.openPanel("qs"); Layout.alignment: Qt.AlignHCenter }
                 TrayBtn { icon: String.fromCodePoint(0xf011); iconColor: root.maroon; barColors: root; onClicked: root.openPanel("power"); Layout.alignment: Qt.AlignHCenter }
@@ -510,7 +510,7 @@ PanelWindow {
             }
 
             BarMod {
-                icon: root.battCharging ? "󰂄" : (root.battPct > 20 ? "󰁹" : "󰁺")
+                icon: Config.batteryIcon(root.battPct, root.battCharging)
                 label: ""
                 value: root.battPct + "%"
                 visible: Config.showBattery && root.battKnown
@@ -577,9 +577,7 @@ PanelWindow {
             }
 
             // Apolloku — sudoku in the bar (nf-md-view_grid)
-            TrayBtn {
-                icon: String.fromCodePoint(0xf04d3)
-                iconSize: 24
+            ApollokuBtn {
                 active: root.activePanel === "apolloku"
                 barColors: root
                 onClicked: root.openPanel("apolloku")
@@ -736,7 +734,7 @@ PanelWindow {
             }
 
             BarMod {
-                icon: root.battCharging ? "󰂄" : (root.battPct > 20 ? "󰁹" : "󰁺")
+                icon: Config.batteryIcon(root.battPct, root.battCharging)
                 label: ""
                 value: root.battPct + "%"
                 visible: Config.showBattery && root.battKnown
@@ -803,9 +801,7 @@ PanelWindow {
             }
 
             // Apolloku — sudoku in the bar (nf-md-view_grid)
-            TrayBtn {
-                icon: String.fromCodePoint(0xf04d3)
-                iconSize: 24
+            ApollokuBtn {
                 active: root.activePanel === "apolloku"
                 barColors: root
                 onClicked: root.openPanel("apolloku")
@@ -943,6 +939,42 @@ PanelWindow {
 
         MouseArea {
             id: modHov
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: parent.clicked()
+        }
+    }
+
+    // Same chrome as TrayBtn, but its face is the drawn Apolloku mark rather
+    // than a font glyph. Kept separate instead of teaching TrayBtn to take an
+    // arbitrary item: every other button in the bar is a glyph, and this is
+    // the only exception.
+    component ApollokuBtn: Item {
+        property bool active: false
+        property var barColors
+        signal clicked()
+
+        implicitWidth: 32; implicitHeight: 32
+        Layout.alignment: Qt.AlignVCenter
+
+        Rectangle {
+            anchors.fill: parent; radius: 9
+            color: parent.active ? root.accentSoft
+                 : akHov.containsMouse ? Qt.rgba(Config.text.r, Config.text.g, Config.text.b, 0.07)
+                 : "transparent"
+            Behavior on color { ColorAnimation { duration: 140 } }
+        }
+
+        ApollokuIcon {
+            anchors.centerIn: parent
+            width: 19; height: 19
+            stroke: parent.active ? root.accent : root.subtext0
+            Behavior on stroke { ColorAnimation { duration: 140 } }
+        }
+
+        MouseArea {
+            id: akHov
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
