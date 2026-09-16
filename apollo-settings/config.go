@@ -43,26 +43,34 @@ type Keybind struct {
 // live; `hyprland` and `keybinds` are rendered into ~/.config/hypr/lua/generated.lua
 // only when the user hits Apply.
 type Config struct {
-	Accent         string  `json:"accent"`
-	ArchLogoColor  string  `json:"archLogoColor"` // bar's Arch logo — independent of accent
-	Flavor         string  `json:"flavor"`        // mocha | macchiato | frappe | latte
-	BarStyle       string  `json:"barStyle"`      // "islands" | "classic"
-	BarPosition    string  `json:"barPosition"`   // "top" | "left" | "right"
-	BarOpacity     float64 `json:"barOpacity"`
-	Clock24h       bool    `json:"clock24h"`
-	ShowUpdates    bool    `json:"showUpdates"`
-	ShowTemp       bool    `json:"showTemp"`
-	ShowBattery    bool    `json:"showBattery"`
-	ShowRecording  bool    `json:"showRecording"`
-	ToastDuration  int     `json:"toastDuration"`  // ms, 1000-10000
-	MaxToasts      int     `json:"maxToasts"`      // 1-10
-	ToastPosition  string  `json:"toastPosition"`  // "auto" | "top-right" | ...
-	WallpaperDir   string  `json:"wallpaperDir"`   // path, default ~/Pictures/Wallpapers
-	PowerProfile   string  `json:"powerProfile"`   // powersave | schedutil | performance
-	PowerPersist   bool    `json:"powerPersist"`   // enable systemd service for reboot survival
-	WallustEnabled bool    `json:"wallustEnabled"` // auto-generate colors from wallpaper
-	WallustMode    string  `json:"wallustMode"`    // "accent" (accent only) | "full" (accent + tinted palette)
-	RofiAccent     string  `json:"rofiAccent"`     // rofi prompt icon + selected-item border
+	Accent          string  `json:"accent"`
+	ArchLogoColor   string  `json:"archLogoColor"` // bar's Arch logo — independent of accent
+	Flavor          string  `json:"flavor"`        // mocha | macchiato | frappe | latte
+	BarStyle        string  `json:"barStyle"`      // "islands" | "classic"
+	BarPosition     string  `json:"barPosition"`   // "top" | "left" | "right"
+	BarOpacity      float64 `json:"barOpacity"`
+	Clock24h        bool    `json:"clock24h"`
+	ShowUpdates     bool    `json:"showUpdates"`
+	ShowTemp        bool    `json:"showTemp"`
+	ShowBattery     bool    `json:"showBattery"`
+	ShowRecording   bool    `json:"showRecording"`
+	ShowDesktop     bool    `json:"showDesktop"`     // clock on the wallpaper, under the windows
+	ShowNetworkName bool    `json:"showNetworkName"` // SSID next to the wifi icon
+
+	// Set by hand (README, "Chess"), not by this app — but it has to exist
+	// here all the same. saveConfig marshals this struct, so a key with no
+	// field is dropped on the next save: set a chess handle, change any
+	// setting, lose the handle.
+	ChessUsername  string `json:"chessUsername"`
+	ToastDuration  int    `json:"toastDuration"`  // ms, 1000-10000
+	MaxToasts      int    `json:"maxToasts"`      // 1-10
+	ToastPosition  string `json:"toastPosition"`  // "auto" | "top-right" | ...
+	WallpaperDir   string `json:"wallpaperDir"`   // path, default ~/Pictures/Wallpapers
+	PowerProfile   string `json:"powerProfile"`   // powersave | schedutil | performance
+	PowerPersist   bool   `json:"powerPersist"`   // enable systemd service for reboot survival
+	WallustEnabled bool   `json:"wallustEnabled"` // auto-generate colors from wallpaper
+	WallustMode    string `json:"wallustMode"`    // "accent" (accent only) | "full" (accent + tinted palette)
+	RofiAccent     string `json:"rofiAccent"`     // rofi prompt icon + selected-item border
 	// Palette is a wallust-generated neutral ramp (base…text). Populated only
 	// in "full" wallust mode; empty means the shell falls back to the Flavor
 	// ramp. Keys mirror services/Config.qml (base, mantle, crust, surface0-2,
@@ -93,27 +101,29 @@ func curatedKeybinds() map[string]Keybind {
 
 func defaultConfig() Config {
 	return Config{
-		Accent:         "#cba6f7", // moonlight mauve
-		ArchLogoColor:  "#eba0ac", // Catppuccin maroon (rose/red)
-		RofiAccent:     "#f38ba8", // Catppuccin pink — matches the theme's current default
-		Flavor:         "mocha",
-		BarStyle:       "islands",
-		BarPosition:    "top",
-		BarOpacity:     0.72,
-		Clock24h:       true,
-		ShowUpdates:    true,
-		ShowTemp:       true,
-		ShowBattery:    true,
-		ShowRecording:  true,
-		ToastDuration:  4200,
-		MaxToasts:      5,
-		ToastPosition:  "auto",
-		WallpaperDir:   "~/Pictures/Wallpapers",
-		PowerProfile:   "schedutil",
-		PowerPersist:   false,
-		WallustEnabled: false,
-		WallustMode:    "accent",
-		Palette:        map[string]string{},
+		Accent:          "#cba6f7", // moonlight mauve
+		ArchLogoColor:   "#eba0ac", // Catppuccin maroon (rose/red)
+		RofiAccent:      "#f38ba8", // Catppuccin pink — matches the theme's current default
+		Flavor:          "mocha",
+		BarStyle:        "islands",
+		BarPosition:     "top",
+		BarOpacity:      0.72,
+		Clock24h:        true,
+		ShowUpdates:     true,
+		ShowTemp:        true,
+		ShowBattery:     true,
+		ShowRecording:   true,
+		ShowDesktop:     true,
+		ShowNetworkName: true,
+		ToastDuration:   4200,
+		MaxToasts:       5,
+		ToastPosition:   "auto",
+		WallpaperDir:    "~/Pictures/Wallpapers",
+		PowerProfile:    "schedutil",
+		PowerPersist:    false,
+		WallustEnabled:  false,
+		WallustMode:     "accent",
+		Palette:         map[string]string{},
 		Hypr: HyprSettings{
 			Rounding: 10, ActiveOpacity: 1.0, InactiveOpacity: 0.92,
 			GapsIn: 3, GapsOut: 8, BorderSize: 2,

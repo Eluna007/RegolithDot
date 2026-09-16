@@ -153,6 +153,19 @@ whose name you typed. `scripts/test-launcher.js` asserts those orderings and
 that ties stay in alphabetical order — a list that reshuffles under the
 cursor is how you launch the wrong thing.
 
+## The desktop layer
+
+A clock and the date, drawn on the wallpaper beneath every window
+(`panels/Desktop.qml`). On a tiling compositor that means you see it on an
+empty workspace and nowhere else, which is when a screen has nothing else to
+say. Apollo Settings › Bar › Desktop turns it off.
+
+It sits on `WlrLayer.Bottom` — above the wallpaper, below windows — and its
+input region is empty (`mask: Region {}`), so every click goes through to
+whatever is behind it. Its layer namespace is deliberately **not**
+`quickshell`: `rules.lua` blurs `^(quickshell)$`, and blurring a surface that
+sits directly on the wallpaper would blur the wallpaper through it.
+
 ## The keybind cheatsheet
 
 `ALT+/`, or "Keybinds" in the launcher. Search, then click a shortcut (or press

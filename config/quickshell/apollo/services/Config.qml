@@ -29,6 +29,7 @@ Singleton {
     readonly property bool   showBattery:    adapter.showBattery
     readonly property bool   showRecording:  adapter.showRecording
     readonly property bool   showNetworkName: adapter.showNetworkName
+    readonly property bool   showDesktop:     adapter.showDesktop
     readonly property int    toastDuration:  adapter.toastDuration
     readonly property int    maxToasts:      adapter.maxToasts
     readonly property string toastPosition:  adapter.toastPosition
@@ -147,6 +148,9 @@ Singleton {
             property bool   showBattery: true
             property bool   showRecording: true
             property bool   showNetworkName: true
+            // The clock on the wallpaper (panels/Desktop.qml). Only ever
+            // visible on an empty workspace, which is when it earns its place.
+            property bool   showDesktop: true
             property int    toastDuration: 4200
             property int    maxToasts: 5
             property string toastPosition: "auto"

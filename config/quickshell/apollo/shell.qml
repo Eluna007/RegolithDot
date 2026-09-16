@@ -371,6 +371,16 @@ ShellRoot {
                 enabled: sys.caffeine
             }
 
+            // ── Desktop layer ────────────────────────────────────────────
+            // Sits on WlrLayer.Bottom, so it is above the wallpaper and below
+            // every window: on a tiling compositor it only shows on an empty
+            // workspace. Takes no input at all (see panels/Desktop.qml).
+            // Desktop.qml owns its own `visible` — shell.qml does not import
+            // "services", so Config is not in scope here.
+            property var desktop: Desktop {
+                screen: scope.modelData
+            }
+
             // ── Click-outside catcher ────────────────────────────────────
             property var catcher: PanelWindow {
                 screen: scope.modelData

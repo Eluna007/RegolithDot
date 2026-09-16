@@ -143,6 +143,13 @@ jobs:
                 f"({checked} dispatchers cross-checked against config.lua)")
           PY
 
+      # config.json has two ends, and saveConfig marshals a struct: a key the
+      # shell reads but config.go has no field for is dropped on the next save,
+      # silently and not by the control that was touched. chessUsername, which
+      # the README tells you to add by hand, was exactly that.
+      - name: Check config.json keys round-trip
+        run: python3 scripts/check-config-keys.py
+
       # The palette is declared in Config.qml, palette.go and apps.go. Drift is
       # silent: the bar renders one Mocha and the terminal another, or a flavor
       # the shell knows about produces empty colours in kitty's generated file.
@@ -304,6 +311,7 @@ jobs:
           test -f config/quickshell/apollo/panels/launcher/Commands.js
           test -f config/quickshell/apollo/panels/KeysPanel.qml
           test -f config/quickshell/apollo/panels/keys/Keys.js
+          test -f config/quickshell/apollo/panels/Desktop.qml
           test -f config/quickshell/apollo/panels/ApollokuPanel.qml
           for j in Sudoku Model; do test -f "config/quickshell/apollo/panels/apolloku/$j.js"; done
           test -f config/quickshell/apollo/panels/ChessPanel.qml
