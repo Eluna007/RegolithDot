@@ -1,6 +1,5 @@
 import Quickshell
 import Quickshell.Io
-import Quickshell.Services.UPower
 import QtQuick
 import QtQuick.Layouts
 import "../bar"
@@ -9,6 +8,28 @@ import "../services"
 PanelWindow {
     id: root
     signal close()
+
+    // Battery values come from shell.qml's single poller rather than a second
+    // one here: the bar pill and this card must never disagree about the
+    // charge, and polling twice to show the same number is waste.
+    required property var shared
+
+    readonly property real battPct:     shared.battPct
+    readonly property bool battCharging: shared.battCharging
+    readonly property string battStatus: shared.battStatus
+    readonly property real battSecs:    shared.battSecs
+    readonly property real battHealth:  shared.battHealth
+    readonly property bool battKnown:   shared.battPct >= 0
+
+    // "2h 40m". Empty when there is no estimate - which is the honest answer
+    // while idle or full, not "0m".
+    function battEta(secs) {
+        if (secs === undefined || secs < 0) return ""
+        var h = Math.floor(secs / 3600)
+        var m = Math.floor(secs / 60) % 60
+        if (h > 0) return h + "h " + m + "m"
+        return m + "m"
+    }
 
     anchors.top: true
     anchors.left: Config.barPosition === "left"
@@ -259,6 +280,56 @@ PanelWindow {
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+
+                // Battery. The pill in the bar opens this panel, and until now
+                // this panel said nothing whatsoever about the battery.
+                Rectangle {
+                    Layout.fillWidth: true
+                    implicitHeight: 52
+                    radius: 16
+                    color: root.surface0
+                    visible: root.battKnown
+
+                    RowLayout {
+                        anchors { fill: parent; leftMargin: 15; rightMargin: 15 }
+                        spacing: 8
+
+                        Text {
+                            text: root.battCharging ? "\u{f0084}"
+                                : root.battPct <= 20 ? "\u{f007a}" : "\u{f0079}"
+                            color: root.battCharging ? root.teal
+                                 : root.battPct <= 20 ? root.maroon : root.subtext0
+                            font { pixelSize: 14; family: root.nfFont }
+                        }
+                        Text { text: "Battery"; color: root.subtext0; font { pixelSize: 12; family: root.nfFont } }
+
+                        // Health is only worth the space once the pack has
+                        // measurably aged; a healthy battery says nothing.
+                        Text {
+                            text: root.battHealth >= 0 && root.battHealth < 90
+                                  ? root.battHealth + "% health" : ""
+                            visible: text !== ""
+                            color: root.overlay0
+                            font { pixelSize: 10; family: root.nfFont }
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        Text {
+                            text: root.battEta(root.battSecs) === "" ? ""
+                                : root.battEta(root.battSecs) + (root.battCharging ? " to full" : " left")
+                            visible: text !== ""
+                            color: root.overlay0
+                            font { pixelSize: 10; family: root.nfFont }
+                        }
+                        Text {
+                            text: root.battPct + "%"
+                            color: root.battCharging ? root.teal
+                                 : root.battPct <= 20 ? root.maroon : root.accent
+                            font { pixelSize: 14; bold: true; family: root.nfFont }
                         }
                     }
                 }

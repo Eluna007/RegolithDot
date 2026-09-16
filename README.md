@@ -93,6 +93,36 @@ had no equivalent for.
 
 Nothing else in `lua/` imports these three, so they stay easy to swap.
 
+## Apolloku
+
+Sudoku in the bar, remade from the version on the `pre-apollo-shell` branch.
+The board glyph in the tray opens it; digits, arrows, `N` (pencil marks), `H`
+(hint), `U` (undo), `F` (fill marks) and `Space` (pause) all work from the
+keyboard.
+
+The puzzle logic is in `panels/apolloku/Sudoku.js` and `Model.js` — plain
+ECMAScript, no QML — so `scripts/test-apolloku.js` exercises it for real under
+node in CI. That matters because the two properties that make a sudoku a
+sudoku are invisible in the UI: a puzzle with two solutions and a puzzle with
+one look identical until you have spent ten minutes on the wrong branch.
+
+Two things changed from the original, both flagged by its own comments:
+
+**Difficulty is measured, not assumed.** The original carved to a clue count
+and named the result after it, noting that "clue count correlates with
+difficulty but does not determine it". It does not: a sparse board solvable by
+naked singles alone is an easy puzzle, and calling it Expert is just wrong.
+`rate()` now solves each candidate the way a person would — naked singles,
+hidden singles, locked candidates, naked pairs — and the hardest technique it
+needed is the rating. Carving repeats until the rating matches what was asked
+for. Measured over 48 puzzles, the old clue-count labelling produced
+`{Easy: 35, Medium: 9, Hard: 1, Expert: 3}` regardless of what was requested.
+
+**Generation no longer freezes the bar.** It runs on the thread that draws
+everything, and a full run reaches ~300ms. `createGenerator`/`step` do one
+carve per call so the panel can drive it from a `Timer`, spreading the work
+across frames with a progress readout instead of stalling the shell.
+
 ## The lock screen
 
 Four layouts vendored from

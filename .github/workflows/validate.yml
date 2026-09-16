@@ -12,6 +12,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Pinned rather than relying on whatever the runner image ships, so a
+      # runner update cannot silently change what the Apolloku tests run on.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Install validation tools
         run: |
           sudo apt-get update
@@ -27,6 +33,8 @@ jobs:
           bash -n local/bin/apollo-lock-layout
           bash -n scripts/test-battery.sh
           bash -n scripts/test-network.sh
+          bash -n scripts/test-shell-battery.sh
+          bash -n config/quickshell/apollo/scripts/battery.sh
           for f in local/bin/*.sh; do bash -n "$f"; done
           for f in config/hyprlock/scripts/*.sh; do bash -n "$f"; done
 
@@ -40,6 +48,8 @@ jobs:
           shellcheck local/bin/apollo-lock-layout
           shellcheck scripts/test-battery.sh
           shellcheck scripts/test-network.sh
+          shellcheck scripts/test-shell-battery.sh
+          shellcheck config/quickshell/apollo/scripts/battery.sh
           shellcheck config/hyprlock/scripts/battery.sh
           shellcheck config/hyprlock/scripts/network.sh
           shellcheck local/bin/*.sh
@@ -124,6 +134,22 @@ jobs:
       - name: Test network.sh
         run: ./scripts/test-network.sh
 
+      # The bar and the system-monitor panel both parse this one line.
+      - name: Test the shell's battery script
+        run: ./scripts/test-shell-battery.sh
+
+      # A QML error is not contained: an unresolved import or a stray brace
+      # stops the whole shell loading, so the bar, every panel and the
+      # notification daemon vanish together.
+      - name: Check QML structure
+        run: python3 scripts/check-qml.py
+
+      # Apolloku's puzzle logic is plain ECMAScript, so node can exercise it
+      # for real: a generator that sometimes emits a puzzle with two solutions
+      # would look completely fine in the UI.
+      - name: Test Apolloku logic
+        run: node scripts/test-apolloku.js
+
       # /sys/class/power_supply/BAT0 is not a universal path - plenty of
       # laptops expose BAT1. Worse, the callers used to paper over a wrong
       # guess (`|| echo 100`, `2>/dev/null`), so the bar reported a confident,
@@ -170,6 +196,9 @@ jobs:
           test -f config/matugen/templates/hyprlock-colors.sh.template
           for n in 12 15 18 20; do test -f "config/hyprlock/layouts/layout$n.conf"; done
           test -x local/bin/apollo-lock-layout
+          test -x config/quickshell/apollo/scripts/battery.sh
+          test -f config/quickshell/apollo/panels/ApollokuPanel.qml
+          for j in Sudoku Model; do test -f "config/quickshell/apollo/panels/apolloku/$j.js"; done
           test -x local/bin/hyprlock-wallpaper.sh
           for s in osd-report restore-wallpaper wallpaper-switch hyprlock-wallpaper; do
             test -x "local/bin/$s.sh"
