@@ -312,6 +312,7 @@ jobs:
           test -f config/quickshell/apollo/panels/KeysPanel.qml
           test -f config/quickshell/apollo/panels/keys/Keys.js
           test -f config/quickshell/apollo/panels/Desktop.qml
+          test -f config/quickshell/apollo/services/Motion.qml
           test -f config/quickshell/apollo/panels/ApollokuPanel.qml
           for j in Sudoku Model; do test -f "config/quickshell/apollo/panels/apolloku/$j.js"; done
           test -f config/quickshell/apollo/panels/ChessPanel.qml

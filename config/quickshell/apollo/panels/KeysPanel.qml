@@ -85,7 +85,11 @@ PanelWindow {
     Rectangle {
         anchors.fill: parent
         color: Qt.rgba(Config.crust.r, Config.crust.g, Config.crust.b, 0.35)
-        NumberAnimation on opacity { from: 0; to: 1; duration: 140; running: true }
+        NumberAnimation on opacity {
+            from: 0; to: 1; running: true
+            duration: Motion.fastEffects
+            easing.type: Easing.Bezier; easing.bezierCurve: Motion.curveDefaultEffects
+        }
         MouseArea { anchors.fill: parent; onClicked: root.close() }
     }
 
@@ -101,7 +105,21 @@ PanelWindow {
         border.color: Qt.rgba(Config.text.r, Config.text.g, Config.text.b, 0.10)
         clip: true
 
-        NumberAnimation on opacity { from: 0; to: 1; duration: 160; running: true; easing.type: Easing.OutCubic }
+        // A centred sheet: it grows from its own middle, since it is not
+        // attached to any bar edge.
+        // Curves are Caelestia's Material 3 expressive set; see
+        // services/Motion.qml for the measured overshoot and why it cannot clip.
+        transformOrigin: Item.Center
+        NumberAnimation on opacity {
+            from: 0; to: 1; running: true
+            duration: Motion.effects
+            easing.type: Easing.Bezier; easing.bezierCurve: Motion.curveDefaultEffects
+        }
+        NumberAnimation on scale {
+            from: Motion.fromScale; to: 1; running: true
+            duration: Motion.spatial
+            easing.type: Easing.Bezier; easing.bezierCurve: Motion.curveDefaultSpatial
+        }
 
         ColumnLayout {
             id: cardCol

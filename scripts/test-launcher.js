@@ -27,6 +27,8 @@ csrc += `\nmodule.exports = {${[...cnames].join(",")}};\n`;
 fs.writeFileSync(path.join(TMP, "Commands.js"), csrc);
 const C = require(path.join(TMP, "Commands.js"));
 
+const eqArr = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
 let failures = 0;
 function ok(label, cond, detail) {
     if (cond) console.log("  ok   " + label);
@@ -183,10 +185,16 @@ console.log("everything lands in one ranked list:");
     ok("an action matches by name", locked[0] && locked[0].name === "Lock screen",
        locked[0] && locked[0].name);
 
-    ok("with no query, windows come first",
-       C.sources("", APPS, tops)[0].kind === "window");
-    ok("with no query, actions stay out",
-       !C.sources("", APPS, tops).some(e => e.kind === "action"));
+    // Opening a launcher means "show me my applications". With two hundred of
+    // them, anything concatenated after is unreachable anyway.
+    ok("with no query it is the app list",
+       eqArr(C.sources("", APPS, tops).map(e => e.name), APPS.map(a => a.name)));
+    ok("with no query, no windows", !C.sources("", APPS, tops).some(e => e.kind === "window"));
+    ok("with no query, no actions", !C.sources("", APPS, tops).some(e => e.kind === "action"));
+    ok("windows join in as soon as you type",
+       C.sources("steam", APPS, tops).some(e => e.kind === "window"));
+    ok("the resting list is a copy, not the caller's array",
+       C.sources("", APPS, tops) !== APPS);
 
     ok("> lists the actions alone",
        C.sources(">", APPS, tops).every(e => e.kind === "action"));

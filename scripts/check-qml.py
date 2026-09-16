@@ -107,6 +107,21 @@ wired |= {"launcher", "overview"}
 for name in sorted(opened - wired):
     bad.append(f"Bar.qml opens panel \"{name}\" but shell.qml never instantiates it")
 
+# A curve or duration that Motion does not define comes back undefined, and an
+# undefined bezierCurve is not an error - the animation just runs on the
+# default easing, so the whole point of the shared vocabulary is silently lost.
+motion = strip((ROOT / "services" / "Motion.qml").read_text())
+defined = set(re.findall(r'property\s+\w+\s+(\w+)\s*:', motion))
+defined |= set(re.findall(r'function\s+(\w+)\s*\(', motion))
+for f in qml_files:
+    if f.name == "Motion.qml":
+        continue
+    # Stripped, or every comment mentioning services/Motion.qml reads as a
+    # reference to a property called "qml".
+    for name in sorted(set(re.findall(r'\bMotion\.(\w+)', strip(f.read_text())))):
+        if name not in defined:
+            bad.append(f"{f}: Motion.{name} is not defined in services/Motion.qml")
+
 # The launcher's actions name panels as data rather than as openPanel() calls,
 # so the check above cannot see them. A typo there is silent: the row is
 # offered, you pick it, and nothing happens.

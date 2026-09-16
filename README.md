@@ -110,8 +110,16 @@ One field searches four things, ranked together:
 | anything else | shell actions — lock, Wi-Fi, wallpaper, chess… | runs or opens it |
 
 `>` on its own lists the actions, the way a command palette does. With the
-field empty the open windows come first, so at rest it is a task switcher and
-the app list is one keystroke away.
+field empty it is simply the app list — that is what opening a launcher is
+for, and with two hundred apps anything appended after them is unreachable
+anyway. Windows and actions join in as soon as you type, where ranking decides
+the order instead of concatenation.
+
+The result list scrolls with momentum rather than a notch at a time: a
+trackpad drag gets the Flickable's own physics at a lower deceleration, and a
+mouse wheel glides to its destination, retargeting the same animation when you
+spin it. Arrow keys stop that glide first — both write `contentY`, and the
+animation would otherwise drag the view back off the row you just selected.
 
 Windows come from `Hyprland.toplevels`, the same live list the overview uses,
 so a keystroke costs no process. Actions that open one of the shell's own
@@ -420,6 +428,39 @@ Requires `hyprpaper`, `matugen`, and (for animated wallpapers) `mpvpaper` and
 
 ---
 
+## Motion
+
+Every panel used to open the same way — `opacity` 0→1, 200ms, `OutCubic`.
+A fade says nothing about where a thing came from. `services/Motion.qml` holds
+one vocabulary instead: Material 3 expressive durations and curves as
+[Caelestia's shell](https://github.com/caelestia-dots/shell) spells them, so a
+popout grows out of the bar edge you clicked, with that edge staying put.
+
+The spatial curves overshoot. Sampling each cubic at 4001 points:
+
+| curve | peak | at |
+|---|---|---|
+| `curveStandard` | 1.0000 | — |
+| `curveDefaultEffects` | 1.0000 | — |
+| `curveDefaultSpatial` | 1.0139 | 56% through |
+| `curveFastSpatial` | 1.0921 | 39% through |
+
+That is what decides whether a springy card can be clipped by its own surface,
+and the answer is no: the overshoot applies to the animated **range**, not the
+final value. A scale running 0.90 → 1.00 on `curveDefaultSpatial` peaks at
+0.90 + 0.10 × 1.0139 = **1.0014** — half a pixel on a 360px card. Swapping in
+`curveFastSpatial` would make that 1.009, about 3px, and would want checking
+against each panel's spare room first.
+
+Bar-attached popouts scale from `Motion.originFor(Config.barPosition)`; the
+full-screen sheets (launcher, cheatsheet, wallpaper picker) grow from their own
+centre, since no bar edge is theirs. Scrims still just fade.
+
+`check-qml.py` fails the build on a `Motion.` name the singleton does not
+define. An undefined `easing.bezierCurve` is not an error in QML — the
+animation quietly runs on the default easing, which is exactly the vocabulary
+being lost without a symptom.
+
 ## Colors follow the palette
 
 One palette, fanned out. `apollo-settings` › Theme is where it is decided:
@@ -481,3 +522,8 @@ whichever you actually install.
 Apollo is a remake. The design, the Quickshell panels, the settings app and the
 rice as a whole are [Fi3w0's Moonlit-shell](https://github.com/Fi3w0/Moonlit-shell);
 this repo translates them to Hyprland's Lua config. Upstream's LICENSE is kept.
+
+The motion vocabulary in `services/Motion.qml` is Material 3's expressive
+durations and curves as [caelestia-dots/shell](https://github.com/caelestia-dots/shell)
+spells them (`Config/tokens.hpp`), found by way of
+[Ryoku](https://github.com/Ryoku-dev/ryoku-arch), which ports them too.

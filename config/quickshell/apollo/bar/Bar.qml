@@ -137,6 +137,12 @@ PanelWindow {
                         Layout.alignment: Qt.AlignHCenter
                     }
                     Workspaces { vertical: true; chrome: false; barColors: root; Layout.alignment: Qt.AlignHCenter }
+                    OverviewBtn {
+                        active: root.activePanel === "overview"
+                        barColors: root
+                        onClicked: root.openPanel("overview")
+                        Layout.alignment: Qt.AlignHCenter
+                    }
                 }
             }
 
@@ -146,18 +152,42 @@ PanelWindow {
             Rectangle {
                 anchors { top: vTopIsland.bottom; horizontalCenter: parent.horizontalCenter; topMargin: 8 }
                 width: 34; radius: width / 2
-                implicitHeight: vTrayItems.implicitHeight + 14
+                implicitHeight: vTrayCol.implicitHeight + 14
                 height: implicitHeight
-                visible: vTrayItems.populated
+                // Tailscale rides here rather than down with the status
+                // buttons: it is a "what is running / what am I connected to"
+                // readout, which is what this island is. Visible when either
+                // half has something to show, never as an empty pill.
+                visible: vTrayItems.populated || root.tsInstalled
                 color: Qt.rgba(Config.mantle.r, Config.mantle.g, Config.mantle.b, Config.barOpacity)
                 border.width: 1
                 border.color: Qt.rgba(Config.text.r, Config.text.g, Config.text.b, 0.08)
 
-                Tray {
-                    id: vTrayItems
+                ColumnLayout {
+                    id: vTrayCol
                     anchors.centerIn: parent
-                    vertical: true
-                    barColors: root
+                    spacing: 4
+
+                    TailscaleBtn {
+                        active: root.activePanel === "tailscale"
+                        barColors: root
+                        onClicked: root.openPanel("tailscale")
+                        Layout.alignment: Qt.AlignHCenter
+                    }
+
+                    Rectangle {
+                        visible: vTrayItems.populated && root.tsInstalled
+                        Layout.alignment: Qt.AlignHCenter
+                        implicitWidth: 16; implicitHeight: 1
+                        color: Qt.rgba(Config.text.r, Config.text.g, Config.text.b, 0.12)
+                    }
+
+                    Tray {
+                        id: vTrayItems
+                        vertical: true
+                        barColors: root
+                        Layout.alignment: Qt.AlignHCenter
+                    }
                 }
             }
 
@@ -251,7 +281,6 @@ PanelWindow {
                     TrayBtn { icon: (root.volMuted || root.volPct === 0) ? String.fromCodePoint(0xf0581) : String.fromCodePoint(0xf057e); iconSize: 18; active: root.activePanel === "audio"; barColors: root; onClicked: root.openPanel("audio"); Layout.alignment: Qt.AlignHCenter }
                     ApollokuBtn { active: root.activePanel === "apolloku"; barColors: root; onClicked: root.openPanel("apolloku"); Layout.alignment: Qt.AlignHCenter }
                     ChessBtn { active: root.activePanel === "chess"; barColors: root; onClicked: root.openPanel("chess"); Layout.alignment: Qt.AlignHCenter }
-                    TailscaleBtn { active: root.activePanel === "tailscale"; barColors: root; onClicked: root.openPanel("tailscale"); Layout.alignment: Qt.AlignHCenter }
                     TrayBtn { icon: String.fromCodePoint(0xf328); iconSize: 20; active: root.activePanel === "clip"; barColors: root; onClicked: root.openPanel("clip"); Layout.alignment: Qt.AlignHCenter }
                     TrayBtn { icon: String.fromCodePoint(0xf013); active: root.activePanel === "qs"; barColors: root; onClicked: root.openPanel("qs"); Layout.alignment: Qt.AlignHCenter }
                     TrayBtn { icon: String.fromCodePoint(0xf011); iconColor: root.maroon; barColors: root; onClicked: root.openPanel("power"); Layout.alignment: Qt.AlignHCenter }
@@ -288,12 +317,24 @@ PanelWindow {
                     Layout.alignment: Qt.AlignHCenter
                 }
                 Workspaces { vertical: true; barColors: root; Layout.alignment: Qt.AlignHCenter }
+                OverviewBtn {
+                    active: root.activePanel === "overview"
+                    barColors: root
+                    onClicked: root.openPanel("overview")
+                    Layout.alignment: Qt.AlignHCenter
+                }
 
                 Rectangle {
-                    visible: vcTrayItems.populated
+                    visible: vcTrayItems.populated || root.tsInstalled
                     Layout.alignment: Qt.AlignHCenter
                     implicitWidth: 18; implicitHeight: 1
                     color: Qt.rgba(Config.text.r, Config.text.g, Config.text.b, 0.12)
+                }
+                TailscaleBtn {
+                    active: root.activePanel === "tailscale"
+                    barColors: root
+                    onClicked: root.openPanel("tailscale")
+                    Layout.alignment: Qt.AlignHCenter
                 }
                 Tray {
                     id: vcTrayItems
@@ -376,7 +417,6 @@ PanelWindow {
                 TrayBtn { icon: (root.volMuted || root.volPct === 0) ? String.fromCodePoint(0xf0581) : String.fromCodePoint(0xf057e); iconSize: 18; active: root.activePanel === "audio"; barColors: root; onClicked: root.openPanel("audio"); Layout.alignment: Qt.AlignHCenter }
                 ApollokuBtn { active: root.activePanel === "apolloku"; barColors: root; onClicked: root.openPanel("apolloku"); Layout.alignment: Qt.AlignHCenter }
                 ChessBtn { active: root.activePanel === "chess"; barColors: root; onClicked: root.openPanel("chess"); Layout.alignment: Qt.AlignHCenter }
-                TailscaleBtn { active: root.activePanel === "tailscale"; barColors: root; onClicked: root.openPanel("tailscale"); Layout.alignment: Qt.AlignHCenter }
                 TrayBtn { icon: String.fromCodePoint(0xf328); iconSize: 20; active: root.activePanel === "clip"; barColors: root; onClicked: root.openPanel("clip"); Layout.alignment: Qt.AlignHCenter }
                 TrayBtn { icon: String.fromCodePoint(0xf013); active: root.activePanel === "qs"; barColors: root; onClicked: root.openPanel("qs"); Layout.alignment: Qt.AlignHCenter }
                 TrayBtn { icon: String.fromCodePoint(0xf011); iconColor: root.maroon; barColors: root; onClicked: root.openPanel("power"); Layout.alignment: Qt.AlignHCenter }
@@ -424,6 +464,14 @@ PanelWindow {
                 Layout.alignment: Qt.AlignVCenter
                 chrome: false          // already inside an Island
                 barColors: root
+            }
+
+            // Window overview, beside the workspaces: both answer "what is
+            // open and where". SUPER+Tab does the same thing.
+            OverviewBtn {
+                active: root.activePanel === "overview"
+                barColors: root
+                onClicked: root.openPanel("overview")
             }
 
             // Window title
@@ -626,12 +674,6 @@ PanelWindow {
                 onClicked: root.openPanel("chess")
             }
 
-            TailscaleBtn {
-                active: root.activePanel === "tailscale"
-                barColors: root
-                onClicked: root.openPanel("tailscale")
-            }
-
             // Clipboard — nf-md-content_copy
             TrayBtn {
                 icon: ""
@@ -642,6 +684,15 @@ PanelWindow {
             }
 
             Rectangle { width: 1; height: 18; color: Qt.rgba(Config.text.r, Config.text.g, Config.text.b,0.12); Layout.alignment: Qt.AlignVCenter }
+
+            // Tailscale sits with the tray, not with the panel buttons: both
+            // are "what is running / what am I connected to".
+            TailscaleBtn {
+                active: root.activePanel === "tailscale"
+                barColors: root
+                onClicked: root.openPanel("tailscale")
+                Layout.alignment: Qt.AlignVCenter
+            }
 
             Tray { barColors: root; Layout.alignment: Qt.AlignVCenter }
 
@@ -710,6 +761,14 @@ PanelWindow {
             Workspaces {
                 Layout.alignment: Qt.AlignVCenter
                 barColors: root
+            }
+
+            // Window overview, beside the workspaces: both answer "what is
+            // open and where". SUPER+Tab does the same thing.
+            OverviewBtn {
+                active: root.activePanel === "overview"
+                barColors: root
+                onClicked: root.openPanel("overview")
             }
 
             // Window title
@@ -862,12 +921,6 @@ PanelWindow {
                 onClicked: root.openPanel("chess")
             }
 
-            TailscaleBtn {
-                active: root.activePanel === "tailscale"
-                barColors: root
-                onClicked: root.openPanel("tailscale")
-            }
-
             // Clipboard — nf-md-content_copy
             TrayBtn {
                 icon: ""
@@ -878,6 +931,15 @@ PanelWindow {
             }
 
             Rectangle { width: 1; height: 18; color: Qt.rgba(Config.text.r, Config.text.g, Config.text.b,0.12); Layout.alignment: Qt.AlignVCenter }
+
+            // Tailscale sits with the tray, not with the panel buttons: both
+            // are "what is running / what am I connected to".
+            TailscaleBtn {
+                active: root.activePanel === "tailscale"
+                barColors: root
+                onClicked: root.openPanel("tailscale")
+                Layout.alignment: Qt.AlignVCenter
+            }
 
             Tray { barColors: root; Layout.alignment: Qt.AlignVCenter }
 
@@ -1046,6 +1108,72 @@ PanelWindow {
     // The chess mark, same chrome as ApollokuBtn.
     // Tailscale. Hidden entirely when tailscale is not installed - an icon
     // for something the machine cannot do is just a dead pixel.
+    // Window overview. Drawn rather than a glyph: the nerd-font codepoints for
+    // a grid are a coin flip on whether the installed font has them, and a
+    // tofu box in the bar is worse than no button. Three panes in a Mission
+    // Control arrangement, which is what the panel actually shows.
+    component OverviewBtn: Item {
+        property bool active: false
+        property var barColors
+        signal clicked()
+
+        implicitWidth: 32; implicitHeight: 32
+        Layout.alignment: Qt.AlignVCenter
+
+        Rectangle {
+            anchors.fill: parent; radius: 9
+            color: parent.active ? root.accentSoft
+                 : ovHov.containsMouse ? Qt.rgba(Config.text.r, Config.text.g, Config.text.b, 0.07)
+                 : "transparent"
+            Behavior on color { ColorAnimation { duration: 140 } }
+        }
+
+        Item {
+            id: ovMark
+            anchors.centerIn: parent
+            width: 18; height: 18
+            readonly property color ink: parent.active ? root.accent : root.subtext0
+            readonly property int gap: 2
+
+            // Two panes on top, one wide one beneath.
+            Rectangle {
+                x: 0; y: 0
+                width: (ovMark.width - ovMark.gap) / 2
+                height: (ovMark.height - ovMark.gap) * 0.55
+                radius: 2
+                color: ovMark.ink
+                Behavior on color { ColorAnimation { duration: 140 } }
+            }
+            Rectangle {
+                x: (ovMark.width + ovMark.gap) / 2; y: 0
+                width: (ovMark.width - ovMark.gap) / 2
+                height: (ovMark.height - ovMark.gap) * 0.55
+                radius: 2
+                color: ovMark.ink
+                opacity: 0.65
+                Behavior on color { ColorAnimation { duration: 140 } }
+            }
+            Rectangle {
+                x: 0
+                y: (ovMark.height - ovMark.gap) * 0.55 + ovMark.gap
+                width: ovMark.width
+                height: (ovMark.height - ovMark.gap) * 0.45
+                radius: 2
+                color: ovMark.ink
+                opacity: 0.45
+                Behavior on color { ColorAnimation { duration: 140 } }
+            }
+        }
+
+        MouseArea {
+            id: ovHov
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: parent.clicked()
+        }
+    }
+
     component TailscaleBtn: Item {
         property bool active: false
         property var barColors
