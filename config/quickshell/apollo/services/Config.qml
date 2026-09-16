@@ -103,6 +103,27 @@ Singleton {
     readonly property color blue:      _p.blue
     readonly property color lavender:  _p.lavender
 
+    // ── Battery glyphs ──────────────────────────────────────────────────
+    // The bar used one of two icons, full or low, so a battery at 95% and one
+    // at 25% looked identical. Nerd Fonts ship a glyph per decile; use them.
+    // Lives here rather than in Bar.qml because the system-monitor panel draws
+    // the same battery and the two must not disagree about it.
+    readonly property var _battRamp: [
+        0xf0083, // 0-9%  (alert)
+        0xf007a, 0xf007b, 0xf007c, 0xf007d, 0xf007e,
+        0xf007f, 0xf0080, 0xf0081,
+        0xf0079  // 90-100% (full)
+    ]
+
+    function batteryIcon(pct, charging) {
+        if (charging) return String.fromCodePoint(0xf0084)
+        if (pct < 0) return String.fromCodePoint(0xf0091)   // unknown
+        var i = Math.floor(pct / 10)
+        if (i > 9) i = 9
+        if (i < 0) i = 0
+        return String.fromCodePoint(_battRamp[i])
+    }
+
     FileView {
         id: cfg
         path: Quickshell.env("HOME") + "/.config/apollo/config.json"

@@ -62,6 +62,10 @@ PanelWindow {
     property bool statsLoaded: false
     property bool saveLoaded: false
 
+    // Cell edge in pixels. The board delegates, the 3x3 rules and the
+    // confetti launch points all derive from this, so it lives in one place.
+    readonly property real cellPx: 36
+
     readonly property var conflicts: Sudoku.conflicts(cells)
     readonly property var digitCounts: Sudoku.digitCounts(cells)
     readonly property int filled: Sudoku.filledCount(cells)
@@ -88,6 +92,78 @@ PanelWindow {
     function stopClock() {
         if (runningSince > 0) { accumulatedMs += Date.now() - runningSince; runningSince = 0 }
     }
+
+    // ── Celebration ─────────────────────────────────────────────────────
+    //
+    // One NumberAnimation drives every piece through arithmetic on a single
+    // progress value, rather than ~320 Rectangles each animating themselves.
+    // Ported from the pre-apollo version, which got this right.
+    property bool celebrating: false
+    property bool celebrateDone: false
+    property real celebrateProgress: 0
+    property var confetti: []
+    readonly property real pieceLife: 0.28
+
+    // Confetti takes its colours from the palette, so it recolours with the
+    // wallpaper like everything else rather than being permanently festive.
+    readonly property var confettiColors: [accent, teal, peach, Config.blue, Config.green]
+
+    function buildCelebration() {
+        var order = []
+        for (var i = 0; i < 81; i++) order.push(i)
+        for (var j = order.length - 1; j > 0; j--) {
+            var k = Math.floor(Math.random() * (j + 1))
+            var swap = order[j]; order[j] = order[k]; order[k] = swap
+        }
+        var pieces = []
+        var window = 1.0 - pieceLife
+        for (var n = 0; n < 81; n++) {
+            var index = order[n]
+            var delay = window * (n / 80)
+            var cx = (index % 9) * (cellPx + 1) + cellPx / 2
+            var cy = Math.floor(index / 9) * (cellPx + 1) + cellPx / 2
+            for (var q = 0; q < 4; q++) {
+                var angle = Math.random() * Math.PI * 2
+                var speed = cellPx * (0.6 + Math.random() * 1.1)
+                pieces.push({
+                    delay: delay, x0: cx, y0: cy,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - cellPx * 0.5,
+                    spin: (Math.random() * 2 - 1) * 540,
+                    size: Math.max(2, Math.round(cellPx * (0.10 + Math.random() * 0.09))),
+                    hue: Math.floor(Math.random() * confettiColors.length)
+                })
+            }
+        }
+        confetti = pieces
+    }
+
+    function startCelebration() {
+        if (!started || !solved) return
+        buildCelebration()
+        celebrateDone = false
+        celebrateProgress = 0
+        celebrating = true
+        popAnimation.restart()
+    }
+
+    function endCelebration() {
+        holdTimer.stop()
+        popAnimation.stop()
+        celebrating = false
+        celebrateDone = false
+        celebrateProgress = 0
+        confetti = []          // let ~320 delegates go rather than keep them alive
+    }
+
+    NumberAnimation {
+        id: popAnimation
+        target: root
+        property: "celebrateProgress"
+        from: 0; to: 1; duration: 2600
+        onFinished: { root.celebrateDone = true; holdTimer.restart() }
+    }
+    Timer { id: holdTimer; interval: 5000; onTriggered: root.endCelebration() }
 
     // ── Generation, one attempt per frame ───────────────────────────────
     //
@@ -116,6 +192,7 @@ PanelWindow {
     }
 
     function newGame(level) {
+        endCelebration()
         var want = Model.normalizeDifficulty(level, difficulty)
         // Abandoning a game in progress breaks the streak; starting from an
         // idle or finished board does not.
@@ -264,12 +341,15 @@ PanelWindow {
 
     function refreshSolved() {
         var done = Sudoku.isComplete(cells)
-        if (done && !solved) {
+        var newlySolved = done && !solved
+        if (newlySolved) {
             stopClock()
             stats = Model.recordSolve(stats, difficulty, elapsedMs, hintsUsed)
             saveStats()
         }
         solved = done
+        // After `solved` is set, not before: startCelebration checks it.
+        if (newlySolved) startCelebration()
     }
 
     function moveCursor(dx, dy) {
@@ -386,6 +466,7 @@ PanelWindow {
         if (visible) {
             if (started && !solved && paused) { /* stay paused until resumed */ }
         } else {
+            endCelebration()
             stopClock()
             persist()
         }
@@ -408,7 +489,11 @@ PanelWindow {
 
         focus: true
         Keys.onPressed: ev => {
-            if (ev.key === Qt.Key_Escape) { root.close(); ev.accepted = true; return }
+            if (ev.key === Qt.Key_Escape) {
+                if (root.celebrating) root.endCelebration()
+                else root.close()
+                ev.accepted = true; return
+            }
             if (ev.key >= Qt.Key_1 && ev.key <= Qt.Key_9) {
                 root.setDigit(ev.key - Qt.Key_0); ev.accepted = true; return
             }
@@ -496,7 +581,7 @@ PanelWindow {
                             id: cell
                             required property int index
 
-                            width: 36; height: 36
+                            width: root.cellPx; height: root.cellPx
                             radius: 4
 
                             readonly property int value: root.cells[index]
@@ -573,7 +658,7 @@ PanelWindow {
                     model: 2
                     delegate: Rectangle {
                         required property int index
-                        x: (index + 1) * (36 * 3 + 3) - 2
+                        x: (index + 1) * ((root.cellPx + 1) * 3) - 2
                         y: 0
                         width: 2
                         height: board.height
@@ -585,10 +670,105 @@ PanelWindow {
                     delegate: Rectangle {
                         required property int index
                         x: 0
-                        y: (index + 1) * (36 * 3 + 3) - 2
+                        y: (index + 1) * ((root.cellPx + 1) * 3) - 2
                         width: board.width
                         height: 2
                         color: Qt.rgba(root.text.r, root.text.g, root.text.b, 0.25)
+                    }
+                }
+
+                // Confetti. Every piece is pure arithmetic on celebrateProgress,
+                // so one animation drives all ~320 of them.
+                Item {
+                    anchors.fill: parent
+                    visible: root.celebrating
+                    z: 10
+
+                    Repeater {
+                        model: root.confetti
+                        delegate: Rectangle {
+                            required property var modelData
+                            readonly property real t: Math.max(0, Math.min(1,
+                                (root.celebrateProgress - modelData.delay) / root.pieceLife))
+
+                            visible: t > 0 && t < 1
+                            width: modelData.size
+                            height: modelData.size
+                            radius: modelData.size > 4 ? 1 : 0
+                            color: root.confettiColors[modelData.hue]
+                            opacity: 1 - t * t
+                            rotation: modelData.spin * t
+                            x: modelData.x0 + modelData.vx * t - width / 2
+                            // t² is gravity: the pieces arc rather than drift.
+                            y: modelData.y0 + modelData.vy * t + root.cellPx * 3.2 * t * t - height / 2
+                        }
+                    }
+                }
+
+                // The result, once the confetti has settled.
+                Item {
+                    anchors.fill: parent
+                    visible: root.celebrating
+                    z: 11
+
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: parent.width * 0.86
+                        height: card.implicitHeight + 24
+                        radius: 16
+                        color: Qt.rgba(Config.base.r, Config.base.g, Config.base.b, 0.88)
+                        border.width: 1
+                        border.color: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.35)
+                        opacity: root.celebrateDone ? 1 : 0
+                        Behavior on opacity { NumberAnimation { duration: 260 } }
+
+                        Column {
+                            id: card
+                            anchors.centerIn: parent
+                            spacing: 4
+
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: root.hintsUsed > 0 ? "Solved" : "Solved clean"
+                                color: root.teal
+                                font { pixelSize: 16; bold: true; family: root.nfFont }
+                            }
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: (root.rating !== "" ? root.rating : root.difficulty)
+                                      + " in " + Model.formatTime(root.elapsedMs)
+                                color: root.subtext0
+                                font { pixelSize: 11; family: root.nfFont }
+                            }
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: {
+                                    var b = root.stats.byDifficulty[root.difficulty]
+                                    if (!b || b.bestMs <= 0) return ""
+                                    if (Math.round(root.elapsedMs) <= b.bestMs) return "new personal best"
+                                    return "best " + Model.formatTime(b.bestMs)
+                                }
+                                visible: text !== ""
+                                color: text === "new personal best" ? root.peach : root.overlay0
+                                font { pixelSize: 10; family: root.nfFont }
+                            }
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: root.hintsUsed > 0
+                                      ? root.hintsUsed + (root.hintsUsed === 1 ? " hint" : " hints") : ""
+                                visible: text !== ""
+                                color: root.overlay0
+                                font { pixelSize: 10; family: root.nfFont }
+                            }
+                        }
+                    }
+
+                    // Click anywhere to dismiss rather than waiting it out.
+                    MouseArea {
+                        anchors.fill: parent
+                        enabled: root.celebrating
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.endCelebration()
                     }
                 }
 
