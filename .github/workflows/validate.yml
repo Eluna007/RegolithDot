@@ -111,6 +111,13 @@ jobs:
           print(f"ok - {len(curated)} curated keybind defaults match keybinds.lua")
           PY
 
+      # config/matugen is symlinked whole into ~/.config, so a template
+      # input_path resolves back into this tree. A block naming a file that was
+      # never committed makes matugen fail on every wallpaper change - which is
+      # what [templates.quickshell] did, silently, for as long as it existed.
+      - name: Check matugen templates resolve
+        run: python3 scripts/check-matugen-templates.py
+
       # An undefined $variable is not an error to hyprlock - it renders as
       # nothing, i.e. black text on a black card, with no diagnostic. Since the
       # colours now come from a generated file, a typo in either half would

@@ -335,15 +335,21 @@ piece of it:
    about what's set. It uses `hyprpaper` for
    stills, `mpvpaper` for gifs and video (hyprpaper can only show one frame of
    a gif) — then runs `matugen` over it.
-2. matugen writes `~/.config/quickshell/colors.json`. That is the *parent* of
-   `~/.config/quickshell/apollo`, not inside it, so clearing out a previous
-   shell can delete it by accident.
-3. matugen's second template writes `~/.config/hyprlock/colors.conf`, and
-   `hyprlock-wallpaper.sh` writes `wallpaper.conf` beside it, in the same
-   `wallpaper-switch.sh` run so the two can never disagree.
+2. matugen renders `~/.config/hyprlock/colors.conf` (hyprlang `$variables` the
+   layouts reference) and `colors.sh` (the same palette in a form the scripts
+   that emit pango markup themselves can source).
+3. `hyprlock-wallpaper.sh` writes `wallpaper.conf` beside them, in the same
+   `wallpaper-switch.sh` run, so the palette and the image can never disagree.
 
 Break any link and the lock screen loses its palette. `apollo-doctor` checks
-for all of it.
+for all of it, and `scripts/check-matugen-templates.py` checks the inputs:
+`config/matugen` is symlinked whole into `~/.config`, so a `[templates.*]`
+block naming a file that is not in this repo makes matugen fail on every
+wallpaper change.
+
+The lock screen is matugen's only consumer. **The shell does not read this
+palette** — it takes its colors from `~/.config/apollo/config.json`, which
+`apollo-settings` writes (see "Colors follow the palette" below).
 
 Requires `hyprpaper`, `matugen`, and (for animated wallpapers) `mpvpaper` and
 `ffmpeg`.

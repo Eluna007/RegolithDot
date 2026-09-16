@@ -1,13 +1,16 @@
 [config]
 mode = "dark"
 
-[templates.quickshell]
-input_path = "~/.config/matugen/templates/colors.json.template"
-output_path = "~/.config/quickshell/colors.json"
 # Expressive spreads primary/secondary/tertiary hues further apart than the
-# default scheme, so they read as genuinely different colors instead of
-# tonal variants of one hue.
-type = "SchemeExpressive"
+# default scheme, so they read as genuinely different colors instead of tonal
+# variants of one hue. Both templates below use it, so the lock screen's two
+# generated files always agree.
+#
+# There used to be a third template here writing ~/.config/quickshell/colors.json
+# for the old shell's Theme.qml. Apollo's shell takes its palette from
+# apollo-settings (~/.config/apollo/config.json) instead, and the template file
+# itself was never committed — so matugen failed on it on every wallpaper change
+# to produce a file nothing read. hyprlock is matugen's only consumer now.
 
 [templates.hyprlock]
 input_path = "~/.config/matugen/templates/hyprlock-colors.conf.template"
