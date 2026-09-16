@@ -10,6 +10,12 @@ Item {
     required property var barColors
     property bool vertical: false
 
+    // Draw our own pill background. The islands layouts already sit this
+    // inside a rounded island, and a pill inside a pill reads as a mistake -
+    // two concentric rounded rectangles with nothing between them. The classic
+    // layouts have no island, so there the pill is the only chrome and stays.
+    property bool chrome: true
+
     readonly property int focusedId: Hyprland.focusedWorkspace?.id ?? 1
     readonly property int maxId: Math.max(5, focusedId)
 
@@ -23,15 +29,21 @@ Item {
     implicitWidth:  vertical ? 28 : pill.implicitWidth
     implicitHeight: vertical ? pill.implicitHeight : 28
 
+    // Padding exists to give the pill something to be; without one it is just
+    // dead space inside the island.
+    readonly property int pad: chrome ? 18 : 2
+
     Rectangle {
         id: pill
         anchors.centerIn: parent
-        implicitWidth:  root.vertical ? 28 : wsGrid.implicitWidth + 18
-        implicitHeight: root.vertical ? wsGrid.implicitHeight + 18 : 28
+        implicitWidth:  root.vertical ? 28 : wsGrid.implicitWidth + root.pad
+        implicitHeight: root.vertical ? wsGrid.implicitHeight + root.pad : 28
         width: implicitWidth
         height: implicitHeight
         radius: 999
-        color: Qt.rgba(Config.crust.r, Config.crust.g, Config.crust.b, 0.5)
+        color: root.chrome
+               ? Qt.rgba(Config.crust.r, Config.crust.g, Config.crust.b, 0.5)
+               : "transparent"
 
         Grid {
             id: wsGrid

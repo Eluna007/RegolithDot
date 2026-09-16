@@ -6,6 +6,7 @@ import Quickshell.Services.Notifications
 import QtQuick
 import "bar"
 import "panels"
+import "panels/tailscale/Tailscale.js" as TS
 
 ShellRoot {
     // Global notification list (shared across all screen instances)
@@ -129,6 +130,14 @@ ShellRoot {
         property bool   recordingActive:    false
         property bool   tempWarned:         false
 
+        // Tailscale. Polled here rather than in the panel so the bar icon can
+        // show the connection state while the panel is closed, and so the two
+        // cannot disagree about it. The panel binds to this and pokes
+        // tsProc.running after an action to refresh immediately.
+        property string tsRaw:      ""
+        property bool   tsInstalled: true
+        property var    tsStatus:   TS.emptyStatus()
+
         // CPU/RAM/WiFi/temp — one instance for the whole shell.
         property var stats: SystemStats { }
 
@@ -163,6 +172,29 @@ ShellRoot {
             }
             running: true
         }
+        property string tsBuffer: ""
+        property var tsProc: Process {
+            command: ["sh", "-c",
+                "command -v tailscale >/dev/null 2>&1 || { printf '__NOTS__'; exit 0; }; " +
+                "tailscale status --json 2>/dev/null"]
+            stdout: SplitParser { onRead: chunk => sharedSys.tsBuffer += chunk }
+            onRunningChanged: {
+                if (running) { sharedSys.tsBuffer = ""; return }
+                if (sharedSys.tsBuffer.indexOf("__NOTS__") !== -1) {
+                    sharedSys.tsInstalled = false
+                    sharedSys.tsStatus = TS.emptyStatus()
+                    return
+                }
+                sharedSys.tsInstalled = true
+                sharedSys.tsRaw = sharedSys.tsBuffer
+                sharedSys.tsStatus = TS.parseStatus(sharedSys.tsBuffer)
+            }
+        }
+        property var tsTimer: Timer {
+            interval: 20000; running: true; repeat: true; triggeredOnStart: true
+            onTriggered: if (!sharedSys.tsProc.running) sharedSys.tsProc.running = true
+        }
+
         property var battTimer: Timer { interval: 30000; running: true; repeat: true; onTriggered: sharedSys.battProc.running = true }
 
         // Pending updates (pacman + AUR helper).
@@ -215,6 +247,7 @@ ShellRoot {
                 if (now - last > interval * 3) {
                     sharedSys.battProc.running = true
                     sharedSys.recordingProc.running = true
+                    if (!sharedSys.tsProc.running) sharedSys.tsProc.running = true
                     sharedSys.stats.refresh()
                     sharedSys.updateRecheck.restart()
                 }
@@ -433,6 +466,13 @@ ShellRoot {
             property var chessPanel: ChessPanel {
                 screen:  scope.modelData
                 visible: scope.activePanel === "chess"
+                onClose: scope.closeAll()
+            }
+
+            property var tailscalePanel: TailscalePanel {
+                screen:  scope.modelData
+                shared:  sharedSys
+                visible: scope.activePanel === "tailscale"
                 onClose: scope.closeAll()
             }
 

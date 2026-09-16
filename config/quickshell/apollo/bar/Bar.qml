@@ -65,6 +65,8 @@ PanelWindow {
     // machine with no battery. Everything battery-related hides rather than
     // rendering a number nobody measured.
     readonly property bool   battKnown:          shared.battPct >= 0
+    readonly property bool   tsInstalled:        shared.tsInstalled
+    readonly property bool   tsConnected:        shared.tsStatus.running
     readonly property int    updateCount:        shared.updateCount
     readonly property int    pacmanUpdateCount:  shared.pacmanUpdateCount
     readonly property int    aurUpdateCount:     shared.aurUpdateCount
@@ -119,6 +121,7 @@ PanelWindow {
 
             // TOP — logo + workspaces
             Rectangle {
+                id: vTopIsland
                 anchors { top: parent.top; horizontalCenter: parent.horizontalCenter; topMargin: 8 }
                 width: 34; radius: width / 2
                 implicitHeight: vTopCol.implicitHeight + 14
@@ -138,7 +141,28 @@ PanelWindow {
                         onClicked: rofiProc.running = true
                         Layout.alignment: Qt.AlignHCenter
                     }
-                    Workspaces { vertical: true; barColors: root; Layout.alignment: Qt.AlignHCenter }
+                    Workspaces { vertical: true; chrome: false; barColors: root; Layout.alignment: Qt.AlignHCenter }
+                }
+            }
+
+            // TRAY — its own island under the workspaces, so running apps read
+            // as a separate group rather than more workspace dots. Absent
+            // entirely when nothing is in the tray, rather than an empty pill.
+            Rectangle {
+                anchors { top: vTopIsland.bottom; horizontalCenter: parent.horizontalCenter; topMargin: 8 }
+                width: 34; radius: width / 2
+                implicitHeight: vTrayItems.implicitHeight + 14
+                height: implicitHeight
+                visible: vTrayItems.populated
+                color: Qt.rgba(Config.mantle.r, Config.mantle.g, Config.mantle.b, Config.barOpacity)
+                border.width: 1
+                border.color: Qt.rgba(Config.text.r, Config.text.g, Config.text.b, 0.08)
+
+                Tray {
+                    id: vTrayItems
+                    anchors.centerIn: parent
+                    vertical: true
+                    barColors: root
                 }
             }
 
@@ -232,6 +256,7 @@ PanelWindow {
                     TrayBtn { icon: (root.volMuted || root.volPct === 0) ? String.fromCodePoint(0xf0581) : String.fromCodePoint(0xf057e); iconSize: 18; active: root.activePanel === "audio"; barColors: root; onClicked: root.openPanel("audio"); Layout.alignment: Qt.AlignHCenter }
                     ApollokuBtn { active: root.activePanel === "apolloku"; barColors: root; onClicked: root.openPanel("apolloku"); Layout.alignment: Qt.AlignHCenter }
                     ChessBtn { active: root.activePanel === "chess"; barColors: root; onClicked: root.openPanel("chess"); Layout.alignment: Qt.AlignHCenter }
+                    TailscaleBtn { active: root.activePanel === "tailscale"; barColors: root; onClicked: root.openPanel("tailscale"); Layout.alignment: Qt.AlignHCenter }
                     TrayBtn { icon: String.fromCodePoint(0xf328); iconSize: 20; active: root.activePanel === "clip"; barColors: root; onClicked: root.openPanel("clip"); Layout.alignment: Qt.AlignHCenter }
                     TrayBtn { icon: String.fromCodePoint(0xf013); active: root.activePanel === "qs"; barColors: root; onClicked: root.openPanel("qs"); Layout.alignment: Qt.AlignHCenter }
                     TrayBtn { icon: String.fromCodePoint(0xf011); iconColor: root.maroon; barColors: root; onClicked: root.openPanel("power"); Layout.alignment: Qt.AlignHCenter }
@@ -268,6 +293,19 @@ PanelWindow {
                     Layout.alignment: Qt.AlignHCenter
                 }
                 Workspaces { vertical: true; barColors: root; Layout.alignment: Qt.AlignHCenter }
+
+                Rectangle {
+                    visible: vcTrayItems.populated
+                    Layout.alignment: Qt.AlignHCenter
+                    implicitWidth: 18; implicitHeight: 1
+                    color: Qt.rgba(Config.text.r, Config.text.g, Config.text.b, 0.12)
+                }
+                Tray {
+                    id: vcTrayItems
+                    vertical: true
+                    barColors: root
+                    Layout.alignment: Qt.AlignHCenter
+                }
             }
 
             // CENTER — moon-clock (moon / HH / MM)
@@ -343,6 +381,7 @@ PanelWindow {
                 TrayBtn { icon: (root.volMuted || root.volPct === 0) ? String.fromCodePoint(0xf0581) : String.fromCodePoint(0xf057e); iconSize: 18; active: root.activePanel === "audio"; barColors: root; onClicked: root.openPanel("audio"); Layout.alignment: Qt.AlignHCenter }
                 ApollokuBtn { active: root.activePanel === "apolloku"; barColors: root; onClicked: root.openPanel("apolloku"); Layout.alignment: Qt.AlignHCenter }
                 ChessBtn { active: root.activePanel === "chess"; barColors: root; onClicked: root.openPanel("chess"); Layout.alignment: Qt.AlignHCenter }
+                TailscaleBtn { active: root.activePanel === "tailscale"; barColors: root; onClicked: root.openPanel("tailscale"); Layout.alignment: Qt.AlignHCenter }
                 TrayBtn { icon: String.fromCodePoint(0xf328); iconSize: 20; active: root.activePanel === "clip"; barColors: root; onClicked: root.openPanel("clip"); Layout.alignment: Qt.AlignHCenter }
                 TrayBtn { icon: String.fromCodePoint(0xf013); active: root.activePanel === "qs"; barColors: root; onClicked: root.openPanel("qs"); Layout.alignment: Qt.AlignHCenter }
                 TrayBtn { icon: String.fromCodePoint(0xf011); iconColor: root.maroon; barColors: root; onClicked: root.openPanel("power"); Layout.alignment: Qt.AlignHCenter }
@@ -388,6 +427,7 @@ PanelWindow {
 
             Workspaces {
                 Layout.alignment: Qt.AlignVCenter
+                chrome: false          // already inside an Island
                 barColors: root
             }
 
@@ -589,6 +629,12 @@ PanelWindow {
                 active: root.activePanel === "chess"
                 barColors: root
                 onClicked: root.openPanel("chess")
+            }
+
+            TailscaleBtn {
+                active: root.activePanel === "tailscale"
+                barColors: root
+                onClicked: root.openPanel("tailscale")
             }
 
             // Clipboard — nf-md-content_copy
@@ -821,6 +867,12 @@ PanelWindow {
                 onClicked: root.openPanel("chess")
             }
 
+            TailscaleBtn {
+                active: root.activePanel === "tailscale"
+                barColors: root
+                onClicked: root.openPanel("tailscale")
+            }
+
             // Clipboard — nf-md-content_copy
             TrayBtn {
                 icon: ""
@@ -997,6 +1049,44 @@ PanelWindow {
     }
 
     // The chess mark, same chrome as ApollokuBtn.
+    // Tailscale. Hidden entirely when tailscale is not installed - an icon
+    // for something the machine cannot do is just a dead pixel.
+    component TailscaleBtn: Item {
+        property bool active: false
+        property var barColors
+        signal clicked()
+
+        implicitWidth: 32; implicitHeight: 32
+        visible: root.tsInstalled
+        Layout.alignment: Qt.AlignVCenter
+
+        Rectangle {
+            anchors.fill: parent; radius: 9
+            color: parent.active ? root.accentSoft
+                 : tsHov.containsMouse ? Qt.rgba(Config.text.r, Config.text.g, Config.text.b, 0.07)
+                 : "transparent"
+            Behavior on color { ColorAnimation { duration: 140 } }
+        }
+
+        TailscaleIcon {
+            anchors.centerIn: parent
+            width: 18; height: 18
+            on: root.tsConnected
+            stroke: parent.active ? root.accent
+                  : root.tsConnected ? root.teal
+                  : root.subtext0
+            Behavior on stroke { ColorAnimation { duration: 140 } }
+        }
+
+        MouseArea {
+            id: tsHov
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: parent.clicked()
+        }
+    }
+
     component ChessBtn: Item {
         property bool active: false
         property var barColors

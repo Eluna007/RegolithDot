@@ -314,6 +314,9 @@ main() {
   # iw is only the fallback for a machine not running NetworkManager, so its
   # absence is not worth a warning on its own.
   check_optional_cmd bluetoothctl "bluetoothctl (layout20 bluetooth widget)"
+  # The bar's Tailscale widget hides itself when this is absent, so its absence
+  # is informational rather than a fault.
+  check_optional_cmd tailscale "tailscale (bar widget)"
   check_service NetworkManager
   check_service bluetooth
   check_service keyd

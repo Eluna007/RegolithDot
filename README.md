@@ -93,6 +93,30 @@ had no equivalent for.
 
 Nothing else in `lua/` imports these three, so they stay easy to swap.
 
+## Tailscale
+
+The mesh mark in the tray opens it. Connect and disconnect with the switch,
+see every device on the tailnet with online state and last-seen age, pick or
+clear an exit node, and click any peer to copy its address.
+
+Status is polled in `shell.qml`, not in the panel, so the bar icon shows the
+connection state while the panel is closed and the two cannot disagree about
+it. The icon hides entirely when `tailscale` is not installed.
+
+`tailscale up`, `down` and `set` normally need root. Rather than prompting for
+a password, the panel runs them as you and shows what the CLI actually said
+when it refuses — along with the one-time fix, which is
+`sudo tailscale set --operator=$USER`. A switch that silently does nothing is
+the worst of the options.
+
+Parsing is in `tailscale/Tailscale.js` and covered by
+`scripts/test-tailscale.js`. That binary updates independently of this shell,
+so the tests feed it every shape a broken or newer tailscale might emit —
+`Peer` as an array, `Online` as a string, a `BackendState` nobody has seen
+before — and require that each blanks a widget rather than throwing. An
+unrecognised state is never assumed to be running: showing "connected" for a
+tailnet that is down is worse than showing nothing.
+
 ## Chess
 
 Play the built-in engine or a second person at the same keyboard, with your
