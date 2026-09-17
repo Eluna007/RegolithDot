@@ -41,7 +41,10 @@ promise that it works on your machine.
   and power.
 - **A launcher** on `SUPER+Space` that also searches open windows, does
   arithmetic, and runs shell actions.
-- **A lock screen** with four interchangeable hyprlock layouts.
+- **A lock screen** with four interchangeable hyprlock layouts, and a **login
+  screen** drawn to match — its own SDDM theme rather than a borrowed one.
+- **Dynamic colours.** With it switched on, one wallpaper change recolours the
+  shell, the terminal, GTK apps, rofi, the lock screen and the login screen.
 - **`apollo-settings`**, a small Go/Fyne app for the safe knobs — palette,
   accent, bar layout, a handful of keybinds — which writes the Lua the
   compositor reads.
@@ -60,32 +63,6 @@ package list — there is deliberately no installer script.
 writes the palette files the terminal and GTK apps read — those are machine
 state, so a fresh clone has only the committed `*.default.*` to seed from until
 the doctor runs once. It never overwrites a palette you've already set.
-
-## Pulling an update
-
-```sh
-cd ~/RegolithDot
-git pull origin main
-
-# Restart the shell. It reads its QML from disk once, at startup, so an
-# instance running since login is whatever was on disk *then* — no matter
-# what you just pulled.
-pkill -x quickshell; pkill -f 'qs -c apollo'
-qs -c apollo &
-```
-
-Both halves of that `pkill` matter. A stale instance running under the name
-`quickshell` survives `pkill -f 'qs -c apollo'`, and then you are looking at
-pre-pull QML wondering why nothing changed. `pgrep -af 'qs|quickshell'` should
-print nothing between the kill and the restart.
-
-Run it in the foreground (`qs -c apollo`, no `&`) when something looks wrong:
-most of this shell's failures are a warning on stderr and an empty widget, and
-that terminal is the only place the warning goes.
-
-If a pull ever complains that local changes would be overwritten, it will be a
-generated file — see [Theming](docs/theming.md); those are gitignored now, so
-it should not happen.
 
 ## Docs
 

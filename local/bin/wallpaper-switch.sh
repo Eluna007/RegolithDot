@@ -7,6 +7,50 @@ selected="$1"
 # Remember this pick so it can be restored on the next boot.
 echo "$selected" > "$HOME/.config/hypr/last-wallpaper.txt"
 
+# Where matugen stages the colour it extracts, and where the login screen's
+# copy of the wallpaper is taken from. matugen will not create the directory
+# for an output_path, so it has to exist before matugen runs — on a fresh
+# machine it does not.
+STAGE="${XDG_CACHE_HOME:-$HOME/.cache}/apollo/theme"
+mkdir -p "$STAGE"
+
+# recolour <still-image>
+#
+# Everything downstream of the image being on screen, in one place so the
+# still and animated branches below cannot drift apart. The argument is a
+# *still*: the wallpaper itself, or a frame pulled out of a video — neither
+# matugen nor the login screen can do anything with a video.
+recolour() {
+  local still="$1"
+
+  matugen image "$still" --source-color-index 0
+
+  # The lock screen's wallpaper path (hyprlock cannot read one out of a file),
+  # written in the same run as the colours so the two cannot disagree.
+  ~/.local/bin/hyprlock-wallpaper.sh
+
+  # What the login screen should show. Its own copy is made by
+  # apollo-sddm-sync, which runs as root; this only records where to find it,
+  # because SDDM's greeter runs as its own user and cannot read $HOME at all.
+  printf '%s\n' "$still" > "$STAGE/still.txt"
+
+  # Recolour the shell, kitty, GTK, rofi and the staged login palette. A no-op
+  # when dynamic colours are off, and it must never take the wallpaper down
+  # with it if the settings binary was never built.
+  if command -v apollo-settings >/dev/null 2>&1; then
+    apollo-settings theme || echo "wallpaper-switch: apollo-settings theme failed" >&2
+  fi
+
+  # And push it to the login screen, but only if that can be done without
+  # asking for a password: this runs from a keybind and from session startup,
+  # where a sudo prompt has nowhere to appear and would hang the script.
+  # `sudo -n` fails immediately instead. Without the sudoers drop-in described
+  # in MANUAL-INSTALL.md, run `sudo apollo-sddm-sync` yourself.
+  if command -v apollo-sddm-sync >/dev/null 2>&1; then
+    sudo -n apollo-sddm-sync >/dev/null 2>&1 || true
+  fi
+}
+
 case "$selected" in
   *.gif|*.mp4|*.webm|*.mkv)
     # Video AND gif both need mpvpaper — hyprpaper only ever shows a
@@ -17,10 +61,13 @@ case "$selected" in
     sleep 0.2
     mpvpaper -o "no-audio loop" '*' "$selected" &
 
-    FRAME="/tmp/wallpaper-frame.png"
+    # One frame, for everything that cannot animate: matugen, the lock screen
+    # and the login screen. Kept in the cache rather than /tmp so it is still
+    # there for the next boot's restore, and for a login screen sync run by
+    # hand days later.
+    FRAME="$STAGE/frame.png"
     ffmpeg -y -ss 00:00:01 -i "$selected" -frames:v 1 "$FRAME" -loglevel error
-    matugen image "$FRAME" --source-color-index 0
-    ~/.local/bin/hyprlock-wallpaper.sh
+    recolour "$FRAME"
     ;;
   *)
     # Image-to-image: never restart hyprpaper. It swaps over its own IPC,
@@ -51,7 +98,6 @@ case "$selected" in
       exit 1
     fi
 
-    matugen image "$selected" --source-color-index 0
-    ~/.local/bin/hyprlock-wallpaper.sh
+    recolour "$selected"
     ;;
 esac

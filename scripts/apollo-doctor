@@ -153,6 +153,74 @@ check_aur_helper() {
 #
 # Seeding them here is what makes a fresh clone themed. It never overwrites:
 # once the file exists, it belongs to whoever set the palette.
+# Dynamic colours: the wallpaper drives the shell, the terminal, GTK, rofi and
+# the login screen. matugen stages the colour it extracts and
+# `apollo-settings theme` fans it out - both on the same wallpaper-switch.sh
+# run, so a staged file with no config.json behind it means that second half
+# failed.
+check_dynamic_colors() {
+  local stage="${XDG_CACHE_HOME:-$HOME/.cache}/apollo/theme"
+  local on="off"
+  if [[ -f "$HOME/.config/apollo/config.json" ]] \
+     && jq -e '.dynamicColors == true' "$HOME/.config/apollo/config.json" >/dev/null 2>&1; then
+    on="on"
+  fi
+
+  if [[ "$on" == "off" ]]; then
+    ok "dynamic colours off (apollo-settings › Theme turns them on)"
+    return
+  fi
+
+  if [[ -f "$stage/source.sh" ]]; then
+    ok "dynamic colours on, wallpaper colour staged"
+  else
+    warn "dynamic colours on but nothing staged — switch a wallpaper (SUPER+W)"
+  fi
+}
+
+# The login screen. Everything here is a *copy* under /usr/share, because the
+# greeter runs as the unprivileged sddm user and cannot read $HOME at all - so
+# unlike every other config in this repo, a symlink will not do and an edit in
+# the repo does nothing until apollo-sddm-sync has run.
+check_login_screen() {
+  local theme="/usr/share/sddm/themes/apollo"
+
+  if ! command -v sddm >/dev/null 2>&1; then
+    ok "sddm not installed (logging in from a TTY is fine)"
+    return
+  fi
+
+  if [[ -x "$HOME/.local/bin/apollo-sddm-sync" ]]; then
+    ok "apollo-sddm-sync installed"
+  else
+    warn "apollo-sddm-sync missing from ~/.local/bin — the login screen cannot follow your wallpaper"
+  fi
+
+  if [[ ! -d "$theme" ]]; then
+    warn "$theme missing — see MANUAL-INSTALL.md (§4.1) to install the theme"
+    return
+  fi
+  ok "Apollo SDDM theme installed"
+
+  # An unreadable theme file is the failure that looks like the theme simply
+  # not applying: SDDM falls back to its built-in one and says nothing.
+  if [[ -r "$theme/theme.conf" ]]; then
+    ok "theme.conf readable"
+  else
+    fail "$theme/theme.conf is not world-readable — the sddm user cannot read it"
+  fi
+
+  local bg
+  bg=$(sed -n 's/^background=//p' "$theme/theme.conf" 2>/dev/null)
+  if [[ -z "$bg" ]]; then
+    warn "the login screen has no wallpaper yet — run: sudo apollo-sddm-sync"
+  elif [[ -r "$theme/$bg" ]]; then
+    ok "login screen wallpaper in place"
+  else
+    fail "theme.conf names $bg, which is missing or unreadable — run: sudo apollo-sddm-sync"
+  fi
+}
+
 seed_palette_files() {
   local pairs=(
     "$HOME/.config/kitty/apollo-colors.conf|$HOME/.config/kitty/apollo-colors.default.conf"
@@ -430,6 +498,9 @@ main() {
   for s in osd-report restore-wallpaper wallpaper-switch hyprlock-wallpaper; do
     if [[ -x "$HOME/.local/bin/$s.sh" ]]; then ok "$s.sh installed"; else fail "$s.sh missing from ~/.local/bin"; fi
   done
+
+  check_dynamic_colors
+  check_login_screen
   # No .sh suffix: this one is meant to be typed.
   if [[ -x "$HOME/.local/bin/apollo-lock-layout" ]]; then
     ok "apollo-lock-layout installed"

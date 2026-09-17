@@ -7,7 +7,7 @@ import (
 )
 
 // flavorRamps mirrors the neutral ramps in services/Config.qml (base…text).
-// Full-palette wallust keeps a flavor's exact lightness/structure — so a light
+// Full-palette dynamic colours keep a flavor's exact lightness/structure — so a light
 // flavor stays light, a dark one stays dark — and only re-tints each slot's hue
 // toward the wallpaper. That guarantees the result is always readable, never
 // low-contrast mud, no matter what colors the wallpaper yields.

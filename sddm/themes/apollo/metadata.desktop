@@ -1,0 +1,18 @@
+[SddmGreeterTheme]
+Name=Apollo
+Description=Apollo's login screen — the rice's own palette, on the current wallpaper
+Author=Apollo
+Copyright=MIT
+License=MIT
+Type=qml
+Version=1.0
+Website=https://github.com/Eluna007/RegolithDot
+Screenshot=preview.png
+MainScript=Main.qml
+ConfigFile=theme.conf
+TranslationsDirectory=
+# The Qt 5 greeter is still the default when this is absent, and Qt 5 is not
+# installed on a current Arch box. Without this line the greeter refuses to
+# start and SDDM falls back to its built-in theme — which is the failure that
+# looks like "my theme didn't apply".
+QtVersion=6

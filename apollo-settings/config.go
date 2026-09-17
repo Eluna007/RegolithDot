@@ -68,13 +68,18 @@ type Config struct {
 	WallpaperDir   string `json:"wallpaperDir"`   // path, default ~/Pictures/Wallpapers
 	PowerProfile   string `json:"powerProfile"`   // powersave | schedutil | performance
 	PowerPersist   bool   `json:"powerPersist"`   // enable systemd service for reboot survival
-	WallustEnabled bool   `json:"wallustEnabled"` // auto-generate colors from wallpaper
-	WallustMode    string `json:"wallustMode"`    // "accent" (accent only) | "full" (accent + tinted palette)
-	RofiAccent     string `json:"rofiAccent"`     // rofi prompt icon + selected-item border
-	// Palette is a wallust-generated neutral ramp (base…text). Populated only
-	// in "full" wallust mode; empty means the shell falls back to the Flavor
-	// ramp. Keys mirror services/Config.qml (base, mantle, crust, surface0-2,
-	// overlay0-2, subtext0-1, text).
+	// Dynamic colours: derive the palette from the current wallpaper. The
+	// engine is matugen, which already runs on every wallpaper change for the
+	// lock screen — see dynamic.go. These were wallustEnabled/wallustMode; the
+	// old keys are still read once, in loadConfig, so an existing config.json
+	// keeps its setting.
+	DynamicColors bool   `json:"dynamicColors"`
+	DynamicMode   string `json:"dynamicMode"` // "accent" (accent only) | "full" (accent + tinted palette)
+	RofiAccent    string `json:"rofiAccent"`  // rofi prompt icon + selected-item border
+	// Palette is a neutral ramp (base…text) derived from the wallpaper.
+	// Populated only in "full" dynamic mode; empty means the shell falls back
+	// to the Flavor ramp. Keys mirror services/Config.qml (base, mantle,
+	// crust, surface0-2, overlay0-2, subtext0-1, text).
 	Palette  map[string]string  `json:"palette"`
 	Hypr     HyprSettings       `json:"hyprland"`
 	Keybinds map[string]Keybind `json:"keybinds"`
@@ -121,8 +126,8 @@ func defaultConfig() Config {
 		WallpaperDir:    "~/Pictures/Wallpapers",
 		PowerProfile:    "schedutil",
 		PowerPersist:    false,
-		WallustEnabled:  false,
-		WallustMode:     "accent",
+		DynamicColors:   false,
+		DynamicMode:     "accent",
 		Palette:         map[string]string{},
 		Hypr: HyprSettings{
 			Rounding: 10, ActiveOpacity: 1.0, InactiveOpacity: 0.92,
@@ -167,12 +172,38 @@ func loadConfig() Config {
 	c := defaultConfig()
 	if data, err := os.ReadFile(configPath()); err == nil {
 		_ = json.Unmarshal(data, &c)
+
+		// The dynamic-colour switches used to be called wallustEnabled and
+		// wallustMode, after the tool that read them. matugen does that job
+		// now (dynamic.go), so the names were a lie. Carry the old keys over
+		// when the new ones are absent — the next save writes the new names
+		// and the old ones drop out on their own.
+		var legacy struct {
+			Enabled *bool   `json:"wallustEnabled"`
+			Mode    *string `json:"wallustMode"`
+			Dynamic *bool   `json:"dynamicColors"`
+		}
+		if json.Unmarshal(data, &legacy) == nil && legacy.Dynamic == nil {
+			if legacy.Enabled != nil {
+				c.DynamicColors = *legacy.Enabled
+			}
+			if legacy.Mode != nil && *legacy.Mode != "" {
+				c.DynamicMode = *legacy.Mode
+			}
+		}
 	}
 	c.Keybinds = mergeKeybinds(c.Keybinds)
 	return c
 }
 
-func saveConfig(c Config) error {
+func saveConfig(c Config) error { return writeConfig(c, true) }
+
+// writeConfig saves the config, optionally snapshotting the old one first.
+//
+// The snapshot is skipped for the wallpaper-driven palette (dynamic.go): that
+// runs on every wallpaper change, and 50 backups of "the accent moved" would
+// push every backup of a setting you actually chose out of the ring.
+func writeConfig(c Config, backup bool) error {
 	data, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
 		return err
@@ -181,7 +212,7 @@ func saveConfig(c Config) error {
 	p := configPath()
 
 	// Auto-backup: snapshot the current config.json before overwriting.
-	if existing, err := os.ReadFile(p); err == nil {
+	if existing, err := os.ReadFile(p); err == nil && backup {
 		backupDir := filepath.Join(filepath.Dir(p), "backups")
 		os.MkdirAll(backupDir, 0o755)
 		ts := time.Now().Format("20060102-150405")

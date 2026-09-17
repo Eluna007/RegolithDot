@@ -2,7 +2,7 @@
 """The palette is declared in three places; they have to agree.
 
   services/Config.qml   _flavors        what the shell draws with
-  apollo-settings/palette.go flavorRamps  the neutral ramp wallust re-tints
+  apollo-settings/palette.go flavorRamps  the neutral ramp dynamic colours re-tint
   apollo-settings/apps.go    flavorAccents the accent family fanned out to apps
 
 Drift here is silent and ugly: the bar renders one Mocha and the terminal

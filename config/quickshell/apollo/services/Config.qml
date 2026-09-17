@@ -97,9 +97,11 @@ Singleton {
     })
     readonly property var _flavorRamp: _flavors[flavor] !== undefined ? _flavors[flavor] : _flavors["mocha"]
 
-    // Optional wallust-generated neutral ramp (apollo-settings "full palette"
-    // mode). When present it overrides the flavor ramp; empty/absent means we
-    // just use the flavor. Accent stays separate on top either way.
+    // Optional wallpaper-derived neutral ramp ("full palette" dynamic colours).
+    // When present it overrides the flavor ramp; empty/absent means we just use
+    // the flavor. Accent stays separate on top either way. It only ever carries
+    // the neutrals — the accent family below keeps the flavor's, so a terminal
+    // does not end up with a red, a green and a yellow that are all one hue.
     readonly property var _custom: adapter.palette
     readonly property bool _hasCustom: _custom !== undefined && _custom !== null
                                        && _custom.base !== undefined && _custom.base !== ""
@@ -125,8 +127,8 @@ Singleton {
     readonly property color text:     _p.text
 
     // Accent family — follows the flavor (Latte's colors are darker/saturated
-    // for light backgrounds, etc.). A full-palette wallust ramp only overrides
-    // the neutrals above; these keep the flavor's own accents. Bind semantic
+    // for light backgrounds, etc.). A full dynamic ramp only overrides the
+    // neutrals above; these keep the flavor's own accents. Bind semantic
     // colors in panels to these instead of hardcoding Mocha hexes.
     readonly property color rosewater: _p.rosewater
     readonly property color flamingo:  _p.flamingo
@@ -192,7 +194,7 @@ Singleton {
             property string toastPosition: "auto"
             property string wallpaperDir: "~/Pictures/Wallpapers"
             property string chessUsername: ""
-            // Wallust "full palette" neutral ramp; empty object = use `flavor`.
+            // "Full palette" neutral ramp from the wallpaper; {} = use `flavor`.
             property var palette: ({})
         }
     }
