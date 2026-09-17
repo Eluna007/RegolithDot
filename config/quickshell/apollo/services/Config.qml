@@ -81,6 +81,27 @@ Singleton {
         return barStyle === "classic" ? 46 : 40
     }
 
+    // Which wallpaper picker layout is live.
+    //
+    // Its own file rather than a key in config.json, for the same reason the
+    // lock screen's layout has one: `apollo-paper-layout` writes it from a
+    // terminal, apollo-settings writes config.json, and a second copy of the
+    // answer would drift from the first. ~/.config/apollo is machine state,
+    // not part of this repo, so switching layouts never dirties it.
+    property string paperLayout: "filmstrip"
+
+    FileView {
+        id: paperLayoutFile
+        path: Quickshell.env("HOME") + "/.config/apollo/paper-layout.conf"
+        watchChanges: true
+        onFileChanged: reload()
+        onLoaded: {
+            var t = text().trim()
+            if (t !== "")
+                root.paperLayout = t
+        }
+    }
+
     // ── Palette (Catppuccin flavor) ──────────────────────────────────────
     // flavor picks the WHOLE Catppuccin palette — the neutral ramp (base…text)
     // *and* the accent family (blue, teal, green, red, …). The shell binds its

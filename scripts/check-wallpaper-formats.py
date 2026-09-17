@@ -7,8 +7,8 @@ spelled out separately in code that cannot see each other:
   local/bin/wallpaper-switch.sh          animated -> mpvpaper, still -> hyprpaper
   local/bin/apollo-sddm-sync             animated -> refuse, the greeter cannot play one
   apollo-settings/dynamic.go             animated -> matugen needs a frame first
-  panels/WallpaperPanel.qml nameFilters  what the picker lists at all
-  panels/WallpaperPanel.qml isVideo      what QML's Image cannot draw
+  panels/WallpaperSource.qml nameFilters what the picker lists at all
+  panels/WallpaperSource.qml isVideo()   what QML's Image cannot draw
   scripts/wallpaper-thumbs.sh            what gets a cached thumbnail
 
 Every disagreement here is silent and shaped like a missing feature. Videos
@@ -58,17 +58,19 @@ def shell_case(rel, label):
 
 
 def main() -> int:
-    qml = (ROOT / "config/quickshell/apollo/panels/WallpaperPanel.qml").read_text()
+    # Both lists live in the shared source now, not in a layout: a layout that
+    # spelled its own would be one more place to drift.
+    qml = (ROOT / "config/quickshell/apollo/panels/WallpaperSource.qml").read_text()
 
     m = re.search(r"nameFilters:\s*\[(.*?)\]", qml, re.S)
     if not m:
-        fail("WallpaperPanel.qml: no nameFilters")
+        fail("WallpaperSource.qml: no nameFilters")
         return 1
     listed = {e.lower() for e in re.findall(r'"\*\.(\w+)"', m.group(1))}
 
-    m = re.search(r"isVideo:\s*/\\\.\(([^)]*)\)", qml)
+    m = re.search(r"function isVideo\(\w+\) \{ return /\\\.\(([^)]*)\)", qml)
     if not m:
-        fail("WallpaperPanel.qml: no isVideo pattern")
+        fail("WallpaperSource.qml: no isVideo() pattern")
         return 1
     no_decode_qml = set(m.group(1).split("|"))
 
@@ -87,7 +89,7 @@ def main() -> int:
         ("local/bin/apollo-sddm-sync (refuse branch)",
          shell_case("local/bin/apollo-sddm-sync", "video refusal"), ANIMATED),
         ("apollo-settings/dynamic.go (currentStill)", go_animated, ANIMATED),
-        ("WallpaperPanel.qml isVideo", no_decode_qml, NO_DECODE),
+        ("WallpaperSource.qml isVideo()", no_decode_qml, NO_DECODE),
         # Everything the picker lists, not just the videos: the thumbnails are
         # what stop a 4K original being decoded per tile.
         ("wallpaper-thumbs.sh globs", thumbed, listed),
@@ -101,7 +103,7 @@ def main() -> int:
     # The picker has to list everything the pipeline can apply, or the feature
     # exists and cannot be reached.
     for ext in sorted(ANIMATED - listed):
-        fail(f"WallpaperPanel.qml nameFilters does not list *.{ext}, "
+        fail(f"WallpaperSource.qml nameFilters does not list *.{ext}, "
              f"which wallpaper-switch.sh can apply")
 
     if fails:

@@ -153,6 +153,21 @@ check_aur_helper() {
 #
 # Seeding them here is what makes a fresh clone themed. It never overwrites:
 # once the file exists, it belongs to whoever set the palette.
+# Which wallpaper picker layout is live. Absent means the default, which is
+# the normal state - this is a report, not a requirement.
+check_paper_layout() {
+  local f="${XDG_CONFIG_HOME:-$HOME/.config}/apollo/paper-layout.conf"
+  local now="filmstrip (default)"
+  [[ -r "$f" ]] && now="$(tr -d '[:space:]' < "$f")"
+  ok "wallpaper picker layout: $now"
+
+  if [[ -x "$HOME/.local/bin/apollo-paper-layout" ]]; then
+    ok "apollo-paper-layout installed"
+  else
+    warn "apollo-paper-layout missing from ~/.local/bin"
+  fi
+}
+
 # Dynamic colours: the wallpaper drives the shell, the terminal, GTK, rofi and
 # the login screen. matugen stages the colour it extracts and
 # `apollo-settings theme` fans it out - both on the same wallpaper-switch.sh
@@ -501,6 +516,7 @@ main() {
 
   check_dynamic_colors
   check_login_screen
+  check_paper_layout
   # No .sh suffix: this one is meant to be typed.
   if [[ -x "$HOME/.local/bin/apollo-lock-layout" ]]; then
     ok "apollo-lock-layout installed"
