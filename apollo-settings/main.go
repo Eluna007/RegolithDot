@@ -1121,7 +1121,7 @@ func aboutTab(cfg *Config, w fyne.Window) fyne.CanvasObject {
 	shareCard := widget.NewCard("Share", "Export a pretty config card to show off your rice",
 		container.NewVBox(screenshot, hintText("Saves a Catppuccin-themed config summary card as PNG.")))
 
-	repo := canvas.NewText("github.com/Eluna007/RegolithDot", hexToColor(cMauve))
+	repo := canvas.NewText("RegolithDot", hexToColor(cMauve))
 	repo.TextStyle = fyne.TextStyle{Monospace: true}
 	aboutCard := widget.NewCard("About", "", container.NewVBox(
 		widget.NewLabelWithStyle("Apollo Shell  ·  settings "+version, fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
@@ -1458,7 +1458,7 @@ func renderCard(cfg *Config) image.Image {
 	}
 
 	// Footer
-	cardText(img, 38, 388, "github.com/Eluna007/RegolithDot", cardPalette["overlay0"], 1)
+	cardText(img, 38, 388, "RegolithDot", cardPalette["overlay0"], 1)
 
 	return img
 }

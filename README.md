@@ -7,21 +7,28 @@ in **Lua** rather than `hyprland.conf`.
 
 ## About this repo
 
-I'm not a developer. Apollo started as my own attempt to translate
-[Fi3w0's Moonlit-shell](https://github.com/Fi3w0/Moonlit-shell) — which is
-written in hyprlang — over to Hyprland's Lua configuration, because I wanted
-the desktop but preferred the newer config format. I got the translation most
-of the way there by hand and then hit the limits of what I could work out on my
-own, particularly in the Quickshell side of it.
+I'm not a developer.
 
-**Claude (Anthropic's Claude Code) did the work of finishing it** from that
-point: completing the Lua port, rebuilding and extending the shell, and adding
-the tests and checks listed below. The commit history is the honest record of
-which parts were which.
+This started because I'm a fan of
+[Fi3w0's Moonlit-shell](https://github.com/Fi3w0/Moonlit-shell). It's a
+beautiful set of dots and I wanted to daily-drive it — but Moonlit is written
+in hyprlang, and I'd moved to Hyprland's Lua configuration and didn't want to
+go back. So I set about translating it myself. Apollo is that translation, and
+the design, the panels and the look are Moonlit's; the credit for the rice
+belongs upstream.
 
-So: this is a personal rice that got finished with a lot of help, published in
-case it's useful to someone else on the same path. It is not a product, it has
-one user, and it comes with no promise that it works on your machine.
+I got the port most of the way there by hand and then hit the limits of what I
+could work out on my own, particularly on the Quickshell side.
+
+**Claude (Anthropic's Claude Code) did the work of finishing it** from there:
+completing the Lua port, rebuilding and extending the shell, and adding the
+tests and checks described below. The commit history is the honest record of
+which parts were whose.
+
+So: a personal rice, translated out of admiration for the original and
+finished with a lot of help. Published in case it's useful to someone else on
+the same path. It isn't a product, it has one user, and it comes with no
+promise that it works on your machine.
 
 ## What it is
 

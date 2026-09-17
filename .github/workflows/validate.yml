@@ -267,13 +267,13 @@ jobs:
       # permanent 100% instead of failing. Find the battery, never name it.
       - name: Check for hardcoded battery paths
         run: |
-          # Comments are allowed to name the path - explaining why it is wrong
-          # is the point. git grep prints path:line:content, so drop the hits
+          # Comments and prose are allowed to name the path - explaining why it
+          # is wrong is the point, which is why README.md and docs/ are exempt. git grep prints path:line:content, so drop the hits
           # whose content starts a comment rather than exempting whole files,
           # which would blind the check to a real regression in them.
           hits=$(git grep -nE 'power_supply/BAT[0-9]' \
                    -- ':!old-apollo-shell/**' ':!.github/**' ':!scripts/test-battery.sh' \
-                      ':!README.md' ':!MANUAL-INSTALL.md' \
+                      ':!README.md' ':!MANUAL-INSTALL.md' ':!docs/**' \
                  | grep -vE ':[0-9]+:[[:space:]]*(#|//|\*)' || true)
           if [ -n "$hits" ]; then
             echo "$hits"
@@ -342,7 +342,7 @@ jobs:
       - name: Check for untranslated leftovers
         run: |
           if git grep -nEi 'moonlit-(settings|doctor|colors|copy-path|config|power|temp|shell/)|moonlit\.(conf|lua|png)|config/moonlit|Moonlit-Terminal|moonlitTheme' \
-               -- ':!.github/**' ':!README.md' ':!MANUAL-INSTALL.md'; then
+               -- ':!.github/**' ':!README.md' ':!MANUAL-INSTALL.md' ':!docs/**'; then
             echo "Found a Moonlit identifier the rebrand missed."
             exit 1
           fi

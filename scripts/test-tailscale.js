@@ -37,9 +37,9 @@ function status(over) {
     return JSON.stringify(Object.assign({
         BackendState: "Running",
         TailscaleIPs: ["100.64.0.1"],
-        CurrentTailnet: { Name: "luna.ts.net" },
+        CurrentTailnet: { Name: "example.ts.net" },
         Self: {
-            DNSName: "apollo.luna.ts.net.", HostName: "apollo", OS: "linux",
+            DNSName: "apollo.example.ts.net.", HostName: "apollo", OS: "linux",
             TailscaleIPs: ["100.64.0.1", "fd7a::1"], Online: true
         },
         Peer: {}
@@ -68,10 +68,10 @@ console.log("identity:");
 {
     const s = T.parseStatus(status({}));
     ok("short name drops the tailnet suffix", s.self.name === "apollo", s.self.name);
-    ok("and the trailing dot", s.self.dnsName === "apollo.luna.ts.net", s.self.dnsName);
+    ok("and the trailing dot", s.self.dnsName === "apollo.example.ts.net", s.self.dnsName);
     ok("prefers IPv4 for display", s.self.ip === "100.64.0.1", s.self.ip);
     ok("keeps both addresses", s.self.ips.length === 2);
-    ok("reads the tailnet", s.tailnet === "luna.ts.net");
+    ok("reads the tailnet", s.tailnet === "example.ts.net");
 }
 {
     // Older tailscale, or a node with no DNSName: fall back to HostName.
@@ -87,9 +87,9 @@ console.log("identity:");
 console.log("peers:");
 {
     const s = T.parseStatus(status({ Peer: {
-        a: { DNSName: "zeta.luna.ts.net.", OS: "linux", TailscaleIPs: ["100.64.0.4"], Online: false },
-        b: { DNSName: "alpha.luna.ts.net.", OS: "macOS", TailscaleIPs: ["100.64.0.2"], Online: true },
-        c: { DNSName: "beta.luna.ts.net.", OS: "android", TailscaleIPs: ["100.64.0.3"], Online: true,
+        a: { DNSName: "zeta.example.ts.net.", OS: "linux", TailscaleIPs: ["100.64.0.4"], Online: false },
+        b: { DNSName: "alpha.example.ts.net.", OS: "macOS", TailscaleIPs: ["100.64.0.2"], Online: true },
+        c: { DNSName: "beta.example.ts.net.", OS: "android", TailscaleIPs: ["100.64.0.3"], Online: true,
              ExitNodeOption: true }
     }}));
     ok("all peers parse", s.peers.length === 3);
@@ -104,7 +104,7 @@ console.log("peers:");
 {
     // An active exit node should be named in the status line.
     const s = T.parseStatus(status({ Peer: {
-        a: { DNSName: "gateway.luna.ts.net.", TailscaleIPs: ["100.64.0.7"], Online: true,
+        a: { DNSName: "gateway.example.ts.net.", TailscaleIPs: ["100.64.0.7"], Online: true,
              ExitNodeOption: true, ExitNode: true }
     }}));
     ok("an active exit node is identified", s.exitNodeName === "gateway", s.exitNodeName);
@@ -167,7 +167,7 @@ ok("a future timestamp is blank, not negative", T.relativeAge("2026-01-02T12:00:
 
 console.log("node targets - these become a tailscale set argument:");
 ok("accepts a short name", T.validNodeTarget("gateway"));
-ok("accepts a dns name", T.validNodeTarget("gateway.luna.ts.net"));
+ok("accepts a dns name", T.validNodeTarget("gateway.example.ts.net"));
 ok("accepts an IPv4", T.validNodeTarget("100.64.0.7"));
 ok("accepts an IPv6", T.validNodeTarget("fd7a::1"));
 ok("rejects a leading dash (would read as a flag)", !T.validNodeTarget("--reset"));

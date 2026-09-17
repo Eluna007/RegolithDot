@@ -1,6 +1,6 @@
 -- Window and layer rules.
 --
--- Apollo's rules merged with Luna's from the previous config. Hyprland
+-- Apollo's rules merged with those from the pre-Apollo config. Hyprland
 -- evaluates these top to bottom and the *last* match wins, so the broad
 -- rules come first and the specific ones after.
 --
@@ -59,7 +59,7 @@ hl.window_rule({
 
 -- Thunar. The class is capital-T "Thunar" on Arch, so Moonlit's lowercase-only
 -- `^(thunar)$` never matched — the case-insensitive first letter comes from
--- Luna's config and is what actually makes this rule fire.
+-- the pre-Apollo config and is what actually makes this rule fire.
 hl.window_rule({
     name    = "thunar-frost",
     match   = { class = "^([Tt]hunar)$" },

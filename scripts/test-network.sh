@@ -31,7 +31,7 @@ eq() {
 }
 
 echo "wifi:"
-# Luna's actual machine: no iw at all, nmcli connected. This reported
+# The machine this was found on: no iw at all, nmcli connected. This reported
 # "Disconnected" before the fix.
 clear_stubs
 stub nmcli 'echo "yes:Sylmar_Guest"; echo "no:SomeNeighbour"'
@@ -61,7 +61,7 @@ stub nmcli 'echo "yes:AVeryLongNetworkNameIndeed"'
 eq "truncation to 14"                 "AVeryLongNetwo" "$(run --wifi 14)"
 
 echo "bluetooth:"
-# Luna's bluez: `bluetoothctl info` with no argument errors out. Upstream's
+# This machine's bluez: `bluetoothctl info` with no argument errors out. Upstream's
 # command form could therefore never report a connected device.
 clear_stubs
 stub bluetoothctl 'case "$1" in
@@ -75,7 +75,7 @@ stub bluetoothctl 'case "$1" in
   devices) ;;
   info) echo "Missing device address argument" >&2; exit 1 ;;
 esac'
-eq "nothing connected (Luna today)"   "Disconnected" "$(run --bluetooth)"
+eq "nothing connected"                "Disconnected" "$(run --bluetooth)"
 
 clear_stubs
 stub bluetoothctl 'case "$1" in

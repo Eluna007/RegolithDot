@@ -345,7 +345,7 @@ console.log("chess.com parsing — this data comes off the network:");
 }
 
 console.log("username validation — this string goes into a curl argument:");
-ok("accepts a normal name", M.validUsername("luna_42"));
+ok("accepts a normal name", M.validUsername("player_42"));
 ok("accepts hyphens", M.validUsername("a-b-c"));
 ok("rejects too short", !M.validUsername("ab"));
 ok("rejects too long", !M.validUsername("x".repeat(26)));

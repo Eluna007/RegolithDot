@@ -72,7 +72,8 @@ Two things beyond the config files had to follow:
 
 ## Keybinds, input and gestures
 
-`lua/keybinds.lua`, `lua/input.lua` and `lua/gestures.lua` are Luna's, not
+`lua/keybinds.lua`, `lua/input.lua` and `lua/gestures.lua` are from the
+pre-Apollo config, not
 Moonlit's — carried over when Apollo was deployed. Notable differences from
 upstream: `natural_scroll = false`, `disable_while_typing = false`, a vim-style
 focus/resize layout with a resize submap, and touchscreen gestures via the

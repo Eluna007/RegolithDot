@@ -21,7 +21,7 @@ Thumbs.db
 config/nvim/plugin/
 config/nvim/after/
 
-# Generated on the machine by Luna's wallpaper/colour scripts
+# Generated on the machine by the wallpaper/colour scripts
 config/hypr/last-wallpaper.txt
 config/hypr/hyprlock-colors.conf
 
