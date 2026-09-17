@@ -231,6 +231,7 @@ mkdir -p ~/.local/bin
 for s in ~/RegolithDot/local/bin/*.sh; do ln -sfn "$s" ~/.local/bin/"$(basename "$s")"; done
 ln -sfn ~/RegolithDot/local/bin/apollo-lock-layout ~/.local/bin/apollo-lock-layout
 ln -sfn ~/RegolithDot/local/bin/apollo-sddm-sync ~/.local/bin/apollo-sddm-sync
+ln -sfn ~/RegolithDot/local/bin/apollo-paper-layout ~/.local/bin/apollo-paper-layout
 
 # keyd is system-wide and needs a real copy, not a symlink
 sudo cp config/keyd/default.conf /etc/keyd/default.conf

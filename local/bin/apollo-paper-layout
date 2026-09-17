@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# apollo-paper-layout - pick which layout the wallpaper picker (SUPER+W) uses.
+#
+#   apollo-paper-layout              show what is set now, and what else there is
+#   apollo-paper-layout coverflow    switch
+#   apollo-paper-layout --path       print the file that holds the choice
+#
+# All this writes is ~/.config/apollo/paper-layout.conf, a single name that
+# services/Config.qml watches. ~/.config/apollo is not part of the dotfiles
+# repo — it is where apollo-settings keeps machine state — so switching
+# layouts never dirties it. Its own file rather than a key in config.json for
+# the same reason the lock screen's layout has one: this writes from a
+# terminal, apollo-settings writes config.json, and a second copy of the answer
+# would drift from the first.
+#
+# The shell watches the file, so a switch takes effect the next time you open
+# the picker. Nothing to reload.
+set -euo pipefail
+
+conf_dir="${XDG_CONFIG_HOME:-$HOME/.config}/apollo"
+active="$conf_dir/paper-layout.conf"
+
+# The panels this can choose between. Kept in step with WallpaperPanel.qml's
+# Loader; CI fails if the two disagree about which layouts exist.
+describe() {
+  case "$1" in
+    filmstrip) echo "a centred card holding a strip of thumbnails (default)" ;;
+    coverflow) echo "full-screen sheared cards over a blur of the selection" ;;
+    *)         echo "" ;;
+  esac
+}
+
+available() { printf '%s\n' filmstrip coverflow; }
+
+current() {
+  [ -r "$active" ] || return 0
+  tr -d '[:space:]' < "$active"
+}
+
+usage() {
+  local now
+  now="$(current)"
+  [ -n "$now" ] || now="filmstrip (default)"
+  echo "wallpaper picker layout: $now"
+  echo
+  echo "available:"
+  local n
+  while read -r n; do
+    printf '  %-10s %s\n' "$n" "$(describe "$n")"
+  done < <(available)
+  echo
+  echo "switch with: apollo-paper-layout <name>"
+}
+
+case "${1-}" in
+  "")       usage; exit 0 ;;
+  --path)   echo "$active"; exit 0 ;;
+  -h|--help) usage; exit 0 ;;
+esac
+
+want="$1"
+if [ -z "$(describe "$want")" ]; then
+  echo "apollo-paper-layout: no layout called '$want'" >&2
+  echo >&2
+  usage >&2
+  exit 1
+fi
+
+mkdir -p "$conf_dir"
+printf '%s\n' "$want" > "$active"
+echo "wallpaper picker layout: $want — $(describe "$want")"

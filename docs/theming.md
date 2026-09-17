@@ -271,9 +271,47 @@ Requires `hyprpaper`, `matugen`, and (for animated wallpapers) `mpvpaper` and
 
 ## The wallpaper picker
 
-`SUPER+W`. A filmstrip of everything in `~/Pictures/Wallpapers`, applied
-through `wallpaper-switch.sh` so the picker and the boot restore cannot
-disagree about what is set.
+`SUPER+W`. Everything in `~/Pictures/Wallpapers`, applied through
+`wallpaper-switch.sh` so the picker and the boot restore cannot disagree about
+what is set.
+
+### Layouts
+
+```sh
+apollo-paper-layout              # what is set now, and what else there is
+apollo-paper-layout coverflow    # switch
+```
+
+| | |
+|---|---|
+| **filmstrip** | a centred card holding a strip of thumbnails — Apollo's own, and the default |
+| **coverflow** | full-screen sheared cards over a blurred copy of the selection, ported from [ujjalsigdel/hyprquickpaper](https://github.com/ujjalsigdel/hyprquickpaper) |
+
+The split is the lock screen's. `WallpaperPanel.qml` is the surface — the
+scrim, the reveal, the keyboard — and everything underneath lives once in
+`WallpaperSource.qml`: the folder, the thumbnails, what is currently applied,
+and `apply()`. A layout file is only its look, and `WallpaperTile.qml` draws
+one wallpaper for all of them.
+
+That split is the whole reason for porting rather than vendoring. Upstream
+ships each of its fourteen layouts as a complete standalone `shell.qml`, which
+is right for a drop-in config and would mean fourteen copies of that plumbing
+here — plus a second Quickshell process, its own `config.json`, and a border
+colour that does not follow your accent.
+
+The one piece that must never be re-implemented per layout is `apply()`. Every
+upstream layout runs its own `commands.sh`, which sets the wallpaper itself.
+Going through `wallpaper-switch.sh` instead is what keeps the rest of the rice
+following it — the boot restore's record, matugen, the lock screen's colours
+and wallpaper, the shell/kitty/GTK/rofi palette, and the login screen. Apply a
+wallpaper any other way and all of that silently stops tracking. (Upstream's
+own `hyprpaper` backend also calls `hyprctl hyprpaper preload`, which current
+hyprpaper removed from its IPC — it just answers "invalid hyprpaper request".)
+
+`scripts/check-paper-layouts.py` (a CI step) keeps the three lists of layouts —
+the Loader's switch, `apollo-paper-layout`'s `describe()`, and the files
+themselves — from drifting. A name the CLI offers that the Loader does not know
+falls through to the default, so switching to it appears to do nothing.
 
 A wallpaper's format decides which pipeline it takes — animated ones go to
 mpvpaper, stills to hyprpaper — and that answer used to be spelled out

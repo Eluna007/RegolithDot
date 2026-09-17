@@ -30,6 +30,7 @@ jobs:
           bash -n scripts/apollo-doctor
           bash -n local/bin/apollo-lock-layout
           bash -n local/bin/apollo-sddm-sync
+          bash -n local/bin/apollo-paper-layout
           bash -n scripts/test-sddm-sync.sh
           bash -n scripts/test-battery.sh
           bash -n scripts/test-network.sh
@@ -52,6 +53,7 @@ jobs:
           shellcheck scripts/apollo-doctor
           shellcheck local/bin/apollo-lock-layout
           shellcheck local/bin/apollo-sddm-sync
+          shellcheck local/bin/apollo-paper-layout
           shellcheck scripts/test-sddm-sync.sh
           shellcheck scripts/test-battery.sh
           shellcheck scripts/test-network.sh
@@ -262,6 +264,13 @@ jobs:
       # it was written for.
       - name: Check the wallpaper formats agree
         run: python3 scripts/check-wallpaper-formats.py
+
+      # The picker's layouts are named in three places: the Loader that loads
+      # them, the CLI that offers them, and the files themselves. A name the
+      # CLI offers that the Loader does not know falls through to the default,
+      # so switching to it appears to do nothing at all.
+      - name: Check wallpaper picker layout wiring
+        run: python3 scripts/check-paper-layouts.py
 
       - name: Test wallpaper-thumbs.sh
         run: ./scripts/test-wallpaper-thumbs.sh
