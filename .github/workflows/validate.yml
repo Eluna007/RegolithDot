@@ -22,6 +22,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y shellcheck lua5.4 jq
+          # Qt 6 QML test tooling, for the Loader contract the wallpaper
+          # picker depends on. test-qml-loader.sh skips itself if these are
+          # unavailable rather than failing.
+          sudo apt-get install -y qt6-declarative-dev-tools \
+            qml6-module-qtquick qml6-module-qttest || true
 
       - name: Check shell syntax
         run: |
@@ -41,6 +46,7 @@ jobs:
           bash -n config/quickshell/apollo/scripts/apps.sh
           bash -n config/quickshell/apollo/scripts/wallpaper-thumbs.sh
           bash -n scripts/test-wallpaper-thumbs.sh
+          bash -n scripts/test-qml-loader.sh
           bash -n scripts/test-apps.sh
           bash -n config/quickshell/apollo/scripts/battery.sh
           for f in local/bin/*.sh; do bash -n "$f"; done
@@ -64,6 +70,7 @@ jobs:
           shellcheck config/quickshell/apollo/scripts/apps.sh
           shellcheck config/quickshell/apollo/scripts/wallpaper-thumbs.sh
           shellcheck scripts/test-wallpaper-thumbs.sh
+          shellcheck scripts/test-qml-loader.sh
           shellcheck scripts/test-apps.sh
           shellcheck config/quickshell/apollo/scripts/battery.sh
           shellcheck config/hyprlock/scripts/battery.sh
@@ -271,6 +278,13 @@ jobs:
       # so switching to it appears to do nothing at all.
       - name: Check wallpaper picker layout wiring
         run: python3 scripts/check-paper-layouts.py
+
+      # A required property assigned in a Loader's onLoaded is too late, and
+      # fails in the one way that hides itself: nothing is built, so onLoaded
+      # never runs either. The picker opened as a dimmed screen with no
+      # wallpapers on it.
+      - name: Test the Loader required-property contract
+        run: ./scripts/test-qml-loader.sh
 
       - name: Test wallpaper-thumbs.sh
         run: ./scripts/test-wallpaper-thumbs.sh

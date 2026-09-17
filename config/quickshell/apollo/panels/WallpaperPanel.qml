@@ -73,6 +73,38 @@ PanelWindow {
     }
 
     // ── The layout ───────────────────────────────────────────────────────
+    // Every layout is named, including the default one: `default:` is only for
+    // a value nobody meant, and a layout reachable only through it stops being
+    // reachable at all the day the default changes.
+    readonly property string layoutFile: {
+        switch (Config.paperLayout) {
+        case "coverflow": return "WallpaperCoverflow.qml"
+        case "filmstrip": return "WallpaperFilmstrip.qml"
+        default:          return "WallpaperFilmstrip.qml"
+        }
+    }
+
+    // setSource with initial properties, not a `source` binding plus an
+    // assignment in onLoaded.
+    //
+    // A layout's `wallpapers` is a *required* property, and a required property
+    // has to be supplied when the object is created. Assigning it in onLoaded
+    // is too late by definition: the component never gets built, `item` is
+    // null, onLoaded never runs, and the picker is a dimmed screen with
+    // nothing on it. QML says so — "Required property wallpapers was not
+    // initialized" — into a log nobody is reading while looking at the empty
+    // panel.
+    //
+    // Loader records the source and its properties even while inactive, and
+    // reuses them every time `active` goes true again, so toggling with the
+    // panel's visibility needs nothing further. Both of those are verified in
+    // scripts/qml-tests/tst_loader.qml.
+    function loadLayout() {
+        loader.setSource(root.layoutFile, { "wallpapers": wallpapers })
+    }
+    onLayoutFileChanged: loadLayout()
+    Component.onCompleted: loadLayout()
+
     Loader {
         id: loader
         anchors.fill: parent
@@ -80,20 +112,8 @@ PanelWindow {
         // every wallpaper in the folder, and there is no reason for that to
         // exist for the whole session.
         active: root.visible
-        source: {
-            // Every layout is named, including the default one: `default:`
-            // is only for a value nobody meant, and a layout reachable only
-            // through it stops being reachable at all the day the default
-            // changes.
-            switch (Config.paperLayout) {
-            case "coverflow": return "WallpaperCoverflow.qml"
-            case "filmstrip": return "WallpaperFilmstrip.qml"
-            default:          return "WallpaperFilmstrip.qml"
-            }
-        }
 
         onLoaded: {
-            item.wallpapers = wallpapers
             item.close.connect(root.close)
             item.syncToApplied()
         }

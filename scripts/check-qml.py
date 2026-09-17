@@ -183,6 +183,34 @@ for f in qml_files:
                    f"completion, not when the panel is shown - drive it from "
                    f"`visible` (see services/Motion.qml)")
 
+# `Loader { onLoaded: item.<prop> = ... }` for a property the loaded component
+# declares `required`.
+#
+# A required property has to be supplied when the object is created, so this is
+# too late by definition - and it fails in the one way that hides itself. The
+# component is never built, `item` stays null, and `onLoaded` therefore never
+# runs either, so the assignment meant to satisfy the property cannot even be
+# reached. The panel opens empty. QML writes "Required property <name> was not
+# initialized" into a log nobody is reading while looking at the empty panel.
+#
+# The wallpaper picker shipped exactly this: SUPER+W gave a dimmed screen with
+# no wallpapers on it. Pass them at creation instead:
+#
+#     loader.setSource("Thing.qml", { "wallpapers": wallpapers })
+#
+# Loader keeps the source and its properties across `active` toggling, so that
+# form works for a panel that is built once and shown repeatedly. Both are
+# pinned by scripts/qml-tests/tst_loader_required.qml.
+#
+# FileView also has an onLoaded, and it is not this: the discriminator is
+# assigning *through* `item`, which only a Loader has.
+for f in qml_files:
+    src = strip(f.read_text())
+    for m in re.finditer(r'onLoaded:\s*\{?[^}]*?\bitem\.(\w+)\s*=(?!=)', src):
+        bad.append(f"{f}: `onLoaded: item.{m.group(1)} = ...` is too late for a "
+                   f"required property - pass it with "
+                   f"loader.setSource(url, {{ \"{m.group(1)}\": ... }})")
+
 # A curve or duration that Motion does not define comes back undefined, and an
 # undefined bezierCurve is not an error - the animation just runs on the
 # default easing, so the whole point of the shared vocabulary is silently lost.
