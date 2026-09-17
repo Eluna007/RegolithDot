@@ -12,6 +12,29 @@ no card — the whole screen is the surface, translucent over the blur `rules.lu
 already applies to the `quickshell` layer namespace, so the compositor does the
 glass rather than QML faking it.
 
+It is a card at 75% of the screen, centred, with a fixed **6×5** page — 30 apps
+at a time. Fixed rather than derived from the space available: "however many
+fit" gave a different page size per monitor, so the same app was on page 1 on
+the laptop and page 2 plugged in.
+
+The grid spans the card's full width. Six columns of a 16:9 card are wider than
+they are tall, which is what Launchpad's own cells are: the horizontal air
+between icons is the look, not a gap to be closed. What the eye reads as the
+tile is a square plate centred in that cell, so a wide cell stays airy rather
+than drawing a wide highlight.
+
+The icon leads and the plate follows, not the other way round. Sizing the plate
+off the cell first put a 285px square behind a 104px icon on a 4K screen —
+correct arithmetic, absurd proportion. The icon comes off the row height and
+the plate is a fixed 1.95× of it, clamped so it can never overflow a short row:
+
+| | cell | icon | plate |
+|---|---|---|---|
+| laptop (1366×768) | 161×84 | 38px | 74px |
+| 1080p | 230×131 | 59px | 115px |
+| 1440p | 310×185 | 83px | 162px |
+| 4K | 470×293 | 112px | 218px |
+
 Pages carry dots at the bottom; the scroll wheel, PageUp/PageDown and the dots
 themselves turn them. The selection is an index into the whole result list
 rather than into the page, so an arrow off the end of a page steps onto the
