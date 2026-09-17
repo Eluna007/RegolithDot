@@ -27,6 +27,10 @@ default_dirs() {
 
 APP_DIRS="${APPLICATION_DIRS:-$(default_dirs)}"
 
+icon_cache_file() {
+    printf '%s/apollo/icon-index' "${XDG_CACHE_HOME:-$HOME/.cache}"
+}
+
 # `apps.sh --debug` says where it looked and what it found there. An empty
 # launcher is silence otherwise, and the three reasons for it - no readable
 # directories, no .desktop files, everything filtered out - look identical from
@@ -50,7 +54,24 @@ if [ "${1-}" = "--debug" ]; then
     done <<< "$(printf '%s' "$APP_DIRS" | tr ':' '\n')"
     echo
     echo "$total .desktop file(s) in total"
-    echo "$("$0" | wc -l) entr(ies) after filtering (NoDisplay, Hidden, TryExec, duplicates)"
+
+    cache="$(icon_cache_file)"
+    if [ -s "$cache" ]; then
+        age=$(( $(date +%s) - $(stat -c %Y "$cache" 2>/dev/null || echo 0) ))
+        echo "icon index:   cached, $(wc -l < "$cache") entries, ${age}s old (TTL ${APOLLO_ICON_CACHE_TTL:-3600}s)"
+    else
+        echo "icon index:   not cached yet"
+    fi
+
+    # Both numbers, because the difference between them is the whole reason
+    # the cache exists. On a machine with Papirus the cold figure is seconds.
+    start=$(date +%s%N)
+    APOLLO_ICON_CACHE=0 "$0" >/dev/null
+    echo "cold scan:    $(( ($(date +%s%N) - start) / 1000000 ))ms (icon index rebuilt)"
+    start=$(date +%s%N)
+    n=$("$0" | wc -l)
+    echo "warm scan:    $(( ($(date +%s%N) - start) / 1000000 ))ms"
+    echo "$n entr(ies) after filtering (NoDisplay, Hidden, TryExec, duplicates)"
     exit 0
 fi
 ICON_DIRS="${APOLLO_ICON_DIRS:-${XDG_DATA_HOME:-$HOME/.local/share}/icons:$HOME/.icons:/usr/share/icons:/usr/share/pixmaps}"
@@ -63,6 +84,40 @@ ICON_DIRS="${APOLLO_ICON_DIRS:-${XDG_DATA_HOME:-$HOME/.local/share}/icons:$HOME/
 #
 # Ranking prefers larger raster sizes (a 128 scaled down beats a 32 scaled up)
 # and treats scalable as near-best.
+# The index is cached. On a machine with Papirus installed the icon
+# directories hold something like 70,000 files, and walking them is nearly all
+# of what this script costs - which is what made the launcher take over a
+# second to open. Themes change when you install one, not between launches.
+#
+# Not cached when APOLLO_ICON_DIRS is overridden: scripts/test-apps.sh points
+# that at a fixture tree, and a cache shared with the real dirs would make the
+# tests pass or fail depending on what ran before them.
+icon_index_cached() {
+    if [ -n "${APOLLO_ICON_DIRS-}" ] || [ "${APOLLO_ICON_CACHE:-1}" = "0" ]; then
+        icon_index
+        return
+    fi
+    local cache ttl
+    cache="$(icon_cache_file)"
+    ttl="${APOLLO_ICON_CACHE_TTL:-3600}"
+    # -s as well as -f: a truncated cache from a full disk is worse than none.
+    if [ -s "$cache" ] && [ "$(( $(date +%s) - $(stat -c %Y "$cache" 2>/dev/null || echo 0) ))" -lt "$ttl" ]; then
+        cat "$cache"
+        return
+    fi
+    mkdir -p "$(dirname "$cache")" 2>/dev/null || { icon_index; return; }
+    # Built under a temp name and moved into place, so a launcher reading the
+    # cache while this runs never sees half an index.
+    local tmp
+    tmp="$(mktemp "$cache.XXXXXX" 2>/dev/null)" || { icon_index; return; }
+    if icon_index > "$tmp" && mv -f "$tmp" "$cache"; then
+        cat "$cache"
+    else
+        rm -f "$tmp"
+        icon_index
+    fi
+}
+
 icon_index() {
     local dir
     local dirs=()
@@ -189,7 +244,7 @@ SEP="$(printf '\037')"
 
 index_file="$(mktemp)"
 trap 'rm -f "$index_file"' EXIT
-icon_index > "$index_file"
+icon_index_cached > "$index_file"
 
 # Join the icon index onto the entries in one awk rather than spawning one per
 # app - two hundred apps meant two hundred processes, which was most of the

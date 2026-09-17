@@ -107,6 +107,28 @@ wired |= {"launcher", "overview"}
 for name in sorted(opened - wired):
     bad.append(f"Bar.qml opens panel \"{name}\" but shell.qml never instantiates it")
 
+# services/ holds singletons (Config, Hypr, Motion). A file that names one
+# without importing the directory gets undefined, and QML reports that once at
+# startup into a log nobody reads - which is how Config.showDesktop and then
+# Config.shellScript both shipped broken from shell.qml.
+SINGLETONS = {f.stem for f in (ROOT / "services").glob("*.qml")}
+for f in qml_files:
+    if f.parent.name == "services":
+        continue
+    raw = f.read_text()
+    body = strip(raw)
+    # The import is matched on the RAW source: strip() blanks string literals,
+    # and an import path *is* a string literal - so against the stripped text
+    # every file looks like it imports nothing. (Second time that has caught
+    # me; the Quickshell.env rule below hit the same wall.) A commented-out
+    # import still will not match, because `//` is not whitespace.
+    imports_services = re.search(r'^\s*import\s+"[^"]*services"', raw, re.M)
+    for name in sorted(SINGLETONS):
+        if re.search(r'\b%s\.' % name, body) and not imports_services:
+            bad.append(f"{f}: uses {name}.* but never imports the services "
+                       f"directory - the singleton resolves to undefined")
+            break
+
 # Quickshell.env() returns null for an unset variable, not "". A `!== ""` test
 # therefore passes when the variable is unset, the ternary takes the wrong
 # branch, and the caller concatenates the string "null" into a path. That is

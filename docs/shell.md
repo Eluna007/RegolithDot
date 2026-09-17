@@ -43,10 +43,25 @@ next one instead of stopping. `pageCount`, `pageSlice`, `pageOf` and
 a last page one short, and an empty trailing page when the count divides
 exactly, both look plausible until you count.
 
-If the grid is empty it says which of three things happened — the scan has not
-finished, `apps.sh` found nothing at all, or the query matched nothing. Those
-are different problems and a single "no results" makes a broken scanner look
-exactly like a bad search. `apps.sh --debug` prints the directories it searched,
+The app list is scanned **once for the machine**, by `shell.qml`, and kept in
+memory — opening the launcher costs nothing. It used to scan on every open,
+which is why it took over a second to appear: the scan walks the icon theme,
+and on a machine with Papirus installed that is tens of thousands of files.
+`apps.sh` caches the index under `~/.cache/apollo/icon-index` with a one-hour
+TTL, written to a temp name and moved into place so a read never sees half an
+index. Opening the launcher kicks the next scan off in the background, so the
+list you see is the previous one and an app installed since then is there the
+time after.
+
+`apps.sh --debug` prints both timings — cold with the index rebuilt, and warm —
+because the gap between them is the whole reason the cache exists.
+
+There is no card behind the grid: the backdrop is already blurred by the layer
+rule, and a second translucent box on top of it only muddied the wallpaper.
+
+If the grid is empty it says which of two things happened — `apps.sh` found nothing at all, or
+the query matched nothing. Those are different problems and a single "no
+results" makes a broken scanner look exactly like a bad search. `apps.sh --debug` prints the directories it searched,
 how many `.desktop` files are in each, and how many entries survive filtering.
 
 One field searches four things, ranked together:
