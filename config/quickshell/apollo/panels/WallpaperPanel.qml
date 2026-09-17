@@ -212,6 +212,11 @@ PanelWindow {
                 enabled: root.visible
 
                 pathItemCount: 5
+                // Keep delegates alive off the path. A PathView destroys and
+                // recreates them as they leave and re-enter it, so without
+                // this a momentum spin rebuilds — and re-decodes — the same
+                // tiles several times on the way past.
+                cacheItemCount: 8
                 preferredHighlightBegin: 0.5
                 preferredHighlightEnd:   0.5
                 highlightRangeMode: PathView.StrictlyEnforceRange
@@ -319,6 +324,20 @@ PanelWindow {
                     // Whichever of the two is actually drawing this tile.
                     readonly property int artStatus: cell.isGif ? wpGif.status : wpImg.status
 
+                    // Thumbnails are made in the background, so the first time
+                    // the picker opens on a new folder there may be none yet.
+                    // Falling back to the original means the tile is never
+                    // *worse* than it was before any of this existed — just
+                    // slower, until the cache catches up.
+                    property bool thumbFailed: false
+                    Connections {
+                        target: root
+                        // A new batch has landed: give the thumbnail another
+                        // go, rather than staying on the original until the
+                        // panel is next opened.
+                        function onThumbsRevChanged() { cell.thumbFailed = false }
+                    }
+
                     width: 248
                     height: strip.height
                     scale:   cell.PathView.iscale   ?? 0.78
@@ -339,10 +358,21 @@ PanelWindow {
                         Image {
                             id: wpImg
                             anchors.fill: parent
-                            // A video draws its cached frame; a gif is drawn by
-                            // the AnimatedImage below instead, so this one is
-                            // given nothing to load.
-                            source: cell.isGif ? "" : (cell.isVideo ? cell.thumbUrl : cell.fileUrl)
+                            // A gif is drawn by the AnimatedImage below, so
+                            // this one is given nothing to load. A video has
+                            // only its cached frame — Image cannot decode the
+                            // file itself, so there is nothing to fall back
+                            // to. A still image prefers its thumbnail and
+                            // falls back to the original.
+                            source: {
+                                if (cell.isGif) return ""
+                                if (cell.isVideo) return cell.thumbUrl
+                                return cell.thumbFailed ? cell.fileUrl : cell.thumbUrl
+                            }
+                            onStatusChanged: {
+                                if (status === Image.Error && !cell.isVideo && !cell.thumbFailed)
+                                    cell.thumbFailed = true
+                            }
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: true
                             // cache: true, which this was not. A PathView
@@ -350,11 +380,15 @@ PanelWindow {
                             // leave and re-enter the path, so with caching off
                             // every thumbnail was decoded from disk again on
                             // every pass — and a momentum spin outruns the
-                            // decoder, which is what left tiles blank. At
-                            // sourceSize 320 a cached thumbnail is a couple of
-                            // hundred KB, and the alternative is re-reading a
-                            // 4K JPEG several times a second.
+                            // decoder, which is what left tiles blank.
                             cache: true
+                            // sourceSize bounds what is kept, not what is
+                            // read: a 4K PNG or WebP is still decoded whole
+                            // (eight million pixels, 32 MB) before being
+                            // scaled down to this. Only JPEG can decode at a
+                            // reduced scale. That is why the thumbnails above
+                            // exist at all, and why this is a safety net
+                            // rather than the fix.
                             sourceSize.width: 320
                             visible: false
                         }

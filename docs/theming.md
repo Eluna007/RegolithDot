@@ -286,20 +286,35 @@ a format offered must be one the pipeline can apply.
 
 Three things the tiles do that are not obvious:
 
-- **Videos are drawn from a cached frame.** QML's `Image` cannot decode one at
-  all, so `scripts/wallpaper-thumbs.sh` pulls a single frame out of each with
-  ffmpeg, one second in (the first frame of a video is very often black, and a
-  black thumbnail is indistinguishable from one that failed). The frame is
-  named after the video plus `.png`, which is the entire contract between the
-  script and the panel — there is no index file to fall out of sync.
+- **Every wallpaper is thumbnailed once, and the picker loads that.** Handing
+  `Image` a 4K original and asking for a 320px tile is merely wasteful for a
+  JPEG, which can decode at a reduced scale — but a 4K PNG or WebP is decoded
+  whole first, eight million pixels, to produce a postage stamp. Five of those
+  during a momentum spin is the lag.
+  `config/quickshell/apollo/scripts/wallpaper-thumbs.sh` downscales each one to
+  640px with ImageMagick, in parallel up to `nproc`, and the tile loads that
+  instead. A thumbnail that has not been made yet falls back to the original,
+  so the picker is never worse than it was — just slower until the cache
+  catches up.
+- **Videos are drawn from a cached frame,** by the same script, because
+  `Image` cannot decode one at all. ffmpeg pulls a single frame a second in
+  (the first frame of a video is very often black, and a black thumbnail is
+  indistinguishable from one that failed). The cached file is named after the
+  original plus `.png` — the entire contract between the script and the panel,
+  so there is no index file to fall out of sync.
 - **Gifs animate, and only the centred one does.** `Image` renders exactly one
   frame of a gif, which is why they looked like stills that would not play;
   `AnimatedImage` is the type that plays them. Decoding five at once is real
   work for four tiles nobody is looking at.
-- **Thumbnails are cached.** A `PathView` destroys and recreates its delegates
-  as they leave and re-enter the path, so with `cache: false` every thumbnail
-  was re-decoded from disk on every pass — and a momentum spin outruns the
-  decoder, which is what left tiles blank.
+- **Decoded tiles are kept, and so are the delegates.** A `PathView` destroys
+  and recreates its delegates as they leave and re-enter the path, so with
+  `cache: false` every thumbnail was re-decoded from disk on every pass, and a
+  momentum spin outruns the decoder. `cacheItemCount` keeps them alive off the
+  path as well.
+
+The pre-cached-thumbnail approach is
+[iamsurjog/hyprquickpaper](https://github.com/iamsurjog/hyprquickpaper)'s, which
+caches downscaled copies with ImageMagick and batches the work.
 
 A tile that is loading and a tile that cannot be drawn used to look identical:
 an empty frame. They now differ, because "still working" and "this file is
