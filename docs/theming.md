@@ -243,6 +243,24 @@ Clipboard history is `copyq`, not Moonlit's `cliphist` watchers.
 The pipeline spans three places, which is worth knowing before you move any
 piece of it:
 
+0. **The new daemon starts before the old one stops, always.** Every flash of
+   the bare Hyprland background between wallpapers came from the other order —
+   kill the outgoing daemon, then spend a few hundred milliseconds starting the
+   incoming one with nothing on screen in between. Video to still was the worst
+   of it: the video branch had already killed hyprpaper, so the still had to
+   cold-start it. The script holds the old PIDs and retires them only once the
+   replacement is drawing.
+
+   The daemons are also started with `setsid`, and the shell applies wallpapers
+   with `execDetached` rather than a tracked `Process`. A `Process` is a child
+   of the shell and so is everything it spawns, so reaping the finished script
+   took `mpvpaper` down with it — an animated wallpaper that played for about a
+   second, which is how long the rest of the script took, and then vanished.
+
+   `scripts/test-wallpaper-switch.sh` (a CI step) pins the ordering by
+   recording the sequence of calls, because none of this shows up in the
+   script's output.
+
 1. `local/bin/wallpaper-switch.sh` applies a wallpaper. The `SUPER+W`
    carousel calls it too, so the picker and the boot restore can't disagree
    about what's set. It uses `hyprpaper` for

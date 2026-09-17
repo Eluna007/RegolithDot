@@ -47,6 +47,7 @@ jobs:
           bash -n config/quickshell/apollo/scripts/wallpaper-thumbs.sh
           bash -n scripts/test-wallpaper-thumbs.sh
           bash -n scripts/test-qml-loader.sh
+          bash -n scripts/test-wallpaper-switch.sh
           bash -n scripts/test-apps.sh
           bash -n config/quickshell/apollo/scripts/battery.sh
           for f in local/bin/*.sh; do bash -n "$f"; done
@@ -71,6 +72,7 @@ jobs:
           shellcheck config/quickshell/apollo/scripts/wallpaper-thumbs.sh
           shellcheck scripts/test-wallpaper-thumbs.sh
           shellcheck scripts/test-qml-loader.sh
+          shellcheck scripts/test-wallpaper-switch.sh
           shellcheck scripts/test-apps.sh
           shellcheck config/quickshell/apollo/scripts/battery.sh
           shellcheck config/hyprlock/scripts/battery.sh
@@ -288,6 +290,14 @@ jobs:
 
       - name: Test wallpaper-thumbs.sh
         run: ./scripts/test-wallpaper-thumbs.sh
+
+      # Start the incoming wallpaper daemon before stopping the outgoing one,
+      # and start it detached. The other order flashes the compositor's default
+      # background between every switch; a daemon left in the script's process
+      # group dies when whoever ran the script is reaped, which looked like an
+      # animated wallpaper playing for a second and then giving up.
+      - name: Test wallpaper-switch.sh
+        run: ./scripts/test-wallpaper-switch.sh
 
       # Ranking is the whole product of a launcher: the orderings that matter
       # are asserted rather than eyeballed.
