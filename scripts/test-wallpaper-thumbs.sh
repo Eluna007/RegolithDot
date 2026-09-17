@@ -46,6 +46,18 @@ echo "$@" >> "$MAGICK_ARGV_LOG"
 eval out=\$$#
 for a in "$@"; do case "$a" in *broken*) exit 1;; esac; done
 for a in "$@"; do case "$a" in *truncated*) : > "$out"; exit 0;; esac; done
+
+# Multi-frame input without an explicit frame: ImageMagick writes one file per
+# frame - out-0.png, out-1.png - and never the name it was asked for. This is
+# real behaviour, verified against ImageMagick, and every gif hit it.
+case "$1" in
+  *.gif|*.GIF)
+    base="${out%.png}"
+    printf 'MAGICK' > "$base-0.png"
+    printf 'MAGICK' > "$base-1.png"
+    exit 0
+    ;;
+esac
 printf 'MAGICK' > "$out"
 STUB
 chmod +x "$bin/magick"
@@ -71,6 +83,7 @@ run() { PATH="$bin:$PATH" XDG_CACHE_HOME="$cache" "$SCRIPT" "$walls" 2>&1; }
 : > "$walls/still.png"
 : > "$walls/photo.jpg"
 : > "$walls/Sunset.JPG"
+: > "$walls/loop.gif"
 : > "$walls/clip.mp4"
 : > "$walls/loop.webm"
 : > "$walls/Scene.MKV"
@@ -105,6 +118,22 @@ fi
 for want in photo.jpg.png still.png.png Sunset.JPG.png; do
     if [ -f "$thumbs/$want" ]; then ok "downscaled $want"; else fail "no thumbnail for $want" "$(ls "$thumbs")"; fi
 done
+
+# A gif is multi-frame, so it has to name the frame it wants. Without `[0]`
+# ImageMagick writes out-0.png, out-1.png and never out.png — so the thumbnail
+# is reported unmakeable and the numbered frames pile up in the cache, where
+# the retry check cannot even see them because they are not the name it looks
+# for. Every gif in the folder did this.
+if [ -f "$thumbs/loop.gif.png" ]; then
+    ok "thumbnails a gif"
+else
+    fail "a gif got no thumbnail" "$(ls "$thumbs")"
+fi
+if ls "$thumbs"/*-0.png >/dev/null 2>&1 || ls "$thumbs"/*-1.png >/dev/null 2>&1; then
+    fail "left ImageMagick's numbered frames in the cache" "$(ls "$thumbs")"
+else
+    ok "leaves no numbered frames behind"
+fi
 
 # -auto-orient has to come before -thumbnail. ImageMagick applies operators in
 # order, so rotating after the resize does nothing — and a photo carrying an
@@ -190,6 +219,23 @@ if [ $rc -eq 0 ] && [ -f "$thumbs/clip.mp4.png" ] && [ ! -f "$thumbs/photo.jpg.p
 else
     fail "the one-tool case was not handled" "$out"
 fi
+
+# --debug is the answer to "my videos do not show up", which has three
+# different causes that look identical from the outside.
+mkdir -p "$walls/nested"
+: > "$walls/nested/tucked-away.mp4"
+out="$(PATH="$bin:$PATH" XDG_CACHE_HOME="$cache" "$SCRIPT" --debug "$walls" 2>&1)"
+if echo "$out" | grep -q "NOT listed; the picker does not recurse"; then
+    ok "--debug reports files hidden in a subfolder"
+else
+    fail "--debug did not mention the subfolder" "$out"
+fi
+if echo "$out" | grep -qE "in this folder: [0-9]+ still\(s\), [0-9]+ video\(s\)"; then
+    ok "--debug counts what it can see"
+else
+    fail "--debug printed no counts" "$out"
+fi
+rm -rf "$walls/nested"
 
 # A wallpaper directory that does not exist yet is not an error either.
 out="$(PATH="$bin:$PATH" XDG_CACHE_HOME="$cache" "$SCRIPT" "$work/nope" 2>&1)"; rc=$?

@@ -67,6 +67,14 @@ Item {
     // between two Images so a change never flashes through to the desktop.
     property bool bgToggle: false
 
+    // Load into whichever image is currently hidden, and only crossfade once it
+    // is actually ready.
+    //
+    // Flipping straight away is what made the backdrop lag behind the cards:
+    // the fade starts against an Image that has not finished loading, so for
+    // its first few hundred milliseconds it is fading to nothing. Waiting for
+    // Ready means the fade always has something to fade to, and a thumbnail
+    // that is already cached crossfades immediately.
     function updateBackground() {
         if (layout.wallpapers.count === 0)
             return
@@ -77,13 +85,9 @@ Item {
         // unrecognisable anyway, and decoding a 4K wallpaper on every arrow
         // key is exactly the cost the thumbnails exist to avoid.
         var url = layout.wallpapers.thumbFor(name)
-        if (!layout.bgToggle) {
-            bgB.source = url
-            layout.bgToggle = true
-        } else {
-            bgA.source = url
-            layout.bgToggle = false
-        }
+        var incoming = layout.bgToggle ? bgA : bgB
+        if (incoming.source !== url)
+            incoming.source = url
     }
 
     Item {
@@ -94,10 +98,17 @@ Item {
             anchors.fill: parent
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
-            cache: false
+            // Cached, and bounded to the thumbnail's own width: going back to a
+            // wallpaper you have already passed then costs nothing, which is
+            // most of what browsing a carousel is.
+            cache: true
+            sourceSize.width: 640
             smooth: true
             visible: false
             opacity: layout.bgToggle ? 0.0 : 1.0
+            // Whichever image just finished loading is the one that was being
+            // loaded into, so it is the one to show.
+            onStatusChanged: if (status === Image.Ready) layout.bgToggle = false
             Behavior on opacity {
                 NumberAnimation { duration: Motion.slowEffects; easing.type: Easing.InOutQuad }
             }
@@ -107,10 +118,12 @@ Item {
             anchors.fill: parent
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
-            cache: false
+            cache: true
+            sourceSize.width: 640
             smooth: true
             visible: false
             opacity: layout.bgToggle ? 1.0 : 0.0
+            onStatusChanged: if (status === Image.Ready) layout.bgToggle = true
             Behavior on opacity {
                 NumberAnimation { duration: Motion.slowEffects; easing.type: Easing.InOutQuad }
             }
@@ -187,7 +200,9 @@ Item {
         preferredHighlightBegin: 0.5
         preferredHighlightEnd: 0.5
         highlightRangeMode: PathView.StrictlyEnforceRange
-        highlightMoveDuration: Motion.fastEffects
+        // 150ms made the cards jump rather than travel — at this size the
+        // movement is most of what the layout is, so it gets the slower step.
+        highlightMoveDuration: Motion.slowEffects
         // Keep delegates alive off the path: it otherwise destroys and
         // recreates — and re-decodes — the same cards on the way past.
         cacheItemCount: 6
