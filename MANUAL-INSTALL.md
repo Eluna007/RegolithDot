@@ -251,8 +251,16 @@ Wallpapers aren't vendored — put some in `~/Pictures/Wallpapers`.
 ```bash
 # Settings GUI (needs Go)
 sudo pacman -S --needed go
-( cd apollo-settings && go build -o apollo-settings . && \
-  install -Dm755 apollo-settings ~/.local/bin/apollo-settings )
+# One line on purpose. A `\` line continuation with a trailing space after it
+# is not a continuation at all — the space is what gets escaped, the command
+# runs short, and the next line begins with a bare `&&`, which is a syntax
+# error. That is easy to introduce when pasting into a terminal.
+( cd apollo-settings && go build -o apollo-settings . && install -Dm755 apollo-settings ~/.local/bin/apollo-settings )
+
+**Re-run this after every `git pull` that touched `apollo-settings/`.** The
+binary is a build artifact, not a symlink like the rest of the repo, so it does
+not update with a pull — and a stale one will not have subcommands that were
+added since.
 
 # Icons, resized from the bundled icon.png
 mkdir -p ~/.local/share/icons/hicolor/{48x48,64x64,128x128,256x256}/apps
