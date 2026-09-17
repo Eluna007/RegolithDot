@@ -9,7 +9,7 @@ spelled out separately in code that cannot see each other:
   apollo-settings/dynamic.go             animated -> matugen needs a frame first
   panels/WallpaperPanel.qml nameFilters  what the picker lists at all
   panels/WallpaperPanel.qml isVideo      what QML's Image cannot draw
-  scripts/wallpaper-thumbs.sh            what needs a frame cached for the picker
+  scripts/wallpaper-thumbs.sh            what gets a cached thumbnail
 
 Every disagreement here is silent and shaped like a missing feature. Videos
 were absent from nameFilters for as long as the picker existed, so
@@ -25,7 +25,10 @@ Two sets, and the difference between them is the point:
 
 gif is in the first and not the second: mpvpaper is what loops one on the
 desktop, but the picker draws it perfectly well with AnimatedImage, so it needs
-no cached frame.
+no cached *frame* — it still gets a thumbnail like everything else, because
+every format the picker lists has to have one. A format shown with no
+thumbnail rule is one that decodes its 4K original on every pass, forever, and
+nothing about the picker would say why that one is slow.
 """
 import re
 import sys
@@ -85,7 +88,9 @@ def main() -> int:
          shell_case("local/bin/apollo-sddm-sync", "video refusal"), ANIMATED),
         ("apollo-settings/dynamic.go (currentStill)", go_animated, ANIMATED),
         ("WallpaperPanel.qml isVideo", no_decode_qml, NO_DECODE),
-        ("wallpaper-thumbs.sh globs", thumbed, NO_DECODE),
+        # Everything the picker lists, not just the videos: the thumbnails are
+        # what stop a 4K original being decoded per tile.
+        ("wallpaper-thumbs.sh globs", thumbed, listed),
     ]
     for label, have, want in checks:
         if have != want:
@@ -102,7 +107,7 @@ def main() -> int:
     if fails:
         print(f"\n{len(fails)} problem(s)")
         return 1
-    print(f"ok - {len(listed)} wallpaper formats listed; "
+    print(f"ok - {len(listed)} wallpaper formats listed and all thumbnailed; "
           f"{len(ANIMATED)} animated and {len(NO_DECODE)} undecodable "
           f"spelled the same in all five places")
     return 0

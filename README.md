@@ -106,6 +106,9 @@ rice as a whole are [Fi3w0's Moonlit-shell](https://github.com/Fi3w0/Moonlit-she
 this repo translates them to Hyprland's Lua config and builds on them.
 Upstream's LICENSE is kept.
 
+The wallpaper picker pre-caches downscaled thumbnails the way
+[iamsurjog/hyprquickpaper](https://github.com/iamsurjog/hyprquickpaper) does.
+
 The motion vocabulary in `services/Motion.qml` is Material 3's expressive
 durations and curves as [caelestia-dots/shell](https://github.com/caelestia-dots/shell)
 spells them (`Config/tokens.hpp`), found by way of
