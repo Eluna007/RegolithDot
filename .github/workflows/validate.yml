@@ -143,6 +143,13 @@ jobs:
                 f"({checked} dispatchers cross-checked against config.lua)")
           PY
 
+      # The README's detail lives in docs/ now, and a split like that is
+      # exactly where relative links rot - a path that was right at the top
+      # level is wrong one directory down, and nothing complains until someone
+      # clicks it.
+      - name: Check doc links resolve
+        run: python3 scripts/check-docs.py
+
       # config.json has two ends, and saveConfig marshals a struct: a key the
       # shell reads but config.go has no field for is dropped on the next save,
       # silently and not by the control that was touched. chessUsername, which

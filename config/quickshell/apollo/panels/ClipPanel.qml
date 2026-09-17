@@ -8,6 +8,30 @@ PanelWindow {
     id: root
     signal close()
 
+    // ── Opening ──────────────────────────────────────────────────────────
+    // The card unrolls out of the bar edge: its own clip does the masking, so
+    // the text is uncovered at full size rather than scaled up out of a blur.
+    // This is how Caelestia's popouts read, and why they look attached to the
+    // bar instead of appearing next to it.
+    //
+    // `running: visible` rather than a NumberAnimation-on-property with
+    // `running: true`. shell.qml creates every panel eagerly and toggles it
+    // with `visible`, so an animation that starts on component completion
+    // fires once, at login, while the panel is hidden — and is never seen
+    // again. That is why the old fade was invisible.
+    //
+    // Defaults to 1, so a panel is fully drawn even if this never runs.
+    property real reveal: 1
+    NumberAnimation {
+        target: root
+        property: "reveal"
+        from: 0; to: 1
+        duration: Motion.spatial
+        easing.type: Easing.Bezier
+        easing.bezierCurve: Motion.curveDefaultSpatial
+        running: root.visible
+    }
+
     anchors.top: true
     anchors.left: Config.barPosition === "left"
     anchors.right: Config.barPosition !== "left"
@@ -33,6 +57,11 @@ PanelWindow {
     ListModel { id: clipModel }
     property int copiedIdx: -1
 
+    // What --list reported on its status line: "ok", "missing" (no copyq
+    // binary) or "noserver" (copyq is there but its server would not answer).
+    // Empty until the first read.
+    property string clipStatus: ""
+
     // copyq, not cliphist. autostart.lua runs copyq and says cliphist is
     // deliberately absent, so querying cliphist here showed an empty list
     // forever beside a copyq that was catching everything.
@@ -51,13 +80,14 @@ PanelWindow {
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: data => {
-                if (data.trim() !== "") {
-                    // "row<TAB>preview"
-                    var tab = data.indexOf("\t")
-                    var id = tab >= 0 ? data.substring(0, tab) : ""
-                    var txt = tab >= 0 ? data.substring(tab + 1) : data
-                    clipModel.append({ clipId: id, text: txt.trim().substring(0, 120) })
-                }
+                if (data.trim() === "") return
+                // "row<TAB>preview", or "!<TAB>status" for the one status line
+                // the script always prints first.
+                var tab = data.indexOf("\t")
+                var id = tab >= 0 ? data.substring(0, tab) : ""
+                var txt = tab >= 0 ? data.substring(tab + 1) : data
+                if (id === "!") { root.clipStatus = txt.trim(); return }
+                clipModel.append({ clipId: id, text: txt.trim().substring(0, 120) })
             }
         }
     }
@@ -65,6 +95,7 @@ PanelWindow {
     onVisibleChanged: if (visible) {
         clipModel.clear()
         copiedIdx = -1
+        clipStatus = ""
         clipProc.running = true
     }
 
@@ -79,21 +110,9 @@ PanelWindow {
         clip: true
 
         Rectangle { anchors.top: parent.top; anchors.right: parent.right; width: 22; height: 22; color: parent.color }
-        // Grows out of the bar edge instead of fading in, so the edge
-        // you clicked stays put while the rest of the card unfolds.
-        // Curves are Caelestia's Material 3 expressive set; see
-        // services/Motion.qml for the measured overshoot and why it cannot clip.
-        transformOrigin: Motion.originFor(Config.barPosition)
-        NumberAnimation on opacity {
-            from: 0; to: 1; running: true
-            duration: Motion.effects
-            easing.type: Easing.Bezier; easing.bezierCurve: Motion.curveDefaultEffects
-        }
-        NumberAnimation on scale {
-            from: Motion.fromScale; to: 1; running: true
-            duration: Motion.spatial
-            easing.type: Easing.Bezier; easing.bezierCurve: Motion.curveDefaultSpatial
-        }
+        // Revealed rather than faded: see `reveal` on the root.
+        height: Math.max(1, Math.round(implicitHeight * root.reveal))
+        opacity: Math.min(1, root.reveal * 2)
 
         ColumnLayout {
             id: clipCol
@@ -134,7 +153,33 @@ PanelWindow {
                     anchors.centerIn: parent
                     spacing: 8
                     Text { Layout.alignment: Qt.AlignHCenter; text: "󰅬"; color: root.overlay0; font { pixelSize: 28; family: root.nfFont } opacity: 0.6 }
-                    Text { Layout.alignment: Qt.AlignHCenter; text: "Clipboard is empty"; color: root.overlay0; font { pixelSize: 12; family: root.nfFont } }
+                    // Three different things produce zero rows, and saying
+                    // "empty" to all three is how a broken clipboard looks
+                    // exactly like an unused one.
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        horizontalAlignment: Text.AlignHCenter
+                        textFormat: Text.PlainText
+                        text: root.clipStatus === "missing"
+                              ? "copyq is not installed"
+                              : root.clipStatus === "noserver"
+                              ? "copyq is installed but not running"
+                              : "Clipboard is empty"
+                        color: root.overlay0
+                        font { pixelSize: 12; family: root.nfFont }
+                    }
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        horizontalAlignment: Text.AlignHCenter
+                        textFormat: Text.PlainText
+                        visible: root.clipStatus === "missing" || root.clipStatus === "noserver"
+                        text: root.clipStatus === "missing"
+                              ? "sudo pacman -S copyq"
+                              : "copyq &   ·   or run clipboard.sh --doctor"
+                        color: root.overlay0
+                        font { pixelSize: 10; family: root.nfFont }
+                        opacity: 0.8
+                    }
                 }
             }
 

@@ -42,7 +42,11 @@ STUB
 chmod +x "$BIN/wl-copy"
 
 echo "listing:"
-eq "--list asks copyq, not cliphist" "EVAL_OUTPUT" "$(run --list)"
+# --list always leads with one status line, so the panel can tell "you have not
+# copied anything" apart from "copyq is not installed" and "copyq is installed
+# but its server will not answer". All three used to arrive as zero rows.
+eq "--list asks copyq, not cliphist" "$(printf '!\tok\nEVAL_OUTPUT')" "$(run --list)"
+eq "the status line comes first" "$(printf '!\tok')" "$(run --list | head -1)"
 if grep -q "^eval" "$OUT/calls"; then printf '  ok   uses copyq eval \n'
 else printf '  FAIL never called copyq eval \n'; fails=$((fails + 1)); fi
 
@@ -69,10 +73,36 @@ run --clear
 if grep -q "^eval" "$OUT/calls"; then printf '  ok   --clear goes through eval \n'
 else printf '  FAIL --clear did nothing \n'; fails=$((fails + 1)); fi
 
+echo "an empty history is still a successful read:"
+cat > "$BIN/copyq" <<'STUB'
+#!/bin/sh
+exit 0
+STUB
+chmod +x "$BIN/copyq"
+eq "says ok with no rows" "$(printf '!\tok')" "$(run --list)"
+# An `[ -n "$out" ] && printf` here would leave the script exiting 1 on the
+# most ordinary case there is: a clipboard nobody has copied into yet.
+eq "and exits 0" "0" "$(run --list >/dev/null 2>&1; echo $?)"
+
+echo "a copyq whose server will not answer:"
+cat > "$BIN/copyq" <<'STUB'
+#!/bin/sh
+echo "Cannot connect to server! Start CopyQ server first." >&2
+exit 1
+STUB
+chmod +x "$BIN/copyq"
+eq "says noserver, not empty" "$(printf '!\tnoserver')" "$(run --list)"
+eq "and still exits 0" "0" "$(run --list >/dev/null 2>&1; echo $?)"
+
 echo "no copyq installed:"
 rm -f "$BIN/copyq"
-eq "--list is silent, not an error" "" "$(run --list 2>&1)"
+eq "says missing, not empty" "$(printf '!\tmissing')" "$(run --list 2>&1)"
 eq "and exits cleanly" "0" "$(run --list >/dev/null 2>&1; echo $?)"
+eq "--doctor says what to install" "0" "$(run --doctor >/dev/null 2>&1; echo $?)"
+case "$(run --doctor 2>&1)" in
+  *"not installed"*) printf '  ok   --doctor names the problem \n' ;;
+  *) printf '  FAIL --doctor did not say copyq is missing \n'; fails=$((fails + 1)) ;;
+esac
 
 echo "misc:"
 eq "an unknown mode fails" "1" "$(run --nonsense >/dev/null 2>&1; echo $?)"

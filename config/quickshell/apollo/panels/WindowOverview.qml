@@ -23,6 +23,23 @@ PanelWindow {
     id: root
     signal close()
 
+    // ── Opening ──────────────────────────────────────────────────────────
+    // `running: visible`, not a NumberAnimation-on-property with
+    // `running: true`. shell.qml creates every panel eagerly and toggles it
+    // with `visible`, so an animation that starts on component completion
+    // plays once at login, while the panel is hidden, and is never seen again.
+    // Defaults to 1, so the panel is fully drawn even if this never runs.
+    property real reveal: 1
+    NumberAnimation {
+        target: root
+        property: "reveal"
+        from: 0; to: 1
+        duration: Motion.spatial
+        easing.type: Easing.Bezier
+        easing.bezierCurve: Motion.curveDefaultSpatial
+        running: root.visible
+    }
+
     anchors { top: true; bottom: true; left: true; right: true }
     exclusiveZone: 0
     color: "transparent"
@@ -65,11 +82,7 @@ PanelWindow {
         anchors.fill: parent
         color: Qt.rgba(Config.crust.r, Config.crust.g, Config.crust.b, 0.78)
 
-        NumberAnimation on opacity {
-            from: 0; to: 1; running: true
-            duration: Motion.fastEffects
-            easing.type: Easing.Bezier; easing.bezierCurve: Motion.curveDefaultEffects
-        }
+        opacity: root.reveal
 
         MouseArea { anchors.fill: parent; onClicked: root.close() }
 

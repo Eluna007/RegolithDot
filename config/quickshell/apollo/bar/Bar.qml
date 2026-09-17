@@ -281,7 +281,7 @@ PanelWindow {
                     TrayBtn { icon: (root.volMuted || root.volPct === 0) ? String.fromCodePoint(0xf0581) : String.fromCodePoint(0xf057e); iconSize: 18; active: root.activePanel === "audio"; barColors: root; onClicked: root.openPanel("audio"); Layout.alignment: Qt.AlignHCenter }
                     ApollokuBtn { active: root.activePanel === "apolloku"; barColors: root; onClicked: root.openPanel("apolloku"); Layout.alignment: Qt.AlignHCenter }
                     ChessBtn { active: root.activePanel === "chess"; barColors: root; onClicked: root.openPanel("chess"); Layout.alignment: Qt.AlignHCenter }
-                    TrayBtn { icon: String.fromCodePoint(0xf328); iconSize: 20; active: root.activePanel === "clip"; barColors: root; onClicked: root.openPanel("clip"); Layout.alignment: Qt.AlignHCenter }
+                    TrayBtn { icon: String.fromCodePoint(0xf016c); iconSize: 19; active: root.activePanel === "clip"; barColors: root; onClicked: root.openPanel("clip"); Layout.alignment: Qt.AlignHCenter }
                     TrayBtn { icon: String.fromCodePoint(0xf013); active: root.activePanel === "qs"; barColors: root; onClicked: root.openPanel("qs"); Layout.alignment: Qt.AlignHCenter }
                     TrayBtn { icon: String.fromCodePoint(0xf011); iconColor: root.maroon; barColors: root; onClicked: root.openPanel("power"); Layout.alignment: Qt.AlignHCenter }
                 }
@@ -417,7 +417,7 @@ PanelWindow {
                 TrayBtn { icon: (root.volMuted || root.volPct === 0) ? String.fromCodePoint(0xf0581) : String.fromCodePoint(0xf057e); iconSize: 18; active: root.activePanel === "audio"; barColors: root; onClicked: root.openPanel("audio"); Layout.alignment: Qt.AlignHCenter }
                 ApollokuBtn { active: root.activePanel === "apolloku"; barColors: root; onClicked: root.openPanel("apolloku"); Layout.alignment: Qt.AlignHCenter }
                 ChessBtn { active: root.activePanel === "chess"; barColors: root; onClicked: root.openPanel("chess"); Layout.alignment: Qt.AlignHCenter }
-                TrayBtn { icon: String.fromCodePoint(0xf328); iconSize: 20; active: root.activePanel === "clip"; barColors: root; onClicked: root.openPanel("clip"); Layout.alignment: Qt.AlignHCenter }
+                TrayBtn { icon: String.fromCodePoint(0xf016c); iconSize: 19; active: root.activePanel === "clip"; barColors: root; onClicked: root.openPanel("clip"); Layout.alignment: Qt.AlignHCenter }
                 TrayBtn { icon: String.fromCodePoint(0xf013); active: root.activePanel === "qs"; barColors: root; onClicked: root.openPanel("qs"); Layout.alignment: Qt.AlignHCenter }
                 TrayBtn { icon: String.fromCodePoint(0xf011); iconColor: root.maroon; barColors: root; onClicked: root.openPanel("power"); Layout.alignment: Qt.AlignHCenter }
             }
@@ -676,8 +676,11 @@ PanelWindow {
 
             // Clipboard — nf-md-content_copy
             TrayBtn {
-                icon: ""
-                iconSize: 28
+                // 0xf016c, the same clipboard mark ClipPanel draws, so it is
+                // known to exist in the installed font. 0xf328 was here and
+                // reads as anything but a clipboard.
+                icon: String.fromCodePoint(0xf016c)
+                iconSize: 25
                 active: root.activePanel === "clip"
                 barColors: root
                 onClicked: root.openPanel("clip")
@@ -923,8 +926,11 @@ PanelWindow {
 
             // Clipboard — nf-md-content_copy
             TrayBtn {
-                icon: ""
-                iconSize: 28
+                // 0xf016c, the same clipboard mark ClipPanel draws, so it is
+                // known to exist in the installed font. 0xf328 was here and
+                // reads as anything but a clipboard.
+                icon: String.fromCodePoint(0xf016c)
+                iconSize: 25
                 active: root.activePanel === "clip"
                 barColors: root
                 onClicked: root.openPanel("clip")

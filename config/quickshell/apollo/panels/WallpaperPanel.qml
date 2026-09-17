@@ -14,6 +14,23 @@ PanelWindow {
     id: root
     signal close()
 
+    // ── Opening ──────────────────────────────────────────────────────────
+    // `running: visible`, not a NumberAnimation-on-property with
+    // `running: true`. shell.qml creates every panel eagerly and toggles it
+    // with `visible`, so an animation that starts on component completion
+    // plays once at login, while the panel is hidden, and is never seen again.
+    // Defaults to 1, so the panel is fully drawn even if this never runs.
+    property real reveal: 1
+    NumberAnimation {
+        target: root
+        property: "reveal"
+        from: 0; to: 1
+        duration: Motion.spatial
+        easing.type: Easing.Bezier
+        easing.bezierCurve: Motion.curveDefaultSpatial
+        running: root.visible
+    }
+
     // Hyprland output this picker belongs to (set per-screen from shell.qml).
     // Currently unused: wallpapers are applied through wallpaper-switch.sh,
     // which drives hyprpaper/mpvpaper across all monitors at once. Kept so
@@ -89,11 +106,7 @@ PanelWindow {
     Rectangle {
         anchors.fill: parent
         color: Qt.rgba(Config.crust.r, Config.crust.g, Config.crust.b, 0.45)
-        NumberAnimation on opacity {
-            from: 0; to: 1; running: true
-            duration: Motion.fastEffects
-            easing.type: Easing.Bezier; easing.bezierCurve: Motion.curveDefaultEffects
-        }
+        opacity: root.reveal
         MouseArea { anchors.fill: parent; onClicked: root.close() }
     }
 
@@ -112,22 +125,11 @@ PanelWindow {
         // swallow clicks so they don't fall through to the scrim
         MouseArea { anchors.fill: parent }
 
-        // A centred sheet: it grows from its own middle, since it is not
-        // attached to any bar edge.
-        // Curves are Caelestia's Material 3 expressive set; see
-        // services/Motion.qml for the measured overshoot and why it cannot clip.
+        // A centred sheet, so it grows from its own middle: no bar edge is
+        // its own. See `reveal` on the root for why this is a binding.
         transformOrigin: Item.Center
-        NumberAnimation on opacity {
-            from: 0; to: 1; running: true
-            duration: Motion.effects
-            easing.type: Easing.Bezier; easing.bezierCurve: Motion.curveDefaultEffects
-        }
-        NumberAnimation on scale {
-            from: Motion.fromScale; to: 1; running: true
-            duration: Motion.spatial
-            easing.type: Easing.Bezier; easing.bezierCurve: Motion.curveDefaultSpatial
-        }
-        NumberAnimation on scale  { from: 0.96; to: 1; duration: 220; running: true; easing.type: Easing.OutBack }
+        scale: Motion.fromScale + (1 - Motion.fromScale) * root.reveal
+        opacity: Math.min(1, root.reveal * 2)
 
         ColumnLayout {
             anchors.fill: parent
