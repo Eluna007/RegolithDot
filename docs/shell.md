@@ -12,6 +12,17 @@ no card — the whole screen is the surface, translucent over the blur `rules.lu
 already applies to the `quickshell` layer namespace, so the compositor does the
 glass rather than QML faking it.
 
+It is a card at 75% of the screen, centred, with a fixed **5×5** page. Fixed
+rather than derived from the space available: "however many fit" gave a
+different page size per monitor, so the same app was on page 1 on the laptop
+and page 2 plugged in.
+
+75% of a 16:9 screen divided into 5×5 gives cells about 2:1 — wide, short boxes
+that read as a table rather than an icon grid. The row height is the honest
+constraint, so the column width is capped at 1.3× it and the grid centres in
+whatever width is left. The icon scales with the cell (59px at 1080p, 83px at
+1440p, 38px on a small laptop) rather than being 56px everywhere.
+
 Pages carry dots at the bottom; the scroll wheel, PageUp/PageDown and the dots
 themselves turn them. The selection is an index into the whole result list
 rather than into the page, so an arrow off the end of a page steps onto the

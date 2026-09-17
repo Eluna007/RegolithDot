@@ -47,9 +47,10 @@ PanelWindow {
     anchors.top: true
     anchors.left: Config.barPosition === "left"
     anchors.right: Config.barPosition !== "left"
-    margins.top: Config.barPosition === "top" ? 42 : 10
-    margins.left: Config.barPosition === "left" ? 52 : 0
-    margins.right: Config.barPosition === "right" ? 52 : 0
+    // Flush with the bar, not floating beside it — see Config.barEdge.
+    margins.top: Config.barPosition === "top" ? Config.barEdge : 10
+    margins.left: Config.barPosition === "left" ? Config.barEdge : 0
+    margins.right: Config.barPosition === "right" ? Config.barEdge : 0
     exclusiveZone: 0
     implicitWidth: 396
     implicitHeight: tsContent.implicitHeight + 10

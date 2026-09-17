@@ -38,9 +38,12 @@ PanelWindow {
         target: root
         property: "reveal"
         from: 0; to: 1
-        duration: Motion.spatial
+        // Emphasized rather than spatial: at 75% of the screen an overshoot
+        // reads as a wobble rather than a spring. This curve never passes its
+        // target, and the longer duration is what makes it feel unhurried.
+        duration: Motion.slowSpatial
         easing.type: Easing.Bezier
-        easing.bezierCurve: Motion.curveDefaultSpatial
+        easing.bezierCurve: Motion.curveEmphasized
         running: root.visible
     }
 
@@ -72,14 +75,31 @@ PanelWindow {
         return sum ? [sum].concat(ranked) : ranked
     }
 
-    // ── Grid geometry ────────────────────────────────────────────────────
-    // Sized from the screen rather than fixed, so this is a page of icons on a
-    // laptop and on a monitor, not seven columns of whitespace on one of them.
-    readonly property int cellW: 124
-    readonly property int cellH: 132
-    readonly property int columns: Math.max(3, Math.min(8, Math.floor((width - 200) / cellW)))
-    readonly property int rows:    Math.max(2, Math.min(5, Math.floor((height - 320) / cellH)))
+    // ── Geometry ─────────────────────────────────────────────────────────
+    // A centred card at 75% of the screen, with a fixed 5x5 page. Fixed rather
+    // than derived: "how many fit" gave a different page size per monitor, so
+    // the same app was on page 1 on the laptop and page 2 plugged in.
+    readonly property int columns: 5
+    readonly property int rows:    5
     readonly property int perPage: columns * rows
+
+    readonly property int cardW: Math.round(width * 0.75)
+    readonly property int cardH: Math.round(height * 0.75)
+    readonly property int cardPad: 28
+    // What is left for the grid once the search field and the page dots have
+    // taken their share.
+    readonly property int gridW: cardW - cardPad * 2
+    readonly property int gridH: cardH - cardPad * 2 - 64 - 32
+    // 75% of a 16:9 screen divided into 5x5 gives cells about 2:1 — wide, short
+    // boxes that read as a table rather than an icon grid. The row height is
+    // the honest constraint, so the column width is capped against it and the
+    // grid centres in whatever width is left.
+    readonly property int cellH: Math.floor(gridH / rows)
+    readonly property int cellW: Math.min(Math.floor(gridW / columns),
+                                          Math.round(cellH * 1.3))
+    // The icon scales with the cell, so this is a page of large icons on a
+    // monitor and a smaller one on a laptop rather than 56px either way.
+    readonly property int iconSize: Math.max(32, Math.min(96, Math.round(cellH * 0.45)))
     readonly property int pages:   Commands.pageCount(results.length, perPage)
     readonly property var pageItems: Commands.pageSlice(results, page, perPage)
 
@@ -187,246 +207,279 @@ PanelWindow {
         }
     }
 
-    ColumnLayout {
-        anchors.fill: parent
-        anchors.topMargin: Math.round(root.height * 0.10)
-        anchors.bottomMargin: 40
-        spacing: 0
-        opacity: root.reveal
-        // The whole page settles in together, from slightly small, the way
-        // Launchpad does. See `reveal` on the root.
+    Rectangle {
+        id: card
+        anchors.centerIn: parent
+        width: root.cardW
+        height: root.cardH
+        radius: 28
+        color: Qt.rgba(Config.base.r, Config.base.g, Config.base.b, 0.55)
+        border.width: 1
+        border.color: Qt.rgba(Config.text.r, Config.text.g, Config.text.b, 0.10)
+
+        // The whole card settles in together, from slightly small. A centred
+        // sheet has no bar edge of its own, so it grows from its middle.
+        opacity: Math.min(1, root.reveal * 1.4)
         scale: Motion.fromScale + (1 - Motion.fromScale) * root.reveal
         transformOrigin: Item.Center
 
-        // ── Search ──────────────────────────────────────────────────────
-        Rectangle {
-            Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 420
-            Layout.preferredHeight: 40
-            radius: 20
-            color: Qt.rgba(Config.base.r, Config.base.g, Config.base.b, 0.55)
-            border.width: 1
-            border.color: Qt.rgba(Config.text.r, Config.text.g, Config.text.b, 0.10)
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: root.cardPad
+            spacing: 0
 
-            RowLayout {
-                anchors { fill: parent; leftMargin: 16; rightMargin: 16 }
-                spacing: 10
+            // ── Search ──────────────────────────────────────────────────────
+            Rectangle {
+                Layout.alignment: Qt.AlignHCenter
+                Layout.preferredWidth: 420
+                Layout.preferredHeight: 40
+                radius: 20
+                color: Qt.rgba(Config.base.r, Config.base.g, Config.base.b, 0.55)
+                border.width: 1
+                border.color: Qt.rgba(Config.text.r, Config.text.g, Config.text.b, 0.10)
 
-                Text {
-                    text: "\u{f0349}"
-                    color: root.overlay0
-                    font { pixelSize: 15; family: root.nfFont }
-                }
-
-                TextInput {
-                    id: input
-                    Layout.fillWidth: true
-                    focus: true
-                    color: root.text
-                    font { pixelSize: 15; family: root.nfFont }
-                    selectionColor: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.4)
-                    selectedTextColor: root.text
-                    clip: true
-                    verticalAlignment: TextInput.AlignVCenter
-                    onTextChanged: root.query = text
+                RowLayout {
+                    anchors { fill: parent; leftMargin: 16; rightMargin: 16 }
+                    spacing: 10
 
                     Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        visible: input.text === ""
-                        text: "Search"
+                        text: "\u{f0349}"
                         color: root.overlay0
                         font { pixelSize: 15; family: root.nfFont }
                     }
 
-                    Keys.onPressed: ev => {
-                        if (ev.key === Qt.Key_Escape) { root.close(); ev.accepted = true }
-                        else if (ev.key === Qt.Key_Right) { root.move(1); ev.accepted = true }
-                        else if (ev.key === Qt.Key_Left)  { root.move(-1); ev.accepted = true }
-                        else if (ev.key === Qt.Key_Down)  { root.moveRow(1); ev.accepted = true }
-                        else if (ev.key === Qt.Key_Up)    { root.moveRow(-1); ev.accepted = true }
-                        else if (ev.key === Qt.Key_Tab)   { root.move(1); ev.accepted = true }
-                        else if (ev.key === Qt.Key_PageDown) { root.turnPage(1); ev.accepted = true }
-                        else if (ev.key === Qt.Key_PageUp)   { root.turnPage(-1); ev.accepted = true }
-                        else if (ev.key === Qt.Key_Return || ev.key === Qt.Key_Enter) {
-                            root.launch(root.results[root.selected]); ev.accepted = true
+                    TextInput {
+                        id: input
+                        Layout.fillWidth: true
+                        focus: true
+                        color: root.text
+                        font { pixelSize: 15; family: root.nfFont }
+                        selectionColor: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.4)
+                        selectedTextColor: root.text
+                        clip: true
+                        verticalAlignment: TextInput.AlignVCenter
+                        onTextChanged: root.query = text
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: input.text === ""
+                            text: "Search"
+                            color: root.overlay0
+                            font { pixelSize: 15; family: root.nfFont }
+                        }
+
+                        Keys.onPressed: ev => {
+                            if (ev.key === Qt.Key_Escape) { root.close(); ev.accepted = true }
+                            else if (ev.key === Qt.Key_Right) { root.move(1); ev.accepted = true }
+                            else if (ev.key === Qt.Key_Left)  { root.move(-1); ev.accepted = true }
+                            else if (ev.key === Qt.Key_Down)  { root.moveRow(1); ev.accepted = true }
+                            else if (ev.key === Qt.Key_Up)    { root.moveRow(-1); ev.accepted = true }
+                            else if (ev.key === Qt.Key_Tab)   { root.move(1); ev.accepted = true }
+                            else if (ev.key === Qt.Key_PageDown) { root.turnPage(1); ev.accepted = true }
+                            else if (ev.key === Qt.Key_PageUp)   { root.turnPage(-1); ev.accepted = true }
+                            else if (ev.key === Qt.Key_Return || ev.key === Qt.Key_Enter) {
+                                root.launch(root.results[root.selected]); ev.accepted = true
+                            }
                         }
                     }
                 }
             }
-        }
 
-        Item { Layout.fillHeight: true; Layout.preferredHeight: 28 }
+            Item { Layout.preferredHeight: 24 }
 
-        // ── The page of icons ───────────────────────────────────────────
-        Item {
-            Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: root.columns * root.cellW
-            Layout.preferredHeight: root.rows * root.cellH
+            // ── The page of icons ───────────────────────────────────────────
+            Item {
+                Layout.alignment: Qt.AlignHCenter
+                Layout.fillHeight: true
+                Layout.preferredWidth: root.columns * root.cellW
 
-            Grid {
-                id: pageGrid
-                anchors.top: parent.top
-                anchors.horizontalCenter: parent.horizontalCenter
-                columns: root.columns
-                spacing: 0
+                Grid {
+                    id: pageGrid
+                    anchors.top: parent.top
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    columns: root.columns
+                    spacing: 0
 
-                Repeater {
-                    model: root.pageItems
-
-                    Item {
-                        id: tile
-                        required property var modelData
-                        required property int index
-
-                        // Its place in the whole result list, not in the page:
-                        // the selection is a list index so that arrows can walk
-                        // off the end of a page.
-                        readonly property int absIndex: root.page * root.perPage + index
-                        readonly property bool current: absIndex === root.selected
-
-                        width: root.cellW
-                        height: root.cellH
-
-                        Rectangle {
-                            anchors.fill: parent
-                            anchors.margins: 6
-                            radius: 16
-                            color: tile.current
-                                   ? Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.20)
-                                   : tileHov.containsMouse
-                                   ? Qt.rgba(root.text.r, root.text.g, root.text.b, 0.08)
-                                   : "transparent"
-                            Behavior on color { ColorAnimation { duration: 110 } }
+                    // Tiles slide to their new slot when the filter changes
+                    // rather than snapping, which is most of what makes typing
+                    // in a grid feel smooth instead of strobing.
+                    move: Transition {
+                        NumberAnimation {
+                            properties: "x,y"
+                            duration: Motion.fastSpatial
+                            easing.type: Easing.Bezier
+                            easing.bezierCurve: Motion.curveDefaultSpatial
                         }
+                    }
+                    add: Transition {
+                        NumberAnimation {
+                            property: "opacity"
+                            from: 0; to: 1
+                            duration: Motion.effects
+                            easing.type: Easing.Bezier
+                            easing.bezierCurve: Motion.curveDefaultEffects
+                        }
+                    }
 
-                        ColumnLayout {
-                            anchors.centerIn: parent
-                            width: root.cellW - 16
-                            spacing: 8
+                    Repeater {
+                        model: root.pageItems
 
-                            Item {
-                                Layout.alignment: Qt.AlignHCenter
-                                implicitWidth: 56
-                                implicitHeight: 56
+                        Item {
+                            id: tile
+                            required property var modelData
+                            required property int index
 
-                                Image {
-                                    id: tileIcon
-                                    anchors.fill: parent
-                                    source: tile.modelData.icon !== "" ? "file://" + tile.modelData.icon : ""
-                                    sourceSize.width: 112
-                                    sourceSize.height: 112
-                                    fillMode: Image.PreserveAspectFit
-                                    visible: tile.modelData.icon !== "" && status === Image.Ready
-                                    asynchronous: true
-                                }
-                                // A lettered tile when the .desktop file named
-                                // an icon that is not installed - and the one
-                                // the calculator result gets.
-                                Rectangle {
-                                    anchors.fill: parent
-                                    visible: !tileIcon.visible
-                                    radius: 14
-                                    color: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.22)
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: tile.modelData.kind === "calc"
-                                              ? "=" : Match.initial(tile.modelData.name)
-                                        color: root.accent
-                                        font { pixelSize: 24; bold: true; family: root.nfFont }
+                            // Its place in the whole result list, not in the page:
+                            // the selection is a list index so that arrows can walk
+                            // off the end of a page.
+                            readonly property int absIndex: root.page * root.perPage + index
+                            readonly property bool current: absIndex === root.selected
+
+                            width: root.cellW
+                            height: root.cellH
+
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: Math.min(parent.width, parent.height) - 8
+                                height: Math.min(parent.width, parent.height) - 8
+                                radius: 18
+                                color: tile.current
+                                       ? Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.20)
+                                       : tileHov.containsMouse
+                                       ? Qt.rgba(root.text.r, root.text.g, root.text.b, 0.08)
+                                       : "transparent"
+                                Behavior on color { ColorAnimation { duration: Motion.fastEffects } }
+                            }
+
+                            ColumnLayout {
+                                anchors.centerIn: parent
+                                width: root.cellW - 16
+                                spacing: 8
+
+                                Item {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    implicitWidth: root.iconSize
+                                    implicitHeight: root.iconSize
+
+                                    Image {
+                                        id: tileIcon
+                                        anchors.fill: parent
+                                        source: tile.modelData.icon !== "" ? "file://" + tile.modelData.icon : ""
+                                        sourceSize.width: root.iconSize * 2
+                                        sourceSize.height: root.iconSize * 2
+                                        fillMode: Image.PreserveAspectFit
+                                        visible: tile.modelData.icon !== "" && status === Image.Ready
+                                        asynchronous: true
+                                    }
+                                    // A lettered tile when the .desktop file named
+                                    // an icon that is not installed - and the one
+                                    // the calculator result gets.
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        visible: !tileIcon.visible
+                                        radius: 14
+                                        color: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.22)
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: tile.modelData.kind === "calc"
+                                                  ? "=" : Match.initial(tile.modelData.name)
+                                            color: root.accent
+                                            font { pixelSize: Math.round(root.iconSize * 0.42); bold: true; family: root.nfFont }
+                                        }
                                     }
                                 }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    horizontalAlignment: Text.AlignHCenter
+                                    textFormat: Text.PlainText
+                                    elide: Text.ElideRight
+                                    maximumLineCount: 2
+                                    wrapMode: Text.Wrap
+                                    text: tile.modelData.name
+                                    color: tile.current ? root.text : root.subtext0
+                                    font { pixelSize: 11; family: root.nfFont }
+                                }
                             }
 
-                            Text {
-                                Layout.fillWidth: true
-                                horizontalAlignment: Text.AlignHCenter
-                                textFormat: Text.PlainText
-                                elide: Text.ElideRight
-                                maximumLineCount: 2
-                                wrapMode: Text.Wrap
-                                text: tile.modelData.name
-                                color: tile.current ? root.text : root.subtext0
-                                font { pixelSize: 11; family: root.nfFont }
+                            MouseArea {
+                                id: tileHov
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onEntered: root.selected = tile.absIndex
+                                onClicked: root.launch(tile.modelData)
                             }
-                        }
-
-                        MouseArea {
-                            id: tileHov
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onEntered: root.selected = tile.absIndex
-                            onClicked: root.launch(tile.modelData)
                         }
                     }
                 }
             }
-        }
 
-        // ── Empty state ─────────────────────────────────────────────────
-        // Three things produce an empty grid and they are not the same
-        // problem: the scan has not finished, apps.sh found nothing at all, or
-        // the query matched nothing. Saying "no results" to all three is how a
-        // broken scanner looks exactly like a bad search.
-        Item {
-            Layout.alignment: Qt.AlignHCenter
-            Layout.preferredHeight: 80
-            Layout.preferredWidth: 520
-            visible: root.results.length === 0
+            // ── Empty state ─────────────────────────────────────────────────
+            // Three things produce an empty grid and they are not the same
+            // problem: the scan has not finished, apps.sh found nothing at all, or
+            // the query matched nothing. Saying "no results" to all three is how a
+            // broken scanner looks exactly like a bad search.
+            Item {
+                Layout.alignment: Qt.AlignHCenter
+                Layout.preferredHeight: 80
+                Layout.preferredWidth: 520
+                visible: root.results.length === 0
 
-            ColumnLayout {
-                anchors.centerIn: parent
-                spacing: 6
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    spacing: 6
 
-                Text {
-                    Layout.alignment: Qt.AlignHCenter
-                    horizontalAlignment: Text.AlignHCenter
-                    textFormat: Text.PlainText
-                    text: !root.scanned ? "Scanning applications…"
-                        : root.apps.length === 0 ? "No applications found"
-                        : "Nothing matches “" + root.query + "”"
-                    color: root.overlay0
-                    font { pixelSize: 13; family: root.nfFont }
-                }
-                Text {
-                    Layout.alignment: Qt.AlignHCenter
-                    horizontalAlignment: Text.AlignHCenter
-                    textFormat: Text.PlainText
-                    visible: root.scanned && root.apps.length === 0
-                    text: "scripts/apps.sh returned nothing — run it directly to see why"
-                    color: root.overlay0
-                    font { pixelSize: 10; family: root.nfFont }
-                    opacity: 0.8
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        horizontalAlignment: Text.AlignHCenter
+                        textFormat: Text.PlainText
+                        text: !root.scanned ? "Scanning applications…"
+                            : root.apps.length === 0 ? "No applications found"
+                            : "Nothing matches “" + root.query + "”"
+                        color: root.overlay0
+                        font { pixelSize: 13; family: root.nfFont }
+                    }
+                    Text {
+                        Layout.alignment: Qt.AlignHCenter
+                        horizontalAlignment: Text.AlignHCenter
+                        textFormat: Text.PlainText
+                        visible: root.scanned && root.apps.length === 0
+                        text: "scripts/apps.sh returned nothing — run it directly to see why"
+                        color: root.overlay0
+                        font { pixelSize: 10; family: root.nfFont }
+                        opacity: 0.8
+                    }
                 }
             }
-        }
 
-        Item { Layout.fillHeight: true }
+            Item { Layout.fillHeight: true }
 
-        // ── Page dots ───────────────────────────────────────────────────
-        Row {
-            Layout.alignment: Qt.AlignHCenter
-            spacing: 9
-            visible: root.pages > 1
+            // ── Page dots ───────────────────────────────────────────────────
+            Row {
+                Layout.alignment: Qt.AlignHCenter
+                spacing: 9
+                visible: root.pages > 1
 
-            Repeater {
-                model: root.pages
+                Repeater {
+                    model: root.pages
 
-                Rectangle {
-                    required property int index
-                    width: 8
-                    height: 8
-                    radius: 4
-                    color: index === root.page
-                           ? root.accent
-                           : Qt.rgba(root.text.r, root.text.g, root.text.b, 0.25)
-                    Behavior on color { ColorAnimation { duration: 140 } }
+                    Rectangle {
+                        required property int index
+                        width: 8
+                        height: 8
+                        radius: 4
+                        color: index === root.page
+                               ? root.accent
+                               : Qt.rgba(root.text.r, root.text.g, root.text.b, 0.25)
+                        Behavior on color { ColorAnimation { duration: Motion.fastEffects } }
 
-                    MouseArea {
-                        anchors.fill: parent
-                        anchors.margins: -6
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.turnPage(index - root.page)
+                        MouseArea {
+                            anchors.fill: parent
+                            anchors.margins: -6
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.turnPage(index - root.page)
+                        }
                     }
                 }
             }

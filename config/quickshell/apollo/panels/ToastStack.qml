@@ -17,8 +17,8 @@ PanelWindow {
     anchors.right: effectivePosition.endsWith("right")
     margins.top: effectivePosition.startsWith("top") ? 50 : 10
     margins.bottom: effectivePosition.startsWith("bottom") ? 50 : 10
-    margins.left: effectivePosition.endsWith("left") ? (Config.barPosition === "left" ? 52 : 10) : 0
-    margins.right: effectivePosition.endsWith("right") ? (Config.barPosition === "right" ? 52 : 10) : 0
+    margins.left: effectivePosition.endsWith("left") ? (Config.barPosition === "left" ? Config.barEdge : 10) : 0
+    margins.right: effectivePosition.endsWith("right") ? (Config.barPosition === "right" ? Config.barEdge : 10) : 0
     exclusiveZone: 0
     implicitWidth: 340
     implicitHeight: Math.max(toastCol.implicitHeight + 8, 1)

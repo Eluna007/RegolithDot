@@ -64,6 +64,23 @@ Singleton {
         return configDir + "/quickshell/apollo/scripts/" + name
     }
 
+    // Where the bar's painted edge is, measured from the screen edge. Panels
+    // anchor to this so a popout meets the rail instead of floating beside it.
+    //
+    // The bar's *window* is 42px tall / 46px wide, but in islands mode the pill
+    // it paints is only 34 across and centred in that window - so the pill ends
+    // at 38 (top) or 40 (left/right), and a panel at the window edge still
+    // leaves a visible gap. Classic mode paints the whole window, so there the
+    // two are the same number.
+    //
+    // Panel margins are measured from the screen edge, not from the bar's
+    // exclusive zone: the top-bar margin was already exactly the bar's own
+    // height, which only lines up if it is screen-relative.
+    readonly property int barEdge: {
+        if (barPosition === "top") return barStyle === "classic" ? 42 : 38
+        return barStyle === "classic" ? 46 : 40
+    }
+
     // ── Palette (Catppuccin flavor) ──────────────────────────────────────
     // flavor picks the WHOLE Catppuccin palette — the neutral ramp (base…text)
     // *and* the accent family (blue, teal, green, red, …). The shell binds its

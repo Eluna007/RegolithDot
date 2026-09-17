@@ -177,3 +177,16 @@ palette** — it takes its colors from `~/.config/apollo/config.json`, which
 
 Requires `hyprpaper`, `matugen`, and (for animated wallpapers) `mpvpaper` and
 `ffmpeg`.
+
+## Where the panels sit
+
+A bar popout anchors to `Config.barEdge`, not to a hardcoded margin. The bar's
+*window* is 42px tall or 46px wide, but in islands mode the pill it paints is
+only 34 across and centred in that window — so the pill ends at 38 (top) or 40
+(left/right). Panels used to sit at 52, which left a 12px gap and made every
+popout look detached from the rail it came out of. Classic mode paints the
+whole window, so there the two numbers are the same.
+
+Panel margins are measured from the screen edge rather than from the bar's
+exclusive zone. The evidence is the old top-bar margin: it was exactly the
+bar's own height, which only lines up if it is screen-relative.
