@@ -1,6 +1,6 @@
 -- Input: keyboard, touchpad, trackpad gestures.
 --
--- Luna's settings, kept over Apollo's. The differences are deliberate
+-- The pre-Apollo settings, kept over Apollo's. The differences are deliberate
 -- personal preferences, not defaults worth overwriting:
 --
 --   natural_scroll       = false  (Moonlit used true — reversed scrolling)

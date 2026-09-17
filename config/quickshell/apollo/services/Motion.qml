@@ -5,11 +5,23 @@ import Quickshell
 
 // One motion vocabulary for the shell.
 //
-// Every panel used to open with the same line — opacity 0→1, 200ms, OutCubic —
-// which is a fade, and a fade says nothing about where the thing came from.
+// Every panel used to open with the same line — `NumberAnimation on opacity
+// { from: 0; to: 1; duration: 200; running: true }`. Two things were wrong
+// with it. A fade says nothing about where the thing came from; and a
+// NumberAnimation-on-property starts at component completion, so since
+// shell.qml creates every panel eagerly and toggles it with `visible`, all of
+// them played once at login to a hidden surface and were never seen again.
+//
 // These are Material 3 expressive durations and curves as Caelestia's shell
-// spells them (caelestia-dots/shell, Config/tokens.hpp), so a panel grows out
-// of the bar edge you clicked and settles.
+// spells them (caelestia-dots/shell, Config/tokens.hpp). Each panel now carries
+// a `reveal` property animated `running: root.visible`, and a bar popout binds
+// its card height to it: the card is *uncovered* out of the bar edge by its own
+// clip, so the text arrives at full size rather than scaled up out of a blur.
+// That is what makes it look attached to the bar rather than next to it.
+//
+// The reveal is vertical whatever edge the bar is on. A horizontal wipe would
+// animate the card's width, and every ColumnLayout inside is `width:
+// parent.width` — the text would re-wrap on every frame.
 //
 // The spatial curves overshoot their target. Measured peaks, sampling the
 // cubic at 4001 points:
@@ -50,21 +62,13 @@ Singleton {
     readonly property var curveDefaultEffects: [0.34, 0.8, 0.34, 1, 1, 1]
     readonly property var curveSlowEffects: [0.34, 0.88, 0.34, 1, 1, 1]
 
-    // ── Where a panel grows from ─────────────────────────────────────────
-    // The edge the bar is on, so a popout looks like it unfolded from the icon
-    // that was clicked rather than appearing in the middle of itself. That edge
-    // then stays put for the whole animation, which is the part that sells it.
+    // How small a centred sheet starts — the launcher, the cheatsheet, the
+    // wallpaper picker. Far enough to read as growth, near enough that text is
+    // never scaled down to the point of shimmering. Bar popouts do not use it:
+    // they are revealed, not scaled.
     //
-    // Takes the position rather than reading Config itself: no singleton here
-    // reaches for another one today, and every caller already has Config in
-    // scope. Callers pass Config.barPosition.
-    function originFor(barPosition) {
-        if (barPosition === "left")  return Item.Left
-        if (barPosition === "right") return Item.Right
-        return Item.Top
-    }
-
-    // How small a card starts. Far enough to read as growth, near enough that
-    // text is never scaled down to the point of shimmering.
+    // There was an originFor(barPosition) here returning Item.Left/Right/Top
+    // for a scale transform. The reveal replaced it, and an unused helper in a
+    // singleton is just a thing to keep true.
     readonly property real fromScale: 0.90
 }

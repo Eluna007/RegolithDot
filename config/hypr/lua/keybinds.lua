@@ -1,4 +1,4 @@
--- Luna's keybinds, carried over from the pre-Apollo config.
+-- Keybinds carried over from the pre-Apollo config.
 --
 -- Kept verbatim except where a bind talked to the old shell. Apollo's
 -- Quickshell config is a *named* one (~/.config/quickshell/apollo), so its

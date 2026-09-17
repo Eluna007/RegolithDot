@@ -107,6 +107,25 @@ wired |= {"launcher", "overview"}
 for name in sorted(opened - wired):
     bad.append(f"Bar.qml opens panel \"{name}\" but shell.qml never instantiates it")
 
+# `NumberAnimation on <property> { running: true }` is a property value source:
+# it starts when the component is completed, and it replaces any binding on
+# that property for good. shell.qml creates every panel eagerly and toggles it
+# with `visible`, so every one of these fired once at login, to a hidden
+# surface, and was never seen again - the shell had a dozen entrance
+# animations that had never played. Drive it from `visible` instead:
+#
+#     property real reveal: 1
+#     NumberAnimation { target: root; property: "reveal"; from: 0; to: 1
+#                       running: root.visible }
+#
+# There are no legitimate uses left in this shell, so the rule is absolute
+# rather than a list of properties to watch.
+for f in qml_files:
+    for m in re.finditer(r'NumberAnimation on (\w+)', strip(f.read_text())):
+        bad.append(f"{f}: `NumberAnimation on {m.group(1)}` starts at component "
+                   f"completion, not when the panel is shown - drive it from "
+                   f"`visible` (see services/Motion.qml)")
+
 # A curve or duration that Motion does not define comes back undefined, and an
 # undefined bezierCurve is not an error - the animation just runs on the
 # default easing, so the whole point of the shared vocabulary is silently lost.

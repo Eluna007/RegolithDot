@@ -4,6 +4,17 @@ import "../services"
 
 PanelWindow {
     id: root
+
+    property real reveal: 1
+    NumberAnimation {
+        target: root
+        property: "reveal"
+        from: 0; to: 1
+        duration: Motion.fastEffects
+        easing.type: Easing.Bezier
+        easing.bezierCurve: Motion.curveDefaultEffects
+        running: root.visible
+    }
     required property string kind
     required property real   value
 
@@ -69,6 +80,9 @@ PanelWindow {
             }
         }
 
-        NumberAnimation on opacity { from: 0; to: 1; duration: 200; running: true; easing.type: Easing.OutCubic }
+        // Driven by `visible`, not by component completion: this pill is created
+        // once at login and shown by a property, so a `running: true` animation
+        // played to nobody and never again.
+        opacity: root.reveal
     }
 }

@@ -143,6 +143,13 @@ jobs:
                 f"({checked} dispatchers cross-checked against config.lua)")
           PY
 
+      # The README's detail lives in docs/ now, and a split like that is
+      # exactly where relative links rot - a path that was right at the top
+      # level is wrong one directory down, and nothing complains until someone
+      # clicks it.
+      - name: Check doc links resolve
+        run: python3 scripts/check-docs.py
+
       # config.json has two ends, and saveConfig marshals a struct: a key the
       # shell reads but config.go has no field for is dropped on the next save,
       # silently and not by the control that was touched. chessUsername, which
@@ -260,13 +267,13 @@ jobs:
       # permanent 100% instead of failing. Find the battery, never name it.
       - name: Check for hardcoded battery paths
         run: |
-          # Comments are allowed to name the path - explaining why it is wrong
-          # is the point. git grep prints path:line:content, so drop the hits
+          # Comments and prose are allowed to name the path - explaining why it
+          # is wrong is the point, which is why README.md and docs/ are exempt. git grep prints path:line:content, so drop the hits
           # whose content starts a comment rather than exempting whole files,
           # which would blind the check to a real regression in them.
           hits=$(git grep -nE 'power_supply/BAT[0-9]' \
                    -- ':!old-apollo-shell/**' ':!.github/**' ':!scripts/test-battery.sh' \
-                      ':!README.md' ':!MANUAL-INSTALL.md' \
+                      ':!README.md' ':!MANUAL-INSTALL.md' ':!docs/**' \
                  | grep -vE ':[0-9]+:[[:space:]]*(#|//|\*)' || true)
           if [ -n "$hits" ]; then
             echo "$hits"
@@ -291,10 +298,10 @@ jobs:
           test -f config/quickshell/apollo/services/Hypr.qml
           test -f config/hypr/hyprland.lua
           test -f config/rofi/config.rasi
-          test -f config/rofi/themes/apollo-colors.rasi
-          test -f config/kitty/apollo-colors.conf
-          test -f config/gtk-3.0/apollo-colors.css
-          test -f config/gtk-4.0/apollo-colors.css
+          test -f config/rofi/themes/apollo-colors.default.rasi
+          test -f config/kitty/apollo-colors.default.conf
+          test -f config/gtk-3.0/apollo-colors.default.css
+          test -f config/gtk-4.0/apollo-colors.default.css
           test -f config/hypr/hyprlock.conf
           test -f config/hyprlock/assets.conf
           test -f config/hyprlock/assets/no-art.png
@@ -335,7 +342,7 @@ jobs:
       - name: Check for untranslated leftovers
         run: |
           if git grep -nEi 'moonlit-(settings|doctor|colors|copy-path|config|power|temp|shell/)|moonlit\.(conf|lua|png)|config/moonlit|Moonlit-Terminal|moonlitTheme' \
-               -- ':!.github/**' ':!README.md' ':!MANUAL-INSTALL.md'; then
+               -- ':!.github/**' ':!README.md' ':!MANUAL-INSTALL.md' ':!docs/**'; then
             echo "Found a Moonlit identifier the rebrand missed."
             exit 1
           fi

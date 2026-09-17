@@ -23,6 +23,23 @@ PanelWindow {
     id: root
     signal close()
 
+    // ── Opening ──────────────────────────────────────────────────────────
+    // `running: visible`, not a NumberAnimation-on-property with
+    // `running: true`. shell.qml creates every panel eagerly and toggles it
+    // with `visible`, so an animation that starts on component completion
+    // plays once at login, while the panel is hidden, and is never seen again.
+    // Defaults to 1, so the panel is fully drawn even if this never runs.
+    property real reveal: 1
+    NumberAnimation {
+        target: root
+        property: "reveal"
+        from: 0; to: 1
+        duration: Motion.spatial
+        easing.type: Easing.Bezier
+        easing.bezierCurve: Motion.curveDefaultSpatial
+        running: root.visible
+    }
+
     anchors { top: true; bottom: true; left: true; right: true }
     exclusiveZone: 0
     color: "transparent"
@@ -85,11 +102,7 @@ PanelWindow {
     Rectangle {
         anchors.fill: parent
         color: Qt.rgba(Config.crust.r, Config.crust.g, Config.crust.b, 0.35)
-        NumberAnimation on opacity {
-            from: 0; to: 1; running: true
-            duration: Motion.fastEffects
-            easing.type: Easing.Bezier; easing.bezierCurve: Motion.curveDefaultEffects
-        }
+        opacity: root.reveal
         MouseArea { anchors.fill: parent; onClicked: root.close() }
     }
 
@@ -105,21 +118,11 @@ PanelWindow {
         border.color: Qt.rgba(Config.text.r, Config.text.g, Config.text.b, 0.10)
         clip: true
 
-        // A centred sheet: it grows from its own middle, since it is not
-        // attached to any bar edge.
-        // Curves are Caelestia's Material 3 expressive set; see
-        // services/Motion.qml for the measured overshoot and why it cannot clip.
+        // A centred sheet, so it grows from its own middle: no bar edge is
+        // its own. See `reveal` on the root for why this is a binding.
         transformOrigin: Item.Center
-        NumberAnimation on opacity {
-            from: 0; to: 1; running: true
-            duration: Motion.effects
-            easing.type: Easing.Bezier; easing.bezierCurve: Motion.curveDefaultEffects
-        }
-        NumberAnimation on scale {
-            from: Motion.fromScale; to: 1; running: true
-            duration: Motion.spatial
-            easing.type: Easing.Bezier; easing.bezierCurve: Motion.curveDefaultSpatial
-        }
+        scale: Motion.fromScale + (1 - Motion.fromScale) * root.reveal
+        opacity: Math.min(1, root.reveal * 2)
 
         ColumnLayout {
             id: cardCol
