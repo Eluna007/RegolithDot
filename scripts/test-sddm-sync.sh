@@ -108,6 +108,34 @@ else
     fail "a missing wallpaper was not handled" "$out"
 fi
 
+# ── Nothing staged: fall back to the session's recorded wallpaper ────────
+# still.txt is only written by a wallpaper *change*. Without this fallback a
+# freshly installed login screen has the right colours and no wallpaper until
+# you happen to switch one, which is not a connection anyone would guess at.
+rm -f "$stage/still.txt"
+mkdir -p "$home/.config/hypr"
+: > "$work/pics/recorded.jpg"
+echo "$work/pics/recorded.jpg" > "$home/.config/hypr/last-wallpaper.txt"
+run >/dev/null
+if [ -f "$theme/backgrounds/current.jpg" ]; then
+    want "falls back to the recorded wallpaper" 0 \
+        grep -q '^background=backgrounds/current.jpg$' "$conf"
+else
+    fail "did not fall back to last-wallpaper.txt" "$(ls "$theme/backgrounds")"
+fi
+
+# A video is why still.txt exists at all: the greeter cannot play one, and a
+# copied .mp4 renders as nothing. It must be refused, not installed.
+: > "$work/pics/clip.mp4"
+echo "$work/pics/clip.mp4" > "$home/.config/hypr/last-wallpaper.txt"
+out="$(run)"; rc=$?
+if [ $rc -eq 0 ] && echo "$out" | grep -q "is a video" && [ ! -f "$theme/backgrounds/current.mp4" ]; then
+    ok "refuses to install a video as the login wallpaper"
+else
+    fail "a video wallpaper was not refused" "$out"
+fi
+rm -f "$home/.config/hypr/last-wallpaper.txt"
+
 # ── Run as root with no invoking user ────────────────────────────────────
 out="$(PATH="$work/bin:$PATH" APOLLO_SDDM_THEME_DIR="$theme" SUDO_USER='' "$SYNC" 2>&1)"; rc=$?
 if [ $rc -ne 0 ]; then
