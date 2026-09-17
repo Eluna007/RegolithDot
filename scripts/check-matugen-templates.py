@@ -61,8 +61,47 @@ def main() -> int:
             print(f"FAIL  {path.relative_to(ROOT)} is rendered by no [templates.*] block")
             failed += 1
 
+    failed += check_invocations()
+
     print(f"\n{len(blocks)} template(s), {failed} problem(s)")
     return 1 if failed else 0
+
+
+
+def check_invocations() -> int:
+    """matugen is now run from two places; they must ask for the same colour.
+
+    wallpaper-switch.sh runs it on every wallpaper change. apollo-settings runs
+    it too, when dynamic colours are switched on and nothing is staged yet
+    (dynamic.go, ensureStagedSource). A different --source-color-index in one of
+    them would mean the lock screen and the shell were built from different
+    colours out of the same wallpaper, which is the one thing having a single
+    extractor was supposed to rule out.
+    """
+    callers = {
+        "local/bin/wallpaper-switch.sh":
+            r'matugen image "\$still" --source-color-index (\d+)',
+        "apollo-settings/dynamic.go":
+            r'"matugen", "image", still, "--source-color-index", "(\d+)"',
+    }
+    failed = 0
+    seen = {}
+    for rel, pattern in callers.items():
+        m = re.search(pattern, (ROOT / rel).read_text())
+        if not m:
+            print(f"FAIL  {rel} does not run matugen the expected way")
+            failed += 1
+            continue
+        seen[rel] = m.group(1)
+
+    if len(set(seen.values())) > 1:
+        print("FAIL  the two matugen calls disagree: " +
+              ", ".join(f"{k} uses {v}" for k, v in seen.items()))
+        failed += 1
+    elif seen and not failed:
+        print(f"ok    both matugen callers use --source-color-index "
+              f"{next(iter(seen.values()))}")
+    return failed
 
 
 if __name__ == "__main__":

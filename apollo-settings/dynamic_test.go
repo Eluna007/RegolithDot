@@ -231,3 +231,90 @@ func TestLoginColorsAreStagedWithDynamicColorsOff(t *testing.T) {
 		t.Errorf("staged palette lost the accent:\n%s", body)
 	}
 }
+
+// Nothing staged, but the session has a wallpaper on record: the colour must
+// be extracted rather than refused. "Set a wallpaper to generate one" is what
+// you get told *after* setting a wallpaper, if anything in that chain went
+// wrong, and it names no way to find out what.
+func TestStagedSourceIsExtractedOnDemand(t *testing.T) {
+	home := t.TempDir()
+	cache := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CACHE_HOME", cache)
+
+	// A stub matugen on PATH, writing what the real one's template renders.
+	bin := filepath.Join(home, "bin")
+	if err := os.MkdirAll(bin, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	script := "#!/bin/sh\nmkdir -p " + filepath.Dir(stagedSourcePath()) +
+		"\nprintf 'APOLLO_SOURCE=\"#a6e3a1\"\\n' > " + stagedSourcePath() + "\n"
+	if err := os.WriteFile(filepath.Join(bin, "matugen"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+":"+os.Getenv("PATH"))
+
+	wall := filepath.Join(home, "moon.png")
+	if err := os.WriteFile(wall, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	hypr := filepath.Join(home, ".config", "hypr")
+	os.MkdirAll(hypr, 0o755)
+	if err := os.WriteFile(filepath.Join(hypr, "last-wallpaper.txt"),
+		[]byte(wall+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := ensureStagedSource()
+	if err != nil {
+		t.Fatalf("did not extract a colour: %v", err)
+	}
+	if got != "#a6e3a1" {
+		t.Errorf("got %q, want #a6e3a1", got)
+	}
+
+	// And through the path the failure was actually reported from: ticking
+	// "Follow the wallpaper" in the settings app, which is applyDynamicColors.
+	// Testing ensureStagedSource alone leaves that call site free to go on
+	// refusing, which is the whole bug.
+	os.Remove(stagedSourcePath())
+	os.MkdirAll(filepath.Join(home, ".config", "apollo"), 0o755)
+	if err := os.WriteFile(filepath.Join(home, ".config", "apollo", "config.json"),
+		[]byte(`{"dynamicColors": true, "dynamicMode": "full", "flavor": "mocha"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	changed, err := applyDynamicColors()
+	if err != nil {
+		t.Fatalf("applyDynamicColors refused instead of extracting: %v", err)
+	}
+	if !changed {
+		t.Fatal("applyDynamicColors reported no change")
+	}
+	if c := loadConfig(); c.Accent != "#a6e3a1" {
+		t.Errorf("accent = %s, want the extracted #a6e3a1", c.Accent)
+	}
+}
+
+// A video wallpaper cannot be handed to matugen, and the error has to say so
+// — otherwise it reads as "matugen is broken" rather than "this one needs a
+// frame pulling out of it first, which a wallpaper change does".
+func TestVideoWallpaperWithNoFrameIsExplained(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+
+	wall := filepath.Join(home, "clip.mp4")
+	os.WriteFile(wall, []byte("x"), 0o644)
+	hypr := filepath.Join(home, ".config", "hypr")
+	os.MkdirAll(hypr, 0o755)
+	os.WriteFile(filepath.Join(hypr, "last-wallpaper.txt"), []byte(wall+"\n"), 0o644)
+
+	_, err := currentStill()
+	if err == nil {
+		t.Fatal("handed a video to matugen")
+	}
+	if !strings.Contains(err.Error(), "video") {
+		t.Errorf("error does not mention the video: %v", err)
+	}
+}
