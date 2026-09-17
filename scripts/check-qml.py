@@ -107,6 +107,41 @@ wired |= {"launcher", "overview"}
 for name in sorted(opened - wired):
     bad.append(f"Bar.qml opens panel \"{name}\" but shell.qml never instantiates it")
 
+# Quickshell.env() returns null for an unset variable, not "". A `!== ""` test
+# therefore passes when the variable is unset, the ternary takes the wrong
+# branch, and the caller concatenates the string "null" into a path. That is
+# how both the launcher and the clipboard panel ended up running
+# "null/quickshell/apollo/scripts/apps.sh" and showing an empty list.
+# Config.shellScript() is the one correct implementation.
+for f in qml_files:
+    body = strip(f.read_text())
+    # Matched against the stripped source, where string literals are already
+    # blanked - so the test is "env() compared with !==" rather than
+    # "env() !== \"\"". That is the right shape to catch anyway: env() returns
+    # null when unset, and null !== anything-non-null is true.
+    if re.search(r'Quickshell\.env\([^)]*\)\s*!==', body):
+        bad.append(f"{f}: Quickshell.env() compared with !== is true when the "
+                   f"variable is unset - env() returns null, not \"\". Use "
+                   f"truthiness, or Config.shellScript()")
+
+# A colour the bar names but never declares binds to undefined. Qt logs
+# "Unable to assign [undefined] to QColor" once and carries on drawing it
+# wrong, which is how root.teal went unnoticed on the Tailscale icon.
+PALETTE = {
+    "rosewater", "flamingo", "pink", "mauve", "red", "maroon", "peach",
+    "yellow", "green", "teal", "sky", "sapphire", "blue", "lavender",
+    "base", "mantle", "crust", "surface0", "surface1", "surface2",
+    "overlay0", "overlay1", "overlay2", "subtext0", "subtext1", "text",
+}
+bar_files = [f for f in qml_files if f.parent.name == "bar"]
+bar_src = strip((ROOT / "bar" / "Bar.qml").read_text())
+declared = set(re.findall(r'property\s+color\s+(\w+)\s*:', bar_src))
+for f in bar_files:
+    for name in sorted(set(re.findall(r'\broot\.(\w+)', strip(f.read_text())))):
+        if name in PALETTE and name not in declared:
+            bad.append(f"{f}: root.{name} is a palette colour Bar.qml never "
+                       f"declares - it binds to undefined")
+
 # `NumberAnimation on <property> { running: true }` is a property value source:
 # it starts when the component is completed, and it replaces any binding on
 # that property for good. shell.qml creates every panel eagerly and toggles it

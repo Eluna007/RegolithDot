@@ -88,11 +88,7 @@ PanelWindow {
     onSelectedChanged: page = Commands.pageOf(selected, perPage)
     onResultsChanged: { selected = 0; page = 0 }
 
-    readonly property string appsScript:
-        (Quickshell.env("XDG_CONFIG_HOME") !== ""
-            ? Quickshell.env("XDG_CONFIG_HOME")
-            : Quickshell.env("HOME") + "/.config")
-        + "/quickshell/apollo/scripts/apps.sh"
+    readonly property string appsScript: Config.shellScript("apps.sh")
 
     property var appBuffer: []
     Process {

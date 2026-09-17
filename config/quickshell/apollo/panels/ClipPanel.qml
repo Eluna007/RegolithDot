@@ -68,11 +68,7 @@ PanelWindow {
     //
     // Absolute path under the shell's own config dir, so the script cannot
     // drift from this file and nothing depends on PATH.
-    readonly property string clipScript:
-        (Quickshell.env("XDG_CONFIG_HOME") !== ""
-            ? Quickshell.env("XDG_CONFIG_HOME")
-            : Quickshell.env("HOME") + "/.config")
-        + "/quickshell/apollo/scripts/clipboard.sh"
+    readonly property string clipScript: Config.shellScript("clipboard.sh")
 
     Process {
         id: clipProc

@@ -244,6 +244,17 @@ console.log("every action can actually be carried out:");
     const names = acts.map(a => a.name);
     ok("names are unique", new Set(names).size === names.length);
     ok("every action is tagged", acts.every(a => a.kind === "action"));
+    // Without an `icon` field the grid builds "file://" + undefined and Qt
+    // logs "Cannot open: file://undefined" once per tile, into a log nobody
+    // reads, while the tile silently draws nothing.
+    const noIcon = acts.filter(a => typeof a.icon !== "string");
+    ok("every action has an icon field", noIcon.length === 0,
+       JSON.stringify(noIcon.map(a => a.name)));
+    // The same shape is required of every other source, since they all land in
+    // the same delegate.
+    const tops = [{ title: "Steam", address: "b1", workspace: { id: 1 } }];
+    ok("windows have one too", C.windowEntries(tops).every(e => typeof e.icon === "string"));
+    ok("a calculation has one too", typeof C.calc("2+2").icon === "string");
 }
 
 if (failures > 0) {
