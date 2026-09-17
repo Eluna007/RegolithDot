@@ -37,8 +37,17 @@ recolour() {
   # Recolour the shell, kitty, GTK, rofi and the staged login palette. A no-op
   # when dynamic colours are off, and it must never take the wallpaper down
   # with it if the settings binary was never built.
+  #
+  # Bounded, because an apollo-settings built before `theme` existed does not
+  # reject the argument — it opens the settings *window* and blocks until you
+  # close it, which would mean a GUI popping up on every single wallpaper
+  # change. Newer builds exit non-zero on an unknown argument, so this only
+  # bites a stale binary; it takes well under a second when it works at all.
   if command -v apollo-settings >/dev/null 2>&1; then
-    apollo-settings theme || echo "wallpaper-switch: apollo-settings theme failed" >&2
+    if ! timeout 15 apollo-settings theme; then
+      echo "wallpaper-switch: apollo-settings theme failed or timed out —" \
+           "rebuild it if you have pulled since it was last built" >&2
+    fi
   fi
 
   # And push it to the login screen, but only if that can be done without
