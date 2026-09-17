@@ -79,7 +79,7 @@ PanelWindow {
     // A centred card at 75% of the screen, with a fixed 5x5 page. Fixed rather
     // than derived: "how many fit" gave a different page size per monitor, so
     // the same app was on page 1 on the laptop and page 2 plugged in.
-    readonly property int columns: 5
+    readonly property int columns: 6
     readonly property int rows:    5
     readonly property int perPage: columns * rows
 
@@ -90,16 +90,20 @@ PanelWindow {
     // taken their share.
     readonly property int gridW: cardW - cardPad * 2
     readonly property int gridH: cardH - cardPad * 2 - 64 - 32
-    // 75% of a 16:9 screen divided into 5x5 gives cells about 2:1 — wide, short
-    // boxes that read as a table rather than an icon grid. The row height is
-    // the honest constraint, so the column width is capped against it and the
-    // grid centres in whatever width is left.
+    // The grid spans the card's full width. Six columns of a 16:9 card are
+    // wider than they are tall, which is what Launchpad's own cells are — the
+    // horizontal air between icons is the look, not a gap to be closed.
+    readonly property int cellW: Math.floor(gridW / columns)
     readonly property int cellH: Math.floor(gridH / rows)
-    readonly property int cellW: Math.min(Math.floor(gridW / columns),
-                                          Math.round(cellH * 1.3))
-    // The icon scales with the cell, so this is a page of large icons on a
-    // monitor and a smaller one on a laptop rather than 56px either way.
-    readonly property int iconSize: Math.max(32, Math.min(96, Math.round(cellH * 0.45)))
+
+    // The icon leads and the plate follows it, rather than the other way round.
+    // Sizing the plate off the cell first put a 285px square behind a 104px
+    // icon on a 4K screen — correct arithmetic, absurd proportion. The icon
+    // comes off the row height, and the plate is a fixed ratio of the icon,
+    // clamped so it can never overflow a short row.
+    readonly property int iconSize: Math.max(32, Math.min(112, Math.round(cellH * 0.45)))
+    readonly property int tileSize: Math.min(Math.min(cellW, cellH) - 8,
+                                             Math.round(iconSize * 1.95))
     readonly property int pages:   Commands.pageCount(results.length, perPage)
     readonly property var pageItems: Commands.pageSlice(results, page, perPage)
 
@@ -340,8 +344,8 @@ PanelWindow {
 
                             Rectangle {
                                 anchors.centerIn: parent
-                                width: Math.min(parent.width, parent.height) - 8
-                                height: Math.min(parent.width, parent.height) - 8
+                                width: root.tileSize
+                                height: root.tileSize
                                 radius: 18
                                 color: tile.current
                                        ? Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.20)
