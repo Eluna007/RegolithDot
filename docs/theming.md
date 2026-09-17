@@ -109,7 +109,13 @@ found". `wallpaper-switch.sh` names the path for the same reason.
 
 That is also why editing `sddm/themes/apollo/theme.conf` here does nothing on
 its own. What is committed is the Mocha starting point; the installed copy is
-rewritten from your wallpaper's palette on every sync.
+rewritten from your current palette on every sync.
+
+Dynamic colors is **not** required for this. That switch decides where the
+palette comes from, not who receives it — the login screen's copy is staged on
+every write of `config.json`, so a flavour you picked by hand reaches it just
+the same. `apollo-settings theme` stages it too, which is the one command to
+run on a machine where the settings app may never be opened again.
 
 `wallpaper-switch.sh` runs `sudo -n ~/.local/bin/apollo-sddm-sync` on every wallpaper change,
 which does nothing unless you have added the sudoers drop-in in

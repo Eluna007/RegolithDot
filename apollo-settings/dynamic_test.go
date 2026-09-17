@@ -191,3 +191,43 @@ func TestLegacyWallustKeysMigrate(t *testing.T) {
 		t.Error("the old key overrode the new one")
 	}
 }
+
+// The login screen must get a palette even with dynamic colours off. That
+// switch decides where the colours come from, not who receives them — and
+// gating the staging on it meant apollo-sddm-sync had nothing to install
+// until you had turned dynamic colours on, which is not a relationship
+// anything in the UI suggests.
+func TestLoginColorsAreStagedWithDynamicColorsOff(t *testing.T) {
+	home := t.TempDir()
+	cache := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CACHE_HOME", cache)
+	if err := os.MkdirAll(filepath.Join(home, ".config", "apollo"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, ".config", "apollo", "config.json"),
+		[]byte(`{"dynamicColors": false, "flavor": "latte", "accent": "#8839ef"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	changed, err := applyDynamicColors()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if changed {
+		t.Error("reported a change with dynamic colours off")
+	}
+
+	body, err := os.ReadFile(stagedLoginColorsPath())
+	if err != nil {
+		t.Fatalf("nothing staged for the login screen: %v", err)
+	}
+	// Latte's own ramp, not Mocha's: the flavour picked by hand is the answer
+	// when the wallpaper is not.
+	if !strings.Contains(string(body), "base=#eff1f5") {
+		t.Errorf("staged the wrong flavour's palette:\n%s", body)
+	}
+	if !strings.Contains(string(body), "accent=#8839ef") {
+		t.Errorf("staged palette lost the accent:\n%s", body)
+	}
+}
