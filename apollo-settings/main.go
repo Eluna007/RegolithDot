@@ -94,8 +94,28 @@ func main() {
 		}
 		if changed {
 			fmt.Println("recoloured the shell, kitty, GTK, rofi and the staged login screen")
+		} else {
+			// Silence here was its own bug report: run by hand, this printed
+			// nothing at all and looked like it had not run.
+			fmt.Println("dynamic colours are off — staged the current palette for the login screen only")
 		}
 		return
+	}
+
+	// An unrecognised argument is a mistake, not a request for the GUI.
+	//
+	// It used to fall through to the window, which is how `apollo-settings
+	// theme` behaved on a binary built before that subcommand existed: it
+	// silently opened Apollo Settings and blocked the terminal, with no output
+	// and no prompt, which reads as the command hanging. Worse, it is exactly
+	// what you get when you forget to rebuild — the one moment you most need
+	// to be told.
+	if len(os.Args) > 1 {
+		fmt.Fprintf(os.Stderr, "apollo-settings: unknown argument %q\n\n", os.Args[1])
+		fmt.Fprintln(os.Stderr, "  apollo-settings          the settings window")
+		fmt.Fprintln(os.Stderr, "  apollo-settings apply    re-render lua/generated.lua and reload Hyprland")
+		fmt.Fprintln(os.Stderr, "  apollo-settings theme    recolour from the current wallpaper")
+		os.Exit(2)
 	}
 
 	a := app.NewWithID("dev.apollo.settings")
