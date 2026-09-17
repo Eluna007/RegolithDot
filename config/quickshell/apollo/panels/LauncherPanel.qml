@@ -127,6 +127,35 @@ PanelWindow {
         }
     }
 
+    // ── Warming the icons ────────────────────────────────────────────────
+    // The list is preloaded, but the icons are files: 30 of them decode on the
+    // first open, which is the second of tiles filling in one by one.
+    //
+    // These Images have the same source and sourceSize as the grid's, so Qt's
+    // pixmap cache is keyed identically and the grid gets a hit rather than a
+    // read. They are never rendered — an Image loads when its source is set,
+    // not when it is shown — so this costs a decode at login that nobody is
+    // waiting on, and a few MB of cache.
+    //
+    // Deliberately not `visible: false` on the container: that would be enough
+    // to stop it rendering, but keeping the Repeater in a zero-size clipped
+    // Item makes it obvious this draws nothing.
+    Item {
+        width: 0; height: 0
+        clip: true
+        Repeater {
+            model: root.apps
+            Image {
+                required property var modelData
+                source: modelData.icon !== "" ? "file://" + modelData.icon : ""
+                sourceSize.width: root.iconSize * 2
+                sourceSize.height: root.iconSize * 2
+                asynchronous: true
+                cache: true
+            }
+        }
+    }
+
     function launch(entry) {
         if (!entry) return
 

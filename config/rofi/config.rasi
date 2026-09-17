@@ -1,14 +1,16 @@
 /* rofi 2.0 renamed `modi` to `modes` (and `-modi` to `-modes` on the
  * command line). Apollo targets 2.x; on rofi 1.7 these keys are the
- * other way round. */
+ * other way round.
+ *
+ * The emoji picker (ALT+.) is the only thing left that runs rofi. The app
+ * launcher and the keybind cheatsheet are shell panels now, so the `modes`,
+ * `combi-modes` and `display-drun` lines that set them up are gone, along
+ * with scripts/launcher.sh and themes/launcher.rasi. The picker passes its
+ * own -show and -modes on the command line and never reads them. */
 configuration {
-    modes:                "script:~/.config/rofi/scripts/launcher.sh,drun";
-    combi-modes:          "script,drun";
-    combi-display-format: "{text}";
     show-icons:           true;
     icon-theme:           "Papirus-Dark";
     display-script:       "";
-    display-drun:         "";
 }
 
 /* The accent layer, which chains the base theme itself — this rofi only
