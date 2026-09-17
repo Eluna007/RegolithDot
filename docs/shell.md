@@ -6,10 +6,25 @@ The Quickshell side: the bar, its panels, and the widgets that live in them. Eve
 
 ## The launcher
 
-A Spotlight-style launcher: `SUPER+Space`, or the Arch logo in the bar. Type
-to filter, arrows to move, Enter to act. The card is translucent and
-`rules.lua` already blurs the `quickshell` layer namespace, so the compositor
-does the glass rather than QML faking it.
+A full-screen page of large icons, the way Launchpad is: `SUPER+Space`, or the
+Arch logo in the bar. Type to filter, arrows to move, Enter to launch. There is
+no card — the whole screen is the surface, translucent over the blur `rules.lua`
+already applies to the `quickshell` layer namespace, so the compositor does the
+glass rather than QML faking it.
+
+Pages carry dots at the bottom; the scroll wheel, PageUp/PageDown and the dots
+themselves turn them. The selection is an index into the whole result list
+rather than into the page, so an arrow off the end of a page steps onto the
+next one instead of stopping. `pageCount`, `pageSlice`, `pageOf` and
+`moveByRow` are in `Commands.js` with tests, because the off-by-ones there hide:
+a last page one short, and an empty trailing page when the count divides
+exactly, both look plausible until you count.
+
+If the grid is empty it says which of three things happened — the scan has not
+finished, `apps.sh` found nothing at all, or the query matched nothing. Those
+are different problems and a single "no results" makes a broken scanner look
+exactly like a bad search. `apps.sh --debug` prints the directories it searched,
+how many `.desktop` files are in each, and how many entries survive filtering.
 
 One field searches four things, ranked together:
 
@@ -21,16 +36,9 @@ One field searches four things, ranked together:
 | anything else | shell actions — lock, Wi-Fi, wallpaper, chess… | runs or opens it |
 
 `>` on its own lists the actions, the way a command palette does. With the
-field empty it is simply the app list — that is what opening a launcher is
-for, and with two hundred apps anything appended after them is unreachable
-anyway. Windows and actions join in as soon as you type, where ranking decides
-the order instead of concatenation.
-
-The result list scrolls with momentum rather than a notch at a time: a
-trackpad drag gets the Flickable's own physics at a lower deceleration, and a
-mouse wheel glides to its destination, retargeting the same animation when you
-spin it. Arrow keys stop that glide first — both write `contentY`, and the
-animation would otherwise drag the view back off the row you just selected.
+field empty it is simply the app grid — that is what opening a launcher is for.
+Windows and actions join in as soon as you type, where ranking decides the
+order instead of concatenation.
 
 Windows come from `Hyprland.toplevels`, the same live list the overview uses,
 so a keystroke costs no process. Actions that open one of the shell's own

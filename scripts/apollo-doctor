@@ -389,6 +389,16 @@ main() {
   check_wallpapers
   seed_palette_files
   check_file "$HOME/.config/quickshell/apollo/shell.qml" "live quickshell config"
+  # The shell runs these by absolute path, as programs rather than through a
+  # shell, so a lost execute bit is not an error it can report - the launcher
+  # just comes up empty and the clipboard panel just stays blank.
+  for s in apps battery clipboard; do
+    if [[ -x "$HOME/.config/quickshell/apollo/scripts/$s.sh" ]]; then
+      ok "$s.sh executable"
+    else
+      fail "$s.sh missing or not executable — the shell runs it directly"
+    fi
+  done
   # The two files matugen renders from the wallpaper, and the path
   # hyprlock-wallpaper.sh writes beside them. All three are regenerated in one
   # wallpaper-switch.sh run, so a missing one means that run failed: the lock

@@ -279,3 +279,43 @@ function sources(query, apps, windows) {
 function searchTerm(query) {
     return isCommandQuery(query) ? query.substring(1).trim() : (query || "");
 }
+
+// ── Paging ───────────────────────────────────────────────────────────────
+//
+// The grid is paginated the way Launchpad is, and off-by-ones here are the
+// kind that hide: a last page that is one short, or an empty trailing page
+// when the count divides exactly, both look plausible until you count.
+
+function pageCount(total, perPage) {
+    if (!perPage || perPage < 1) return 1;
+    if (!total || total < 1) return 1;
+    return Math.ceil(total / perPage);
+}
+
+// The entries on one page. Never returns a short page by padding, and never
+// runs off the end.
+function pageSlice(entries, page, perPage) {
+    if (!entries || !perPage || perPage < 1) return [];
+    var start = page * perPage;
+    if (start >= entries.length) return [];
+    return entries.slice(start, Math.min(start + perPage, entries.length));
+}
+
+// Where an index lands once the grid is laid out, and the reverse. Keyboard
+// navigation moves within the whole list, not within a page, so that pressing
+// Right on the last tile of a page steps onto the next page instead of
+// stopping.
+function pageOf(index, perPage) {
+    if (!perPage || perPage < 1) return 0;
+    return Math.floor(Math.max(0, index) / perPage);
+}
+
+// Move `index` by a whole row, clamped to the list. Returns the original index
+// when the move would fall off either end, so the selection never wraps into a
+// different page by surprise.
+function moveByRow(index, delta, columns, total) {
+    if (total < 1) return 0;
+    var next = index + delta * columns;
+    if (next < 0 || next >= total) return index;
+    return next;
+}

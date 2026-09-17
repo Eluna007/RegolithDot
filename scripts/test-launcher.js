@@ -205,6 +205,34 @@ console.log("everything lands in one ranked list:");
        C.sources(">blue", APPS, tops))[0].name === "Bluetooth");
 }
 
+// ── Paging ───────────────────────────────────────────────────────────────
+// Off-by-ones here hide: a last page one short, or an empty trailing page when
+// the count divides exactly, both look plausible until you count.
+console.log("the grid pages correctly:");
+{
+    ok("nothing is still one page", C.pageCount(0, 35) === 1);
+    ok("an exact fit is one page", C.pageCount(35, 35) === 1, String(C.pageCount(35, 35)));
+    ok("one over is two pages", C.pageCount(36, 35) === 2);
+    ok("two hundred apps", C.pageCount(200, 35) === 6, String(C.pageCount(200, 35)));
+    ok("a zero page size does not divide by zero", C.pageCount(10, 0) === 1);
+
+    const e = Array.from({ length: 36 }, (_, i) => i);
+    ok("a full page is full", C.pageSlice(e, 0, 35).length === 35);
+    ok("the last page is short, not padded", eqArr(C.pageSlice(e, 1, 35), [35]));
+    ok("past the end is empty, not an error", eqArr(C.pageSlice(e, 2, 35), []));
+    ok("no entries is empty", eqArr(C.pageSlice([], 0, 35), []));
+
+    ok("the last slot of page 0", C.pageOf(34, 35) === 0);
+    ok("the first slot of page 1", C.pageOf(35, 35) === 1);
+
+    // Row moves clamp rather than wrapping: wrapping would jump the selection
+    // to a different page without the page appearing to change.
+    ok("up from the top row stays", C.moveByRow(0, -1, 7, 36) === 0);
+    ok("down from the top row", C.moveByRow(0, 1, 7, 36) === 7);
+    ok("down off the end stays", C.moveByRow(33, 1, 7, 36) === 33);
+    ok("an empty list is index 0", C.moveByRow(5, 1, 7, 0) === 0);
+}
+
 console.log("every action can actually be carried out:");
 {
     const acts = C.actionEntries();
