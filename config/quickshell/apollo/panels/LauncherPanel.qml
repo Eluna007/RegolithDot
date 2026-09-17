@@ -109,6 +109,13 @@ PanelWindow {
             if (running) { root.appBuffer = []; return }
             root.apps = root.appBuffer
             root.scanned = true
+            // apps.sh working on the command line while the launcher stays
+            // empty means the two are not the same thing - a stale shell
+            // running older QML, a lost execute bit, a different environment.
+            // Say so on stderr, where `qs -c apollo` in a terminal shows it.
+            if (root.apps.length === 0)
+                console.warn("launcher: apps.sh produced no entries. Run it directly:",
+                             root.appsScript, "--debug")
         }
     }
 
