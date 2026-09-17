@@ -121,8 +121,15 @@ PanelWindow {
         // Centred sheets grow from their own middle; coverflow takes the whole
         // screen and is revealed rather than scaled, so only the scale of a
         // card-shaped layout is animated here.
-        opacity: Math.min(1, root.reveal * 2)
+        //
+        // The two also want different fades. A card should be solid before it
+        // has finished growing, so it reaches full opacity halfway through; a
+        // full-screen blur that snaps to opaque that fast reads as a flash, so
+        // it takes the whole reveal.
         transformOrigin: Item.Center
+        opacity: Config.paperLayout === "coverflow"
+                 ? root.reveal
+                 : Math.min(1, root.reveal * 2)
         scale: Config.paperLayout === "coverflow"
                ? 1
                : Motion.fromScale + (1 - Motion.fromScale) * root.reveal

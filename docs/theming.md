@@ -334,6 +334,11 @@ Three things the tiles do that are not obvious:
   instead. A thumbnail that has not been made yet falls back to the original,
   so the picker is never worse than it was — just slower until the cache
   catches up.
+  A multi-frame input has to name the frame it wants — `magick "file[0]"`.
+  Without it ImageMagick writes *one file per frame*, `out-0.png`, `out-1.png`,
+  and never the `out.png` it was asked for, so every gif was reported as
+  unthumbnailable and the numbered frames piled up in the cache under the temp
+  name, invisible to the retry check because they are not the name it looks for.
 - **Videos are drawn from a cached frame,** by the same script, because
   `Image` cannot decode one at all. ffmpeg pulls a single frame a second in
   (the first frame of a video is very often black, and a black thumbnail is
@@ -357,6 +362,18 @@ caches downscaled copies with ImageMagick and batches the work.
 A tile that is loading and a tile that cannot be drawn used to look identical:
 an empty frame. They now differ, because "still working" and "this file is
 broken" want different reactions from you.
+
+When a wallpaper is missing from the picker entirely, ask the script:
+
+```sh
+~/.config/quickshell/apollo/scripts/wallpaper-thumbs.sh --debug
+```
+
+It prints the folder it is reading, whether ImageMagick and ffmpeg are there,
+how many stills and videos it can see, which videos have no frame — and how
+many files are sitting in **subfolders**, which neither it nor the picker
+looks into. That last one is by far the most common reason a wallpaper "is not
+there", and nothing else about the picker would tell you.
 
 ## Where the panels sit
 
