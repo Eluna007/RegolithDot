@@ -99,19 +99,28 @@ Item {
     }
 
     // ── Applying ─────────────────────────────────────────────────────────
-    Process { id: applyProc }
-
     signal applied(string path)
 
+    // execDetached, not Process.
+    //
+    // A Process is a child of the shell, and so is everything it spawns. The
+    // wallpaper script starts a daemon in the background — mpvpaper, for a gif
+    // or a video — and when the shell reaped the finished script, that daemon
+    // went with the process group. The symptom was an animated wallpaper that
+    // played for about a second, which is how long the rest of the script took,
+    // and then vanished to the compositor's default background.
+    //
+    // Nothing here wants the script's output or exit status, so there is no
+    // reason for it to be a tracked child at all. (wallpaper-switch.sh also
+    // setsids its daemons now, so it is safe to run from anywhere; this is the
+    // other half of the same fix, and the reason the shell has execDetached.)
     function apply(path) {
         if (!path)
             return
-        applyProc.running = false
         // The path goes in as $1 rather than being interpolated, to dodge
         // quoting: wallpapers have spaces and apostrophes in their names.
-        applyProc.command = ["sh", "-c",
-            "\"$HOME/.local/bin/wallpaper-switch.sh\" \"$1\"", "sh", path]
-        applyProc.running = true
+        Quickshell.execDetached(["sh", "-c",
+            "\"$HOME/.local/bin/wallpaper-switch.sh\" \"$1\"", "sh", path])
         root.appliedPath = path
         root.applied(path)
     }

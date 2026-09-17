@@ -67,15 +67,60 @@ recolour() {
   fi
 }
 
+# spawn <command...> — start a background daemon that outlives this script.
+#
+# A plain `&` is not enough. This script is run from the shell's wallpaper
+# picker, and anything it backgrounds stays in the script's process group — so
+# when the caller reaps the script, the group goes with it and the wallpaper
+# daemon dies seconds after starting. setsid puts it in a session of its own,
+# where nothing upstream can take it down.
+spawn() {
+  if command -v setsid >/dev/null 2>&1; then
+    setsid -f "$@" >/dev/null 2>&1
+  else
+    nohup "$@" >/dev/null 2>&1 &
+    disown 2>/dev/null || true
+  fi
+}
+
+# Start the new wallpaper before stopping the old one, always.
+#
+# Every flash of the bare Hyprland background came from doing it the other way
+# round: kill the outgoing daemon, then spend a few hundred milliseconds
+# starting the incoming one with nothing on screen in between. Switching from a
+# video to a still was the worst of it, because the video branch had already
+# killed hyprpaper, so the still had to cold-start it. Holding the old PIDs and
+# killing them at the end means the outgoing wallpaper covers the screen right
+# up until the incoming one is drawing.
+old_mpv="$(pgrep -x mpvpaper 2>/dev/null | tr '\n' ' ')"
+old_hypr="$(pgrep -x hyprpaper 2>/dev/null | tr '\n' ' ')"
+
+retire() {
+  # shellcheck disable=SC2086  # deliberately word-split: these are PID lists.
+  [ -n "$1" ] && kill $1 2>/dev/null
+  return 0
+}
+
 case "$selected" in
   *.gif|*.mp4|*.webm|*.mkv|*.mov)
     # Video AND gif both need mpvpaper — hyprpaper only ever shows a
     # static single frame, it can't animate a gif at all. mpv can loop
     # a gif exactly like a video.
-    pkill hyprpaper 2>/dev/null
-    pkill mpvpaper 2>/dev/null
-    sleep 0.2
-    mpvpaper -o "no-audio loop" '*' "$selected" &
+    spawn mpvpaper -o "no-audio loop" '*' "$selected"
+
+    # Wait for it to exist, then give it a moment to get its surface up.
+    # There is nothing to ask mpvpaper about, so this is a settle rather than
+    # a handshake — but it is bounded, and it is the difference between the
+    # old wallpaper covering the gap and the compositor's default showing
+    # through it.
+    for _ in $(seq 1 40); do
+      pgrep -x mpvpaper >/dev/null 2>&1 && break
+      sleep 0.05
+    done
+    sleep 0.3
+
+    retire "$old_mpv"
+    retire "$old_hypr"
 
     # One frame, for everything that cannot animate: matugen, the lock screen
     # and the login screen. Kept in the cache rather than /tmp so it is still
@@ -88,9 +133,8 @@ case "$selected" in
   *)
     # Image-to-image: never restart hyprpaper. It swaps over its own IPC,
     # which is what avoids the flash of the bare compositor background.
-    pkill mpvpaper 2>/dev/null
-    if ! pgrep -x hyprpaper >/dev/null; then
-      hyprpaper &
+    if [ -z "$old_hypr" ]; then
+      spawn hyprpaper
       # Wait for hyprpaper's IPC to actually answer instead of guessing at a
       # sleep. A flat 0.5s was enough when hyprpaper was already warm, but not
       # at a cold start, where the compositor is bringing up the shell, two
@@ -113,6 +157,9 @@ case "$selected" in
       echo "wallpaper-switch: hyprpaper rejected the wallpaper request" >&2
       exit 1
     fi
+
+    # Only now: the still is up, so the video underneath it can go.
+    retire "$old_mpv"
 
     recolour "$selected"
     ;;
