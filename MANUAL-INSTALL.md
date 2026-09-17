@@ -131,6 +131,10 @@ cannot be pointed at your wallpaper either.
 
 ```bash
 sudo cp -r sddm/themes/apollo /usr/share/sddm/themes/apollo
+
+# sddm.conf.d does not exist until something puts a file in it, and a fresh
+# sddm install ships no drop-ins at all.
+sudo mkdir -p /etc/sddm.conf.d
 sudo cp sddm/sddm.conf /etc/sddm.conf.d/10-theme.conf
 ```
 
@@ -138,15 +142,19 @@ Then give it the current palette and wallpaper — this is the command to re-run
 any time you want the login screen caught up by hand:
 
 ```bash
-sudo apollo-sddm-sync
+sudo ~/.local/bin/apollo-sddm-sync
 ```
+
+**The full path is required, not tidiness.** `sudo` replaces `PATH` with its own
+`secure_path`, and `~/.local/bin` is not on it — plain `sudo apollo-sddm-sync`
+is "command not found" no matter how the script is installed.
 
 That needs `apollo-settings` to have generated a palette first, which happens on
 the first wallpaper change with **Dynamic colors** on (apollo-settings › Theme),
 or immediately with `apollo-settings theme`.
 
 **Optional: let a wallpaper change do it for you.** `wallpaper-switch.sh` tries
-`sudo -n apollo-sddm-sync` on every change, which does nothing unless that one
+`sudo -n ~/.local/bin/apollo-sddm-sync` on every change, which does nothing unless that one
 command is passwordless — a wallpaper keybind has nowhere to show a password
 prompt. If you want the login screen to follow automatically, and you accept
 what the rule means, add it:
@@ -161,7 +169,7 @@ Worth understanding before you do: that grants passwordless root to whatever
 that path contains, so anyone who can write the file can run anything as root.
 It is your own home directory, so that is you — but it does mean a symlink you
 pull from this repo is running as root on every wallpaper change. Skipping this
-costs nothing except running `sudo apollo-sddm-sync` yourself.
+costs nothing except running `sudo ~/.local/bin/apollo-sddm-sync` yourself.
 
 ### 4.2 GTK
 

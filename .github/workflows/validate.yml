@@ -290,6 +290,52 @@ jobs:
       # laptops expose BAT1. Worse, the callers used to paper over a wrong
       # guess (`|| echo 100`, `2>/dev/null`), so the bar reported a confident,
       # permanent 100% instead of failing. Find the battery, never name it.
+      # sudo replaces PATH with its own secure_path, which does not include
+      # ~/.local/bin. A `sudo <bare-name>` for anything this repo installs
+      # there is "command not found" however correctly it is installed - and
+      # the call that prompted this check was `|| true`-guarded, so it would
+      # have failed in silence on every wallpaper change forever.
+      #
+      # The names are read from local/bin rather than listed, so a script added
+      # there is covered without anyone remembering to add it here.
+      - name: Check for sudo calls secure_path cannot resolve
+        run: |
+          python3 - <<'PY'
+          import re, sys, subprocess
+          from pathlib import Path
+
+          names = sorted(p.name for p in Path("local/bin").iterdir() if p.is_file())
+          tracked = subprocess.run(
+              ["git", "grep", "-nI", "-E", r"sudo\b.*\b(%s)\b" % "|".join(map(re.escape, names)),
+               # Markdown and comments are allowed to spell the broken form:
+               # explaining why `sudo <bare-name>` cannot work means writing it
+               # down. Executable lines are what this is watching.
+               "--", ":!old-apollo-shell/**", ":!*.md"],
+              capture_output=True, text=True).stdout.splitlines()
+
+          bad = []
+          for line in tracked:
+              path, _, rest = line.partition(":")
+              _, _, body = rest.partition(":")
+              if re.match(r"\s*(#|//|--)", body):
+                  continue
+              for name in names:
+                  # A call, a suggestion in an error string, a line of docs -
+                  # all three tell someone to run something that cannot work.
+                  for m in re.finditer(r"sudo\b[^|;&\n]*?(\S*)" + re.escape(name) + r"\b", body):
+                      if "/" not in m.group(1):
+                          bad.append(f"{path}: {body.strip()}")
+                      break
+
+          if bad:
+              print("\n".join(sorted(set(bad))))
+              print("\nsudo cannot find these in ~/.local/bin - name them by path "
+                    "(sudo ~/.local/bin/<name>).")
+              sys.exit(1)
+          print(f"ok - no sudo call or instruction relies on a PATH sudo does not have "
+                f"({len(names)} commands in local/bin)")
+          PY
+
       - name: Check for hardcoded battery paths
         run: |
           # Comments and prose are allowed to name the path - explaining why it

@@ -45,9 +45,16 @@ recolour() {
   # asking for a password: this runs from a keybind and from session startup,
   # where a sudo prompt has nowhere to appear and would hang the script.
   # `sudo -n` fails immediately instead. Without the sudoers drop-in described
-  # in MANUAL-INSTALL.md, run `sudo apollo-sddm-sync` yourself.
-  if command -v apollo-sddm-sync >/dev/null 2>&1; then
-    sudo -n apollo-sddm-sync >/dev/null 2>&1 || true
+  # in MANUAL-INSTALL.md, run `sudo ~/.local/bin/apollo-sddm-sync` yourself.
+  #
+  # The absolute path is not tidiness. sudo replaces PATH with its own
+  # `secure_path`, which on Arch is /usr/local/sbin:/usr/local/bin:/usr/sbin:
+  # /usr/bin:/sbin:/bin — ~/.local/bin is not on it, so `sudo apollo-sddm-sync`
+  # is "command not found" even with the script installed and the sudoers rule
+  # in place. Named by its path, it resolves.
+  local sync="$HOME/.local/bin/apollo-sddm-sync"
+  if [ -x "$sync" ]; then
+    sudo -n "$sync" >/dev/null 2>&1 || true
   fi
 }
 

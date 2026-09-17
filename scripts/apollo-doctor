@@ -213,11 +213,11 @@ check_login_screen() {
   local bg
   bg=$(sed -n 's/^background=//p' "$theme/theme.conf" 2>/dev/null)
   if [[ -z "$bg" ]]; then
-    warn "the login screen has no wallpaper yet — run: sudo apollo-sddm-sync"
+    warn "the login screen has no wallpaper yet — run: sudo ~/.local/bin/apollo-sddm-sync"
   elif [[ -r "$theme/$bg" ]]; then
     ok "login screen wallpaper in place"
   else
-    fail "theme.conf names $bg, which is missing or unreadable — run: sudo apollo-sddm-sync"
+    fail "theme.conf names $bg, which is missing or unreadable — run: sudo ~/.local/bin/apollo-sddm-sync"
   fi
 }
 
