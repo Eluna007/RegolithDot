@@ -26,6 +26,33 @@ default_dirs() {
 }
 
 APP_DIRS="${APPLICATION_DIRS:-$(default_dirs)}"
+
+# `apps.sh --debug` says where it looked and what it found there. An empty
+# launcher is silence otherwise, and the three reasons for it - no readable
+# directories, no .desktop files, everything filtered out - look identical from
+# the outside.
+if [ "${1-}" = "--debug" ]; then
+    echo "XDG_DATA_HOME = ${XDG_DATA_HOME:-<unset, using $HOME/.local/share>}"
+    echo "XDG_DATA_DIRS = ${XDG_DATA_DIRS:-<unset, using /usr/local/share:/usr/share>}"
+    echo
+    echo "directories searched:"
+    total=0
+    while IFS= read -r d; do
+        if [ ! -d "$d" ]; then
+            printf '  %-55s (no such directory)\n' "$d"
+        elif [ ! -r "$d" ]; then
+            printf '  %-55s NOT READABLE\n' "$d"
+        else
+            n=$(find "$d" -maxdepth 1 -name '*.desktop' 2>/dev/null | wc -l)
+            printf '  %-55s %s .desktop file(s)\n' "$d" "$n"
+            total=$((total + n))
+        fi
+    done <<< "$(printf '%s' "$APP_DIRS" | tr ':' '\n')"
+    echo
+    echo "$total .desktop file(s) in total"
+    echo "$("$0" | wc -l) entr(ies) after filtering (NoDisplay, Hidden, TryExec, duplicates)"
+    exit 0
+fi
 ICON_DIRS="${APOLLO_ICON_DIRS:-${XDG_DATA_HOME:-$HOME/.local/share}/icons:$HOME/.icons:/usr/share/icons:/usr/share/pixmaps}"
 # Theme is not consulted: the index ranks every icon by size across all of
 # them, which finds an icon a theme-first search would miss entirely.
