@@ -135,7 +135,9 @@ PanelWindow {
                     // Force position to refresh while playing (position is lazily reactive)
                     Timer {
                         interval: 1000; repeat: true
-                        running: playerCard.modelData.isPlaying
+                        // Also gated on the panel being open: this only drives
+                        // a progress bar nobody can see while it is shut.
+                        running: root.visible && playerCard.modelData.isPlaying
                         onTriggered: playerCard.modelData.positionChanged()
                     }
 

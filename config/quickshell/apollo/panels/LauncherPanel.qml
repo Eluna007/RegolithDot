@@ -58,15 +58,16 @@ PanelWindow {
     readonly property color text:     Config.text
     readonly property color accent:   Config.accent
 
+    // Scanned once for the machine by shell.qml and kept in memory, so opening
+    // this costs nothing. Scanning here on every open is what made the
+    // launcher take over a second to appear.
+    required property var shared
+
     // ── State ────────────────────────────────────────────────────────────
-    property var apps: []
+    readonly property var apps: shared.appEntries
     property string query: ""
     property int selected: 0
     property int page: 0
-    // Set once the first scan has finished, so an empty grid can say whether
-    // apps.sh found nothing or the query matched nothing. Those are different
-    // problems and they look identical.
-    property bool scanned: false
 
     readonly property var results: {
         var ranked = Match.filter(Commands.searchTerm(query),
@@ -112,41 +113,16 @@ PanelWindow {
     onSelectedChanged: page = Commands.pageOf(selected, perPage)
     onResultsChanged: { selected = 0; page = 0 }
 
-    readonly property string appsScript: Config.shellScript("apps.sh")
 
-    property var appBuffer: []
-    Process {
-        id: scanProc
-        command: [root.appsScript]
-        stdout: SplitParser {
-            splitMarker: "\n"
-            onRead: line => {
-                var e = Match.parseLine(line)
-                if (e) root.appBuffer.push(e)
-            }
-        }
-        onRunningChanged: {
-            if (running) { root.appBuffer = []; return }
-            root.apps = root.appBuffer
-            root.scanned = true
-            // apps.sh working on the command line while the launcher stays
-            // empty means the two are not the same thing - a stale shell
-            // running older QML, a lost execute bit, a different environment.
-            // Say so on stderr, where `qs -c apollo` in a terminal shows it.
-            if (root.apps.length === 0)
-                console.warn("launcher: apps.sh produced no entries. Run it directly:",
-                             root.appsScript, "--debug")
-        }
-    }
-
-    // Rescan on open. It costs ~30ms for two hundred apps, which is cheaper
-    // than showing a list that is missing something installed five minutes ago.
+    // The list shown is the previous scan, which is instant; this kicks the
+    // next one off in the background so an app installed since then is there
+    // the time after. Nothing waits on it.
     onVisibleChanged: {
         if (visible) {
             query = ""
             selected = 0
             page = 0
-            if (!scanProc.running) scanProc.running = true
+            shared.rescanApps()
             input.forceActiveFocus()
         }
     }
@@ -216,10 +192,10 @@ PanelWindow {
         anchors.centerIn: parent
         width: root.cardW
         height: root.cardH
-        radius: 28
-        color: Qt.rgba(Config.base.r, Config.base.g, Config.base.b, 0.55)
-        border.width: 1
-        border.color: Qt.rgba(Config.text.r, Config.text.g, Config.text.b, 0.10)
+        // No plate and no border: the backdrop below is already blurred by the
+        // layer rule, and a second translucent box on top of it only muddied
+        // the wallpaper. This Rectangle is here for its geometry alone.
+        color: "transparent"
 
         // The whole card settles in together, from slightly small. A centred
         // sheet has no bar edge of its own, so it grows from its middle.
@@ -438,8 +414,7 @@ PanelWindow {
                         Layout.alignment: Qt.AlignHCenter
                         horizontalAlignment: Text.AlignHCenter
                         textFormat: Text.PlainText
-                        text: !root.scanned ? "Scanning applications…"
-                            : root.apps.length === 0 ? "No applications found"
+                        text: root.apps.length === 0 ? "No applications found"
                             : "Nothing matches “" + root.query + "”"
                         color: root.overlay0
                         font { pixelSize: 13; family: root.nfFont }
@@ -448,7 +423,7 @@ PanelWindow {
                         Layout.alignment: Qt.AlignHCenter
                         horizontalAlignment: Text.AlignHCenter
                         textFormat: Text.PlainText
-                        visible: root.scanned && root.apps.length === 0
+                        visible: root.apps.length === 0
                         text: "scripts/apps.sh returned nothing — run it directly to see why"
                         color: root.overlay0
                         font { pixelSize: 10; family: root.nfFont }

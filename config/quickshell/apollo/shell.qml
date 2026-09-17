@@ -6,7 +6,9 @@ import Quickshell.Services.Notifications
 import QtQuick
 import "bar"
 import "panels"
+import "services"
 import "panels/tailscale/Tailscale.js" as TS
+import "panels/launcher/Match.js" as Match
 
 ShellRoot {
     // Global notification list (shared across all screen instances)
@@ -227,12 +229,54 @@ ShellRoot {
         }
 
         // Screen-recording indicator.
+        // ── Applications ─────────────────────────────────────────────
+        // Scanned here, once for the machine, rather than in the launcher on
+        // every open. The scan walks the icon theme, and on a machine with
+        // Papirus installed that is tens of thousands of files — the launcher
+        // took over a second to appear because it did that work between the
+        // keypress and the first frame.
+        //
+        // apps.sh caches the icon index itself; this keeps the parsed list in
+        // memory so opening the launcher costs nothing at all.
+        property var appEntries: []
+        property var appBuffer: []
+        property var appsProc: Process {
+            command: [Config.shellScript("apps.sh")]
+            stdout: SplitParser {
+                splitMarker: "\n"
+                onRead: line => {
+                    var e = Match.parseLine(line)
+                    if (e) sharedSys.appBuffer.push(e)
+                }
+            }
+            onRunningChanged: {
+                if (running) { sharedSys.appBuffer = []; return }
+                sharedSys.appEntries = sharedSys.appBuffer
+                if (sharedSys.appEntries.length === 0)
+                    console.warn("apps: the scan produced no entries. Run",
+                                 Config.shellScript("apps.sh"), "--debug")
+            }
+        }
+        // Five minutes: installing something and finding it missing from the
+        // launcher is worse than a scan nobody notices. The launcher also kicks
+        // one on open, in the background, so the list it shows is the previous
+        // scan and the next one is already on its way.
+        property var appsTimer: Timer {
+            interval: 300000; running: true; repeat: true; triggeredOnStart: true
+            onTriggered: if (!sharedSys.appsProc.running) sharedSys.appsProc.running = true
+        }
+        function rescanApps() {
+            if (!sharedSys.appsProc.running) sharedSys.appsProc.running = true
+        }
+
         property var recordingProc: Process {
             command: ["sh", "-c", "pgrep -x 'obs|wf-recorder|gpu-screen-recorder|kooha|simplescreenrecorder' >/dev/null && echo 1 || echo 0"]
             stdout: SplitParser { onRead: d => sharedSys.recordingActive = d.trim() === "1" }
         }
         property var recordingTimer: Timer {
-            interval: 10000; running: true; repeat: true; triggeredOnStart: true
+            // 30s, not 10s: this spawns a pgrep, and noticing a screen
+            // recorder half a minute late costs nothing.
+            interval: 30000; running: true; repeat: true; triggeredOnStart: true
             onTriggered: sharedSys.recordingProc.running = true
         }
 
@@ -481,6 +525,7 @@ ShellRoot {
 
             property var launcherPanel: LauncherPanel {
                 screen:  scope.modelData
+                shared:  sharedSys
                 visible: scope.activePanel === "launcher"
                 onClose: scope.closeAll()
                 // A launcher action that opens a panel hands the name back
