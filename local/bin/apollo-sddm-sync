@@ -56,27 +56,55 @@ still_ref="$stage/still.txt"
 # still.txt names a still image: the wallpaper itself, or the frame
 # wallpaper-switch.sh pulled out of a video. The greeter cannot animate one
 # and cannot read the original either way.
-bg_line=""
-if [ -f "$still_ref" ]; then
-    still="$(cat "$still_ref")"
-    if [ -f "$still" ]; then
-        ext="${still##*.}"
-        # Guard against a path with no dot at all, where ${still##*.} is the
-        # whole filename and the copy would be named after it.
-        case "$still" in
-            *.*) : ;;
-            *)   ext="png" ;;
+still=""
+[ -f "$still_ref" ] && still="$(cat "$still_ref")"
+
+if [ -n "$still" ] && [ ! -f "$still" ]; then
+    echo "apollo-sddm-sync: $still is gone" >&2
+    still=""
+fi
+
+# Nothing staged yet. still.txt is only written by a wallpaper *change*, so on
+# a machine that has not had one since this was installed there is none — which
+# would mean a freshly installed login screen with the right colours and no
+# wallpaper until you happened to switch. The session already records what is
+# up, so use that.
+if [ -z "$still" ]; then
+    last="$home/.config/hypr/last-wallpaper.txt"
+    if [ -f "$last" ]; then
+        candidate="$(cat "$last")"
+        case "$candidate" in
+            # An animated wallpaper is exactly why still.txt exists: the greeter
+            # cannot play one, and a copied .mp4 renders as nothing at all.
+            # Extracting a frame needs ffmpeg and is wallpaper-switch.sh's job.
+            *.gif|*.mp4|*.webm|*.mkv)
+                echo "apollo-sddm-sync: the current wallpaper is a video; switch wallpaper once to generate a still for the login screen" >&2
+                candidate="" ;;
         esac
-        mkdir -p "$THEME_DIR/backgrounds"
-        # One background at a time: without this, switching from a .png to a
-        # .jpg leaves current.png behind, and theme.conf points at the new one
-        # while the old one sits there forever.
-        rm -f "$THEME_DIR"/backgrounds/current.*
-        install -m 0644 "$still" "$THEME_DIR/backgrounds/current.$ext"
-        bg_line="background=backgrounds/current.$ext"
-    else
-        echo "apollo-sddm-sync: $still is gone; keeping the plain background" >&2
+        if [ -n "$candidate" ] && [ -f "$candidate" ]; then
+            still="$candidate"
+        fi
     fi
+fi
+
+bg_line=""
+if [ -n "$still" ]; then
+    ext="${still##*.}"
+    # Guard against a path with no dot at all, where ${still##*.} is the whole
+    # filename and the copy would be named after it.
+    case "$still" in
+        *.*) : ;;
+        *)   ext="png" ;;
+    esac
+    mkdir -p "$THEME_DIR/backgrounds"
+    # One background at a time: without this, switching from a .png to a .jpg
+    # leaves current.png behind, and theme.conf points at the new one while the
+    # old one sits there forever.
+    rm -f "$THEME_DIR"/backgrounds/current.*
+    install -m 0644 "$still" "$THEME_DIR/backgrounds/current.$ext"
+    bg_line="background=backgrounds/current.$ext"
+else
+    echo "apollo-sddm-sync: no wallpaper to install; keeping the plain background" >&2
 fi
 
 # ── theme.conf ───────────────────────────────────────────────────────────
