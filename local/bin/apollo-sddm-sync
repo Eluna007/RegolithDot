@@ -77,7 +77,7 @@ if [ -z "$still" ]; then
             # An animated wallpaper is exactly why still.txt exists: the greeter
             # cannot play one, and a copied .mp4 renders as nothing at all.
             # Extracting a frame needs ffmpeg and is wallpaper-switch.sh's job.
-            *.gif|*.mp4|*.webm|*.mkv)
+            *.gif|*.mp4|*.webm|*.mkv|*.mov)
                 echo "apollo-sddm-sync: the current wallpaper is a video; switch wallpaper once to generate a still for the login screen" >&2
                 candidate="" ;;
         esac

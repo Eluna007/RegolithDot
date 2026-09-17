@@ -38,6 +38,8 @@ jobs:
           bash -n scripts/test-clipboard.sh
           bash -n config/quickshell/apollo/scripts/clipboard.sh
           bash -n config/quickshell/apollo/scripts/apps.sh
+          bash -n config/quickshell/apollo/scripts/wallpaper-thumbs.sh
+          bash -n scripts/test-wallpaper-thumbs.sh
           bash -n scripts/test-apps.sh
           bash -n config/quickshell/apollo/scripts/battery.sh
           for f in local/bin/*.sh; do bash -n "$f"; done
@@ -58,6 +60,8 @@ jobs:
           shellcheck scripts/test-clipboard.sh
           shellcheck config/quickshell/apollo/scripts/clipboard.sh
           shellcheck config/quickshell/apollo/scripts/apps.sh
+          shellcheck config/quickshell/apollo/scripts/wallpaper-thumbs.sh
+          shellcheck scripts/test-wallpaper-thumbs.sh
           shellcheck scripts/test-apps.sh
           shellcheck config/quickshell/apollo/scripts/battery.sh
           shellcheck config/hyprlock/scripts/battery.sh
@@ -249,6 +253,18 @@ jobs:
       # a broken launcher row.
       - name: Test apps.sh
         run: ./scripts/test-apps.sh
+
+      # A wallpaper's format decides which of two pipelines it takes, and the
+      # answer is spelled out separately in five files that cannot see each
+      # other. Videos were missing from the picker's filter for as long as the
+      # picker existed, so wallpaper-switch.sh's entire mpvpaper branch - gifs
+      # and video, the thing hyprpaper cannot do - was unreachable from the UI
+      # it was written for.
+      - name: Check the wallpaper formats agree
+        run: python3 scripts/check-wallpaper-formats.py
+
+      - name: Test wallpaper-thumbs.sh
+        run: ./scripts/test-wallpaper-thumbs.sh
 
       # Ranking is the whole product of a launcher: the orderings that matter
       # are asserted rather than eyeballed.

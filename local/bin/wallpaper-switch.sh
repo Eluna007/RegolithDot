@@ -68,7 +68,7 @@ recolour() {
 }
 
 case "$selected" in
-  *.gif|*.mp4|*.webm|*.mkv)
+  *.gif|*.mp4|*.webm|*.mkv|*.mov)
     # Video AND gif both need mpvpaper — hyprpaper only ever shows a
     # static single frame, it can't animate a gif at all. mpv can loop
     # a gif exactly like a video.
