@@ -81,3 +81,26 @@ focus/resize layout with a resize submap, and touchscreen gestures via the
 had no equivalent for.
 
 Nothing else in `lua/` imports these three, so they stay easy to swap.
+
+## Optional plugins
+
+`lua/gestures.lua` is the only module that needs a third-party plugin
+(hyprgrass, for touchscreen gestures). It guards on the plugin being there and
+returns quietly when it is not.
+
+That guard is not defensive politeness. Without it, `hl.plugin.hyprgrass` is
+nil, indexing it raises, Hyprland reports **"Your config has errors"** and
+falls back to a handful of emergency binds — and because `require` does not
+contain an error, every module listed after it never runs either. A missing
+*touchscreen* plugin took out the touchpad, the keybinds and the window rules.
+
+Two things make that unrepeatable. `gestures.lua` is required **last**, so if it
+ever does fail it takes nothing with it; and `scripts/test-hypr-lua.lua`
+executes every module three times — with all plugins present, with an empty
+plugin table, and with no plugin table at all — because `luac -p` cannot see a
+nil index, that being valid syntax.
+
+A cold boot is the empty case: `autostart.lua` runs `hyprpm reload` from the
+`hyprland.start` handler, which fires *after* the config is parsed. And after a
+Hyprland or kernel update, hyprpm needs the plugin rebuilt (`hyprpm update`)
+before it loads at all. `apollo-doctor` reports whether it did.

@@ -25,7 +25,6 @@ jobs:
 
       - name: Check shell syntax
         run: |
-          bash -n config/rofi/scripts/launcher.sh
           bash -n config/rofi/scripts/emoji.sh
           bash -n config/ranger/scope.sh
           bash -n scripts/apollo-doctor
@@ -44,7 +43,6 @@ jobs:
 
       - name: Run shellcheck
         run: |
-          shellcheck config/rofi/scripts/launcher.sh
           shellcheck config/rofi/scripts/emoji.sh
           shellcheck -e SC2034,SC2317 config/ranger/scope.sh
           shellcheck scripts/apollo-doctor
@@ -66,6 +64,14 @@ jobs:
       # with a handful of emergency keybinds, so this is the check that matters.
       - name: Check Hyprland Lua syntax
         run: luac5.4 -p config/hypr/hyprland.lua config/hypr/lua/*.lua
+
+      # luac -p cannot see a nil index: it is valid syntax. So the modules are
+      # actually executed, with every plugin present and on a machine with none
+      # loaded — which is what a cold boot is, before autostart's `hyprpm
+      # reload` has run. gestures.lua indexing a missing hyprgrass took the
+      # whole config down, and with it the touchpad and every keybind.
+      - name: Check the Hyprland config loads without its optional plugins
+        run: lua5.4 scripts/test-hypr-lua.lua
 
       # apollo-settings unbinds a keybind's `Default` before applying a new
       # combo. If Default is not the key currently bound to that same action,

@@ -383,6 +383,20 @@ main() {
   check_dir "$HOME/.local/share/icons/Apollo-Terminal" "Apollo-Terminal icon theme"
   check_optional_dir "$HOME/.icons/Bibata-Modern-Classic" "Bibata cursor theme"
 
+  # hyprgrass is optional and only drives touchscreen gestures, but it used to
+  # take the whole config with it when it failed to load (see lua/gestures.lua).
+  # It no longer can — this reports it because after a Hyprland or kernel
+  # update hyprpm needs the plugin rebuilt, and nothing else says so.
+  if have hyprpm; then
+    if hyprpm list 2>/dev/null | grep -qi hyprgrass; then
+      ok "hyprgrass plugin loaded (touchscreen gestures)"
+    else
+      warn "hyprgrass not loaded — touchscreen gestures are off. After a Hyprland update: hyprpm update"
+    fi
+  else
+    warn "hyprpm missing — touchscreen gestures need it (optional)"
+  fi
+
   info "Apollo state"
   check_quickshell
   check_aur_helper
