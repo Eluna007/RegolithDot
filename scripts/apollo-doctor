@@ -144,6 +144,52 @@ check_aur_helper() {
   fi
 }
 
+# The palette, fanned out to the apps that draw beside the shell. These are
+# machine state, not config: apollo-settings rewrites them on every save, and
+# ~/.config/{kitty,gtk-3.0,gtk-4.0,rofi} are symlinks into the repo — so if
+# they were tracked, a customised palette would sit in the way of every
+# `git pull`. They are gitignored, and the committed `*.default.*` beside each
+# one is the Mocha starting point.
+#
+# Seeding them here is what makes a fresh clone themed. It never overwrites:
+# once the file exists, it belongs to whoever set the palette.
+seed_palette_files() {
+  local pairs=(
+    "$HOME/.config/kitty/apollo-colors.conf|$HOME/.config/kitty/apollo-colors.default.conf"
+    "$HOME/.config/gtk-3.0/apollo-colors.css|$HOME/.config/gtk-3.0/apollo-colors.default.css"
+    "$HOME/.config/gtk-4.0/apollo-colors.css|$HOME/.config/gtk-4.0/apollo-colors.default.css"
+    "$HOME/.config/rofi/themes/apollo-colors.rasi|$HOME/.config/rofi/themes/apollo-colors.default.rasi"
+  )
+  local seeded=0 broken=0
+  local pair live default
+  for pair in "${pairs[@]}"; do
+    live="${pair%%|*}"
+    default="${pair##*|}"
+    if [[ -f "$live" ]]; then
+      continue
+    fi
+    if [[ ! -f "$default" ]]; then
+      fail "$(basename "$default") missing — is ~/.config/$(basename "$(dirname "$default")") symlinked?"
+      broken=$((broken + 1))
+      continue
+    fi
+    if cp "$default" "$live" 2>/dev/null; then
+      ok "generated $(basename "$live") from its default"
+      seeded=$((seeded + 1))
+    else
+      fail "could not write $live"
+      broken=$((broken + 1))
+    fi
+  done
+  if (( broken > 0 )); then
+    :   # already reported, and saying "present" after that would contradict it
+  elif (( seeded == 0 )); then
+    ok "palette files present (kitty, GTK 3/4, rofi)"
+  else
+    warn "seeded $seeded palette file(s) — open Apollo Settings and Apply to use your own"
+  fi
+}
+
 check_wallpapers() {
   if [[ -d "$HOME/Pictures/Wallpapers" ]] && find "$HOME/Pictures/Wallpapers" -maxdepth 1 -type f | grep -q .; then
     ok "wallpapers available"
@@ -341,6 +387,7 @@ main() {
   check_quickshell
   check_aur_helper
   check_wallpapers
+  seed_palette_files
   check_file "$HOME/.config/quickshell/apollo/shell.qml" "live quickshell config"
   # The two files matugen renders from the wallpaper, and the path
   # hyprlock-wallpaper.sh writes beside them. All three are regenerated in one

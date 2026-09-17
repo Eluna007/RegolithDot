@@ -27,8 +27,20 @@ Every write of `config.json` fans that palette out (`apollo-settings/apps.go`):
 | rofi | `rofi/themes/apollo-colors.rasi` | next launch |
 
 Each generated file is `include`d or `@import`ed by the real config, and each
-one is **checked in** — so a fresh clone is fully themed before `apollo-settings`
-has ever run, and your palette shows up as a tracked change, which is the point.
+one is **gitignored**. That is deliberate: `~/.config/kitty`, `gtk-3.0`,
+`gtk-4.0` and `rofi` are symlinks *into* this repo, so a tracked generated file
+would mean a customised palette is an uncommitted change sitting in the way of
+every `git pull`.
+
+What is committed is the `*.default.*` beside each one — the Mocha starting
+point. `apollo-doctor` copies it into place when the generated file is missing,
+which is what makes a fresh clone themed, and it never overwrites one that
+already exists.
+
+`config/rofi/config.rasi` points its `@theme` at the generated file with a
+static `~` path. `apollo-settings` used to rewrite that line too, with an
+absolute `/home/<user>/` path — a tracked modification and a personal path in a
+committed file, both for no gain.
 
 The lock screen is the exception: it sits *on* the wallpaper, so it takes its
 colors straight from it via matugen (see [The lock screen](#the-lock-screen)),

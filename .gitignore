@@ -5,6 +5,20 @@ config/fish/fish_history
 # Written by apollo-settings, not tracked
 config/hypr/lua/generated.lua
 
+# The palette, fanned out to the apps that draw beside the shell. These are
+# written by apollo-settings on every save, and ~/.config/kitty, gtk-3.0,
+# gtk-4.0 and rofi are symlinks into this repo - so if they were tracked, a
+# customised palette would be an uncommitted change sitting in the way of every
+# `git pull`. They are machine state.
+#
+# The committed `*.default.*` beside each one is the Mocha starting point.
+# apollo-doctor copies it into place when the generated file is missing, which
+# is what makes a fresh clone themed without ever writing to a tracked file.
+config/kitty/apollo-colors.conf
+config/gtk-3.0/apollo-colors.css
+config/gtk-4.0/apollo-colors.css
+config/rofi/themes/apollo-colors.rasi
+
 # Python
 __pycache__/
 *.pyc

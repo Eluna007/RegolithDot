@@ -1,6 +1,8 @@
 /* The moon_* names below are generated from the Apollo palette by
    apollo-settings; the import is resolved against this file's directory.
-   Checked in, so a fresh clone is themed before it has ever run. */
+   apollo-colors.css is gitignored — apollo-doctor seeds it from the
+   committed apollo-colors.default.css, so run the doctor once after
+   cloning. */
 @import url("apollo-colors.css");
 
 filechooser,

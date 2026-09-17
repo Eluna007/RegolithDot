@@ -56,7 +56,10 @@ widget with a real engine, and a clock drawn on the wallpaper.
 See [MANUAL-INSTALL.md](MANUAL-INSTALL.md). It's a set of symlinks and a
 package list — there is deliberately no installer script.
 
-Then run `scripts/apollo-doctor`, which will tell you what's missing.
+**Then run `scripts/apollo-doctor`.** It tells you what's missing, and it
+writes the palette files the terminal and GTK apps read — those are machine
+state, so a fresh clone has only the committed `*.default.*` to seed from until
+the doctor runs once. It never overwrites a palette you've already set.
 
 ## Docs
 

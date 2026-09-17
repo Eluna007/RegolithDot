@@ -1,0 +1,13 @@
+/* Default accent layer.
+ *
+ * emoji.rasi chains this file rather than the base theme
+ * directly, so apollo-settings can recolour every rofi mode at once by
+ * rewriting just this one file (see rofi.go / renderRofiColors).
+ *
+ * This committed default is a pass-through: it chains the base theme and
+ * changes nothing. apollo-doctor copies it to apollo-colors.rasi, which is
+ * what config.rasi points at and what apollo-settings rewrites on Apply. That
+ * one is gitignored machine state, so your accent never lands in a commit and
+ * never sits in the way of a pull. */
+
+@theme "~/.config/rofi/themes/catppuccin-mocha.rasi"

@@ -298,10 +298,10 @@ jobs:
           test -f config/quickshell/apollo/services/Hypr.qml
           test -f config/hypr/hyprland.lua
           test -f config/rofi/config.rasi
-          test -f config/rofi/themes/apollo-colors.rasi
-          test -f config/kitty/apollo-colors.conf
-          test -f config/gtk-3.0/apollo-colors.css
-          test -f config/gtk-4.0/apollo-colors.css
+          test -f config/rofi/themes/apollo-colors.default.rasi
+          test -f config/kitty/apollo-colors.default.conf
+          test -f config/gtk-3.0/apollo-colors.default.css
+          test -f config/gtk-4.0/apollo-colors.default.css
           test -f config/hypr/hyprlock.conf
           test -f config/hyprlock/assets.conf
           test -f config/hyprlock/assets/no-art.png

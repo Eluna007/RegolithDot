@@ -13,10 +13,12 @@ import (
 // followed the flavor picker and (with wallust on) the wallpaper — so
 // switching flavor recoloured the shell and left the terminal behind.
 //
-// This follows rofi.go: render a generated file, have the real config include
-// it, and ship a checked-in pass-through so a fresh clone looks right before
-// apollo-settings has ever run. Like apollo-colors.rasi, the generated files
-// are tracked — your palette is part of the rice.
+// This follows rofi.go: render a generated file and have the real config
+// include it. The generated files are gitignored, because ~/.config/kitty and
+// ~/.config/gtk-*.0 are symlinks into the repo — tracked, a customised palette
+// would be an uncommitted change sitting in the way of every `git pull`. The
+// committed `*.default.*` beside each one is the Mocha starting point, and
+// apollo-doctor copies it into place on a fresh clone.
 
 // flavorAccents is the accent family per flavor, mirroring the _flavors table
 // in services/Config.qml. scripts/check-palettes.py fails the build if the two

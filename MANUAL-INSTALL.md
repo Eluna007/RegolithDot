@@ -255,6 +255,13 @@ systemctl reboot
 running *before* you reboot, since a parse error takes the whole config down
 and Hyprland falls back to a handful of emergency binds.
 
+It also writes the palette files kitty, GTK and rofi read, copying each from
+the committed `*.default.*` beside it. Those generated files are gitignored
+machine state — `apollo-settings` rewrites them whenever you change a colour,
+and `~/.config/kitty` and friends are symlinks into the repo, so tracking them
+would put your palette in the way of every `git pull`. Run the doctor once
+after cloning, or your terminal and file manager start unthemed.
+
 **After reboot:**
 
 | Component | Check |

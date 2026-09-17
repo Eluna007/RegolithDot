@@ -11,4 +11,11 @@ configuration {
     display-drun:         "";
 }
 
-@theme "~/.config/rofi/themes/catppuccin-mocha.rasi"
+/* The accent layer, which chains the base theme itself — this rofi only
+ * honours the last @theme in a file, so they cannot be stacked.
+ *
+ * apollo-settings writes apollo-colors.rasi (gitignored machine state); this
+ * line is committed and static. It used to rewrite this file too, with an
+ * absolute /home/<user>/ path, which put a tracked modification in the way of
+ * every git pull and a personal path in a tracked file. */
+@theme "~/.config/rofi/themes/apollo-colors.rasi"

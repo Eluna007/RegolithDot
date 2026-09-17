@@ -10,8 +10,12 @@ another, or a flavor the shell knows about has no accents in Go and every
 colour in kitty's generated file comes out empty.
 
 Also checks that every @define-color the GTK stylesheets *use* is one the
-generated apollo-colors.css defines. GTK does not report an undefined colour
-name — the widget just draws wrong.
+committed apollo-colors.default.css defines. GTK does not report an undefined
+colour name — the widget just draws wrong.
+
+The `.default.*` files are what a fresh clone is seeded from by apollo-doctor;
+the files the apps actually read are gitignored machine state, because
+apollo-settings rewrites them and ~/.config is symlinked into this repo.
 """
 import re
 import sys
@@ -78,9 +82,9 @@ def compare(label, qml, go, slots):
 def check_gtk():
     for major in (3, 4):
         css = ROOT / f"config/gtk-{major}.0/gtk.css"
-        gen = ROOT / f"config/gtk-{major}.0/apollo-colors.css"
+        gen = ROOT / f"config/gtk-{major}.0/apollo-colors.default.css"
         if not gen.is_file():
-            fail(f"gtk-{major}.0/apollo-colors.css is missing — a fresh clone has no colours")
+            fail(f"gtk-{major}.0/apollo-colors.default.css is missing — a fresh clone has nothing to seed from")
             continue
         defined = set(re.findall(r"@define-color\s+(\w+)", gen.read_text()))
         body = css.read_text()
@@ -96,9 +100,9 @@ def check_gtk():
 
 def check_kitty():
     conf = ROOT / "config/kitty/kitty.conf"
-    gen = ROOT / "config/kitty/apollo-colors.conf"
+    gen = ROOT / "config/kitty/apollo-colors.default.conf"
     if not gen.is_file():
-        fail("kitty/apollo-colors.conf is missing — a fresh clone has no colours")
+        fail("kitty/apollo-colors.default.conf is missing — a fresh clone has nothing to seed from")
         return
     if "include apollo-colors.conf" not in conf.read_text():
         fail("kitty.conf does not include apollo-colors.conf")
@@ -107,7 +111,7 @@ def check_kitty():
             if line.strip() and not line.startswith("#")}
     missing = [f"color{i}" for i in range(16) if f"color{i}" not in keys]
     if missing:
-        fail(f"kitty/apollo-colors.conf is missing {missing}")
+        fail(f"kitty/apollo-colors.default.conf is missing {missing}")
     else:
         print(f"ok    kitty: {len(keys)} colour keys, all 16 ANSI slots present")
 
