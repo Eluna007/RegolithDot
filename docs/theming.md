@@ -269,6 +269,42 @@ consumers, one extraction.
 Requires `hyprpaper`, `matugen`, and (for animated wallpapers) `mpvpaper` and
 `ffmpeg`.
 
+## The wallpaper picker
+
+`SUPER+W`. A filmstrip of everything in `~/Pictures/Wallpapers`, applied
+through `wallpaper-switch.sh` so the picker and the boot restore cannot
+disagree about what is set.
+
+A wallpaper's format decides which pipeline it takes — animated ones go to
+mpvpaper, stills to hyprpaper — and that answer used to be spelled out
+separately in files that could not see each other. Videos were missing from the
+picker's `nameFilters` for as long as the picker existed, so the whole mpvpaper
+branch was unreachable from the UI it was written for.
+`scripts/check-wallpaper-formats.py` (a CI step) now keeps all five lists in
+step, in both directions: a format the pipeline can apply must be offered, and
+a format offered must be one the pipeline can apply.
+
+Three things the tiles do that are not obvious:
+
+- **Videos are drawn from a cached frame.** QML's `Image` cannot decode one at
+  all, so `scripts/wallpaper-thumbs.sh` pulls a single frame out of each with
+  ffmpeg, one second in (the first frame of a video is very often black, and a
+  black thumbnail is indistinguishable from one that failed). The frame is
+  named after the video plus `.png`, which is the entire contract between the
+  script and the panel — there is no index file to fall out of sync.
+- **Gifs animate, and only the centred one does.** `Image` renders exactly one
+  frame of a gif, which is why they looked like stills that would not play;
+  `AnimatedImage` is the type that plays them. Decoding five at once is real
+  work for four tiles nobody is looking at.
+- **Thumbnails are cached.** A `PathView` destroys and recreates its delegates
+  as they leave and re-enter the path, so with `cache: false` every thumbnail
+  was re-decoded from disk on every pass — and a momentum spin outruns the
+  decoder, which is what left tiles blank.
+
+A tile that is loading and a tile that cannot be drawn used to look identical:
+an empty frame. They now differ, because "still working" and "this file is
+broken" want different reactions from you.
+
 ## Where the panels sit
 
 A bar popout anchors to `Config.barEdge`, not to a hardcoded margin. The bar's

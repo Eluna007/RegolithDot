@@ -474,7 +474,7 @@ main() {
   # The shell runs these by absolute path, as programs rather than through a
   # shell, so a lost execute bit is not an error it can report - the launcher
   # just comes up empty and the clipboard panel just stays blank.
-  for s in apps battery clipboard; do
+  for s in apps battery clipboard wallpaper-thumbs; do
     if [[ -x "$HOME/.config/quickshell/apollo/scripts/$s.sh" ]]; then
       ok "$s.sh executable"
     else

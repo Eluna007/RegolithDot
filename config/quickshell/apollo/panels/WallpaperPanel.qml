@@ -49,6 +49,10 @@ PanelWindow {
         if (visible) {
             keyHandler.forceActiveFocus()
             strip.syncToCurrent()
+            // Cheap when every frame is current, which is the normal case:
+            // the script compares timestamps and exits without spawning
+            // ffmpeg at all.
+            if (!thumbProc.running) thumbProc.running = true
         } else {
             strip.flickVel = 0
             inertia.acc = 0
@@ -65,6 +69,35 @@ PanelWindow {
 
     readonly property string homeDir: Quickshell.env("HOME")
     readonly property string wallDir: Config.resolvedWallpaperDir
+
+    // ── Video thumbnails ─────────────────────────────────────────────────
+    // QML's Image cannot decode a video, so a .mp4 tile draws nothing at all.
+    // wallpaper-thumbs.sh pulls one frame out of each and caches it under this
+    // directory, named after the video's own filename plus .png — that naming
+    // rule is the whole contract between the two, so there is no index file to
+    // fall out of sync.
+    //
+    // Videos used to be left out of the picker's filter entirely because of
+    // this, which meant wallpaper-switch.sh's mpvpaper path (gifs and video,
+    // the thing hyprpaper cannot do at all) had no way to be reached from the
+    // UI it was written for.
+    readonly property string thumbDir: {
+        var c = Quickshell.env("XDG_CACHE_HOME")
+        return (c ? c : root.homeDir + "/.cache") + "/apollo/wallpaper-thumbs"
+    }
+
+    // Bumped when the frame-maker finishes. Each video tile's source depends
+    // on it, so the frames appear as soon as they exist instead of on the next
+    // time the picker is opened.
+    property int thumbsRev: 0
+
+    // onRunningChanged, not onExited: that is the Process idiom this shell
+    // uses (BtPanel, WifiPanel, ApollokuPanel). Process has no `exited` signal.
+    Process {
+        id: thumbProc
+        command: [Config.shellScript("wallpaper-thumbs.sh"), root.wallDir]
+        onRunningChanged: if (!running) root.thumbsRev++
+    }
 
     // ── Apply a wallpaper through the machine's own pipeline ────────────────
     // wallpaper-switch.sh picks hyprpaper for stills and mpvpaper for gifs and
@@ -208,7 +241,16 @@ PanelWindow {
                     folder: "file://" + root.wallDir
                     showDirs: false
                     sortField: FolderListModel.Name
-                    nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.gif", "*.webp", "*.bmp"]
+                    // Videos belong here: wallpaper-switch.sh has always
+                    // handled them through mpvpaper. Leaving them out of this
+                    // one line is what made that path unreachable.
+                    nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.gif", "*.webp",
+                                  "*.bmp", "*.mp4", "*.webm", "*.mkv", "*.mov"]
+                    // Filters are case-sensitive by default, so a wallpaper
+                    // saved as .JPG or .MP4 was simply invisible — present in
+                    // the folder, absent from the picker, with nothing to
+                    // suggest why.
+                    caseSensitive: false
                 }
 
                 // jump the highlight to the currently-applied wallpaper
@@ -262,6 +304,21 @@ PanelWindow {
                     required property string filePath
                     required property string fileName
 
+                    // What this file is decides what can draw it. A video
+                    // needs a frame pulled out of it first; a gif needs a type
+                    // that animates; everything else is just an Image.
+                    readonly property bool isVideo: /\.(mp4|webm|mkv|mov)$/i.test(cell.fileName)
+                    readonly property bool isGif:   /\.gif$/i.test(cell.fileName)
+
+                    readonly property url thumbUrl: {
+                        root.thumbsRev   // re-read once the frames have been made
+                        return "file://" + root.thumbDir + "/"
+                               + encodeURIComponent(cell.fileName) + ".png"
+                    }
+
+                    // Whichever of the two is actually drawing this tile.
+                    readonly property int artStatus: cell.isGif ? wpGif.status : wpImg.status
+
                     width: 248
                     height: strip.height
                     scale:   cell.PathView.iscale   ?? 0.78
@@ -282,18 +339,79 @@ PanelWindow {
                         Image {
                             id: wpImg
                             anchors.fill: parent
-                            source: cell.fileUrl
+                            // A video draws its cached frame; a gif is drawn by
+                            // the AnimatedImage below instead, so this one is
+                            // given nothing to load.
+                            source: cell.isGif ? "" : (cell.isVideo ? cell.thumbUrl : cell.fileUrl)
+                            fillMode: Image.PreserveAspectCrop
+                            asynchronous: true
+                            // cache: true, which this was not. A PathView
+                            // destroys and recreates its delegates as they
+                            // leave and re-enter the path, so with caching off
+                            // every thumbnail was decoded from disk again on
+                            // every pass — and a momentum spin outruns the
+                            // decoder, which is what left tiles blank. At
+                            // sourceSize 320 a cached thumbnail is a couple of
+                            // hundred KB, and the alternative is re-reading a
+                            // 4K JPEG several times a second.
+                            cache: true
+                            sourceSize.width: 320
+                            visible: false
+                        }
+
+                        // Gifs. Image renders exactly one frame of one, which
+                        // is why they looked like stills that would not play.
+                        // Only the centred tile animates: decoding five of
+                        // them at once is real work for four tiles nobody is
+                        // looking at.
+                        AnimatedImage {
+                            id: wpGif
+                            anchors.fill: parent
+                            source: cell.isGif ? cell.fileUrl : ""
                             fillMode: Image.PreserveAspectCrop
                             asynchronous: true
                             cache: false
-                            sourceSize.width: 280
+                            playing: cell.isGif && root.visible && cell.PathView.isCurrentItem
                             visible: false
                         }
+
                         MultiEffect {
                             anchors.fill: parent
-                            source: wpImg
+                            source: cell.isGif ? wpGif : wpImg
                             maskEnabled: true
                             maskSource: wpMask
+                            // Nothing to mask until there is something to draw,
+                            // and an effect over an unloaded source paints a
+                            // grey rectangle that reads as a broken wallpaper.
+                            visible: cell.artStatus === Image.Ready
+                        }
+
+                        // What the tile shows when the picture is not there:
+                        // still loading, or genuinely unreadable. Without this
+                        // the two are indistinguishable — both are an empty
+                        // frame, and a wallpaper that never appears looks like
+                        // a picker that is still working.
+                        Column {
+                            anchors.centerIn: parent
+                            spacing: 6
+                            visible: cell.artStatus !== Image.Ready
+
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: cell.isVideo ? "󰕧" : "󰋩"
+                                color: Config.overlay0
+                                font { pixelSize: 26; family: root.nfFont }
+                            }
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                // Only once it has actually failed: saying
+                                // "no frame yet" at every tile while they load
+                                // would be its own kind of wrong.
+                                visible: cell.artStatus === Image.Error
+                                text: cell.isVideo ? "no frame yet" : "can't preview"
+                                color: Config.overlay0
+                                font { pixelSize: 10; family: root.nfFont }
+                            }
                         }
                         Item {
                             id: wpMask

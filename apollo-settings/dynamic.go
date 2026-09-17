@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -65,6 +66,75 @@ func stagedSource() (string, error) {
 	return strings.ToLower(m[1]), nil
 }
 
+// currentStill is the image the session has up, as something matugen can read.
+//
+// still.txt first: for a video wallpaper that is the frame wallpaper-switch.sh
+// pulled out of it, and there is nothing else usable. Otherwise the wallpaper
+// the session recorded, which every part of Apollo already agrees on.
+func currentStill() (string, error) {
+	stage := filepath.Join(cacheHome(), "apollo", "theme")
+	if b, err := os.ReadFile(filepath.Join(stage, "still.txt")); err == nil {
+		if p := strings.TrimSpace(string(b)); p != "" {
+			if _, err := os.Stat(p); err == nil {
+				return p, nil
+			}
+		}
+	}
+
+	home, _ := os.UserHomeDir()
+	last := filepath.Join(home, ".config", "hypr", "last-wallpaper.txt")
+	b, err := os.ReadFile(last)
+	if err != nil {
+		return "", fmt.Errorf("no wallpaper on record in %s — set one with SUPER+W", last)
+	}
+	p := strings.TrimSpace(string(b))
+	switch strings.ToLower(filepath.Ext(p)) {
+	case ".gif", ".mp4", ".webm", ".mkv", ".mov":
+		// Pulling a frame out needs ffmpeg and belongs to wallpaper-switch.sh,
+		// which writes still.txt when it does. Reaching here means the video
+		// was applied by something older than that.
+		return "", fmt.Errorf("the current wallpaper is a video with no still frame staged — switch wallpaper once (SUPER+W) to make one")
+	}
+	if _, err := os.Stat(p); err != nil {
+		return "", fmt.Errorf("the recorded wallpaper %s is gone", p)
+	}
+	return p, nil
+}
+
+// ensureStagedSource returns the wallpaper's colour, extracting it first if
+// nothing is staged.
+//
+// Staging normally happens inside a wallpaper change, so requiring one was
+// technically true and useless advice: "set a wallpaper to generate one" is
+// what you are told *after* setting a wallpaper, if anything in that chain
+// went wrong, and it names no way to find out what. matugen is right there and
+// the wallpaper is on record, so run it — and when it fails, say what it said.
+func ensureStagedSource() (string, error) {
+	if c, err := stagedSource(); err == nil {
+		return c, nil
+	}
+
+	still, err := currentStill()
+	if err != nil {
+		return "", err
+	}
+	if _, err := exec.LookPath("matugen"); err != nil {
+		return "", fmt.Errorf("matugen is not installed — dynamic colours need it (yay -S matugen-bin)")
+	}
+	if err := os.MkdirAll(filepath.Dir(stagedSourcePath()), 0o755); err != nil {
+		return "", err
+	}
+
+	// Identical to wallpaper-switch.sh's invocation; a check in CI keeps the
+	// two from drifting, because a different source-colour index here would
+	// mean the shell and the lock screen disagreed about the same wallpaper.
+	out, err := exec.Command("matugen", "image", still, "--source-color-index", "0").CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("matugen failed on %s: %v\n%s", still, err, strings.TrimSpace(string(out)))
+	}
+	return stagedSource()
+}
+
 // withDynamicColors returns cfg recoloured from source. Pure: no I/O, so the
 // mapping from one wallpaper colour to a whole config is testable on its own.
 func withDynamicColors(cfg Config, source string) Config {
@@ -91,7 +161,7 @@ func applyDynamicColors() (bool, error) {
 		// machine where the settings app may never be opened again.
 		return false, stageLoginColors(cfg)
 	}
-	source, err := stagedSource()
+	source, err := ensureStagedSource()
 	if err != nil {
 		return false, err
 	}
