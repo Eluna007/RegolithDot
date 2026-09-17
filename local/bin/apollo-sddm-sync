@@ -50,7 +50,7 @@ stage="${XDG_CACHE_HOME:-$home/.cache}/apollo/theme"
 colors="$stage/sddm-colors.conf"
 still_ref="$stage/still.txt"
 
-[ -f "$colors" ] || die "no staged palette at $colors — turn Dynamic colors on in apollo-settings, or run: apollo-settings theme"
+[ -f "$colors" ] || die "no staged palette at $colors — run: apollo-settings theme"
 
 # ── Background ───────────────────────────────────────────────────────────
 # still.txt names a still image: the wallpaper itself, or the frame

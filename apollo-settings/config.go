@@ -234,11 +234,20 @@ func writeConfig(c Config, backup bool) error {
 		return err
 	}
 
-	// Fan the palette out to the apps that draw beside the shell (see apps.go).
-	// This hangs off the write rather than off an Apply button because the
-	// Theme tab's controls each call saveConfig directly and let the shell
-	// notice config.json change — so anything else would be one control away
-	// from being forgotten. config.json is already on disk by here: a failure
-	// to write kitty's colours is reported, but never costs you the save.
-	return applyApps(c)
+	// Fan the palette out to the apps that draw beside the shell (see apps.go)
+	// and stage the login screen's share of it (login.go). Both hang off the
+	// write rather than off an Apply button because the Theme tab's controls
+	// each call saveConfig directly and let the shell notice config.json
+	// change — so anything else would be one control away from being
+	// forgotten. config.json is already on disk by here: a failure to write
+	// kitty's colours is reported, but never costs you the save.
+	if err := applyApps(c); err != nil {
+		return err
+	}
+	// Deliberately not conditional on dynamic colours. That switch decides
+	// where the palette comes from, not who gets it: someone who picks a
+	// flavour by hand still wants the login screen to match it, and gating
+	// the staging on the switch meant apollo-sddm-sync could never find a
+	// palette to install until you had turned dynamic colours on.
+	return stageLoginColors(c)
 }

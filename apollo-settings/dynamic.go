@@ -86,7 +86,10 @@ func withDynamicColors(cfg Config, source string) Config {
 func applyDynamicColors() (bool, error) {
 	cfg := loadConfig()
 	if !cfg.DynamicColors {
-		return false, nil
+		// Nothing to derive — but the login screen still wants whatever
+		// palette is current, and this is the only command that runs on a
+		// machine where the settings app may never be opened again.
+		return false, stageLoginColors(cfg)
 	}
 	source, err := stagedSource()
 	if err != nil {
