@@ -200,25 +200,25 @@ function calc(query) {
 
 function actionEntries() {
     return [
-        { name: "Lock screen",     comment: "hyprlock",        kind: "action", exec: "hyprlock" },
-        { name: "Log out",         comment: "End the session", kind: "action", exec: "hyprctl dispatch 'hl.dsp.exit()'" },
-        { name: "Suspend",         comment: "Sleep",           kind: "action", exec: "systemctl suspend" },
-        { name: "Reboot",          comment: "Restart",         kind: "action", exec: "systemctl reboot" },
-        { name: "Shut down",       comment: "Power off",       kind: "action", exec: "systemctl poweroff" },
-        { name: "Apollo Settings", comment: "Theme, bar, keybinds", kind: "action", exec: "apollo-settings" },
-        { name: "Wallpaper",       comment: "Pick a wallpaper", kind: "action", panel: "wallpaper" },
-        { name: "Clipboard",       comment: "Clipboard history", kind: "action", panel: "clip" },
-        { name: "System monitor",  comment: "CPU, memory, battery", kind: "action", panel: "sysmon" },
-        { name: "Window overview", comment: "All open windows", kind: "action", panel: "overview" },
-        { name: "Keybinds",        comment: "Every shortcut",  kind: "action", panel: "keys" },
-        { name: "Wi-Fi",           comment: "Networks",        kind: "action", panel: "net" },
-        { name: "Bluetooth",       comment: "Devices",         kind: "action", panel: "bt" },
-        { name: "Tailscale",       comment: "Mesh peers",      kind: "action", panel: "tailscale" },
-        { name: "Audio",           comment: "Outputs and volume", kind: "action", panel: "audio" },
-        { name: "Calendar",        comment: "Date and notifications", kind: "action", panel: "cal" },
-        { name: "Sudoku",          comment: "Apolloku",        kind: "action", panel: "apolloku" },
-        { name: "Chess",           comment: "Play the engine", kind: "action", panel: "chess" },
-        { name: "Power",           comment: "Lock, log out, shut down", kind: "action", panel: "power" }
+        { name: "Lock screen",     comment: "hyprlock",        icon: "", kind: "action", exec: "hyprlock" },
+        { name: "Log out",         comment: "End the session", icon: "", kind: "action", exec: "hyprctl dispatch 'hl.dsp.exit()'" },
+        { name: "Suspend",         comment: "Sleep",           icon: "", kind: "action", exec: "systemctl suspend" },
+        { name: "Reboot",          comment: "Restart",         icon: "", kind: "action", exec: "systemctl reboot" },
+        { name: "Shut down",       comment: "Power off",       icon: "", kind: "action", exec: "systemctl poweroff" },
+        { name: "Apollo Settings", comment: "Theme, bar, keybinds", icon: "", kind: "action", exec: "apollo-settings" },
+        { name: "Wallpaper",       comment: "Pick a wallpaper", icon: "", kind: "action", panel: "wallpaper" },
+        { name: "Clipboard",       comment: "Clipboard history", icon: "", kind: "action", panel: "clip" },
+        { name: "System monitor",  comment: "CPU, memory, battery", icon: "", kind: "action", panel: "sysmon" },
+        { name: "Window overview", comment: "All open windows", icon: "", kind: "action", panel: "overview" },
+        { name: "Keybinds",        comment: "Every shortcut",  icon: "", kind: "action", panel: "keys" },
+        { name: "Wi-Fi",           comment: "Networks",        icon: "", kind: "action", panel: "net" },
+        { name: "Bluetooth",       comment: "Devices",         icon: "", kind: "action", panel: "bt" },
+        { name: "Tailscale",       comment: "Mesh peers",      icon: "", kind: "action", panel: "tailscale" },
+        { name: "Audio",           comment: "Outputs and volume", icon: "", kind: "action", panel: "audio" },
+        { name: "Calendar",        comment: "Date and notifications", icon: "", kind: "action", panel: "cal" },
+        { name: "Sudoku",          comment: "Apolloku",        icon: "", kind: "action", panel: "apolloku" },
+        { name: "Chess",           comment: "Play the engine", icon: "", kind: "action", panel: "chess" },
+        { name: "Power",           comment: "Lock, log out, shut down", icon: "", kind: "action", panel: "power" }
     ];
 }
 

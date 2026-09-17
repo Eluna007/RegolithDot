@@ -45,6 +45,25 @@ Singleton {
     }
     readonly property string resolvedWallpaperDir: resolvePath(wallpaperDir)
 
+    // Where the shell's own scripts live.
+    //
+    // Quickshell.env() returns **null** for an unset variable, not "". So
+    // `Quickshell.env("XDG_CONFIG_HOME") !== ""` is true when it is unset, the
+    // ternary takes the wrong branch, and `null + "/quickshell/..."` yields the
+    // string "null/quickshell/apollo/scripts/apps.sh". Quickshell then fails to
+    // start that process and the panel shows an empty list — which is exactly
+    // what an empty clipboard and a machine with no applications look like.
+    // Both the launcher and the clipboard panel shipped with that bug.
+    //
+    // Truthiness, not a !== "" test: it catches null, undefined and "" alike.
+    readonly property string configDir: {
+        var x = Quickshell.env("XDG_CONFIG_HOME")
+        return x ? x : Quickshell.env("HOME") + "/.config"
+    }
+    function shellScript(name) {
+        return configDir + "/quickshell/apollo/scripts/" + name
+    }
+
     // ── Palette (Catppuccin flavor) ──────────────────────────────────────
     // flavor picks the WHOLE Catppuccin palette — the neutral ramp (base…text)
     // *and* the accent family (blue, teal, green, red, …). The shell binds its

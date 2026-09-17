@@ -38,6 +38,10 @@ PanelWindow {
     readonly property color peach:    Config.peach
     readonly property color red:      Config.red
     readonly property color mauve:    Config.mauve
+    // Used by the Tailscale icon when it is connected. Its absence was not an
+    // error: the binding just produced undefined, and Qt logged "Unable to
+    // assign [undefined] to QColor" once, at startup, into a log nobody reads.
+    readonly property color teal:     Config.teal
 
     // Accent — moonlight mauve, live from Config (apollo-settings app)
     readonly property color accent:     Config.accent
