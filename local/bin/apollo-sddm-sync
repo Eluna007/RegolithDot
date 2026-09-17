@@ -8,7 +8,11 @@
 # /usr/share/sddm/themes/apollo, and that needs root. This script is the only
 # part of the wallpaper pipeline that does.
 #
-#   sudo apollo-sddm-sync
+#   sudo ~/.local/bin/apollo-sddm-sync
+#
+# Named by its full path because sudo replaces PATH with its own `secure_path`,
+# which does not include ~/.local/bin: the bare name is "command not found"
+# however correctly this is installed.
 #
 # wallpaper-switch.sh runs it as `sudo -n` on every wallpaper change, which
 # does nothing at all unless you have installed the sudoers drop-in described
@@ -29,7 +33,7 @@ THEME_DIR="${APOLLO_SDDM_THEME_DIR:-/usr/share/sddm/themes/apollo}"
 
 die() { echo "apollo-sddm-sync: $*" >&2; exit 1; }
 
-[ "$(id -u)" -eq 0 ] || die "needs root — run: sudo apollo-sddm-sync"
+[ "$(id -u)" -eq 0 ] || die "needs root — run: sudo ~/.local/bin/apollo-sddm-sync"
 [ -d "$THEME_DIR" ] || die "$THEME_DIR does not exist; install the theme first (see MANUAL-INSTALL.md)"
 
 # Whose desktop to follow. Under sudo that is the invoking user, not root —

@@ -26,7 +26,7 @@ Every write of `config.json` fans that palette out (`apollo-settings/apps.go`):
 | kitty | `kitty/apollo-colors.conf` | `ctrl+shift+f5`, or the next window |
 | Thunar / GTK | `gtk-{3,4}.0/apollo-colors.css` | next app start |
 | rofi | `rofi/themes/apollo-colors.rasi` | next launch |
-| The login screen | staged, then `sudo apollo-sddm-sync` | next login |
+| The login screen | staged, then `sudo ~/.local/bin/apollo-sddm-sync` | next login |
 
 Each generated file is `include`d or `@import`ed by the real config, and each
 one is **gitignored**. That is deliberate: `~/.config/kitty`, `gtk-3.0`,
@@ -100,14 +100,18 @@ into this repo. Everything it draws has to be copied into
 `/usr/share/sddm/themes/apollo` by root:
 
 ```sh
-sudo apollo-sddm-sync
+sudo ~/.local/bin/apollo-sddm-sync
 ```
+
+The full path matters: `sudo` swaps `PATH` for its own `secure_path`, which
+does not include `~/.local/bin`, so the bare name is always "command not
+found". `wallpaper-switch.sh` names the path for the same reason.
 
 That is also why editing `sddm/themes/apollo/theme.conf` here does nothing on
 its own. What is committed is the Mocha starting point; the installed copy is
 rewritten from your wallpaper's palette on every sync.
 
-`wallpaper-switch.sh` runs `sudo -n apollo-sddm-sync` on every wallpaper change,
+`wallpaper-switch.sh` runs `sudo -n ~/.local/bin/apollo-sddm-sync` on every wallpaper change,
 which does nothing unless you have added the sudoers drop-in in
 [MANUAL-INSTALL.md](../MANUAL-INSTALL.md) — a keybind has nowhere to show a
 password prompt, and a prompt with nowhere to go would hang the wallpaper change
