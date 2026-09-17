@@ -123,15 +123,45 @@ sudo systemctl enable sddm
 
 ### 4.1 SDDM
 
-```bash
-git clone https://github.com/catppuccin/sddm.git /tmp/catppuccin-sddm
-sudo cp -r /tmp/catppuccin-sddm/src /usr/share/sddm/themes/catppuccin-mocha-mauve
-sudo cp sddm/sddm.conf /etc/sddm.conf.d/10-theme.conf
+The login screen is Apollo's own theme (`sddm/themes/apollo`), and it is the
+one thing here that is **copied rather than symlinked**. SDDM's greeter runs as
+the unprivileged `sddm` user before any session exists: it cannot read anything
+under your home directory, so it cannot follow a symlink into this repo, and it
+cannot be pointed at your wallpaper either.
 
-# Background — copy, don't symlink; the sddm user can't follow into your home.
-sudo cp "$(cat ~/.cache/wallpaper-current 2>/dev/null || echo '/usr/share/sddm/themes/catppuccin-mocha-mauve/backgrounds/wall.png')" \
-  /usr/share/sddm/themes/catppuccin-mocha-mauve/backgrounds/wall.png
+```bash
+sudo cp -r sddm/themes/apollo /usr/share/sddm/themes/apollo
+sudo cp sddm/sddm.conf /etc/sddm.conf.d/10-theme.conf
 ```
+
+Then give it the current palette and wallpaper — this is the command to re-run
+any time you want the login screen caught up by hand:
+
+```bash
+sudo apollo-sddm-sync
+```
+
+That needs `apollo-settings` to have generated a palette first, which happens on
+the first wallpaper change with **Dynamic colors** on (apollo-settings › Theme),
+or immediately with `apollo-settings theme`.
+
+**Optional: let a wallpaper change do it for you.** `wallpaper-switch.sh` tries
+`sudo -n apollo-sddm-sync` on every change, which does nothing unless that one
+command is passwordless — a wallpaper keybind has nowhere to show a password
+prompt. If you want the login screen to follow automatically, and you accept
+what the rule means, add it:
+
+```bash
+echo "$USER ALL=(root) NOPASSWD: /home/$USER/.local/bin/apollo-sddm-sync" \
+  | sudo tee /etc/sudoers.d/apollo-sddm-sync
+sudo chmod 0440 /etc/sudoers.d/apollo-sddm-sync
+```
+
+Worth understanding before you do: that grants passwordless root to whatever
+that path contains, so anyone who can write the file can run anything as root.
+It is your own home directory, so that is you — but it does mean a symlink you
+pull from this repo is running as root on every wallpaper change. Skipping this
+costs nothing except running `sudo apollo-sddm-sync` yourself.
 
 ### 4.2 GTK
 
@@ -192,6 +222,7 @@ ln -sfn ~/RegolithDot/local/share/PrismLauncher         ~/.local/share/PrismLaun
 mkdir -p ~/.local/bin
 for s in ~/RegolithDot/local/bin/*.sh; do ln -sfn "$s" ~/.local/bin/"$(basename "$s")"; done
 ln -sfn ~/RegolithDot/local/bin/apollo-lock-layout ~/.local/bin/apollo-lock-layout
+ln -sfn ~/RegolithDot/local/bin/apollo-sddm-sync ~/.local/bin/apollo-sddm-sync
 
 # keyd is system-wide and needs a real copy, not a symlink
 sudo cp config/keyd/default.conf /etc/keyd/default.conf
@@ -266,7 +297,7 @@ after cloning, or your terminal and file manager start unthemed.
 
 | Component | Check |
 |---|---|
-| SDDM | Catppuccin login screen with your wallpaper |
+| SDDM | Apollo's login screen, in your palette and on your wallpaper |
 | Hyprland | Rotating gradient borders, frosted blur, workspaces sliding |
 | Quickshell | Top bar: workspaces, stats, tray, clock |
 | Keybinds | `SUPER+Space` launcher, `SUPER+,` settings, `SUPER+B` wallpaper, `SUPER+Q` kitty |

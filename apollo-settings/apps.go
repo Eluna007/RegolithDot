@@ -10,7 +10,7 @@ import (
 
 // The palette the shell draws with, fanned out to the apps that sit next to
 // it. Before this, kitty and Thunar were frozen in Mocha while the bar
-// followed the flavor picker and (with wallust on) the wallpaper — so
+// followed the flavor picker and (with dynamic colours on) the wallpaper — so
 // switching flavor recoloured the shell and left the terminal behind.
 //
 // This follows rofi.go: render a generated file and have the real config
@@ -56,8 +56,8 @@ var flavorAccents = map[string]map[string]string{
 }
 
 // effectivePalette returns what the shell is actually drawing with: the
-// flavor's neutral ramp, overridden slot by slot by a wallust full palette
-// when one is present, plus the flavor's accent family (which wallust never
+// flavor's neutral ramp, overridden slot by slot by a full dynamic palette
+// when one is present, plus the flavor's accent family (which the wallpaper never
 // touches).
 //
 // The override rule mirrors Config.qml's _p exactly, including the test for a
@@ -188,7 +188,7 @@ func rgbaOf(hex string, alpha float64) string {
 
 // applyApps writes every generated palette file. It is called from saveConfig
 // rather than from an Apply button because the Theme tab's controls save
-// directly — the flavor picker, the accent picker and wallust all call
+// directly — the flavor picker, the accent picker and dynamic colours all call
 // saveConfig and rely on the shell noticing config.json change. Hanging the
 // fan-out off the same write means no control can forget it.
 func applyApps(c Config) error {

@@ -66,12 +66,12 @@ func TestEffectivePaletteFollowsFlavor(t *testing.T) {
 	}
 }
 
-// The wallust "full palette" mode overrides neutrals only. If it ever reached
+// The "full palette" dynamic mode overrides neutrals only. If it ever reached
 // the accents, a terminal's red and green would collapse to one hue.
-func TestWallustPaletteOverridesNeutralsOnly(t *testing.T) {
+func TestDynamicPaletteOverridesNeutralsOnly(t *testing.T) {
 	// "red" is in here deliberately: nothing writes an accent into Palette
 	// today, but the loop that applies it must key off the neutral ramp, not
-	// off whatever the map happens to carry, or a future wallust mode that
+	// off whatever the map happens to carry, or a future dynamic mode that
 	// emitted accents would silently flatten the terminal's hues.
 	c := Config{Flavor: "mocha", Palette: map[string]string{
 		"base": "#101010", "text": "#f0f0f0", "red": "#00ff00",
@@ -84,7 +84,7 @@ func TestWallustPaletteOverridesNeutralsOnly(t *testing.T) {
 		t.Errorf("unset neutral should fall back to the flavor, got %s", p["surface0"])
 	}
 	if p["red"] != flavorAccents["mocha"]["red"] {
-		t.Errorf("accent was overridden by the wallust palette: %s", p["red"])
+		t.Errorf("accent was overridden by the dynamic palette: %s", p["red"])
 	}
 	// A palette of empty strings means "no custom palette", same as Config.qml.
 	empty := effectivePalette(Config{Flavor: "mocha", Palette: map[string]string{"base": ""}})

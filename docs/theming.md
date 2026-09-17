@@ -1,6 +1,7 @@
 # Theming
 
-Where the colours come from, and the lock screen that has its own set.
+Where the colours come from — the wallpaper, the lock screen and the login
+screen included.
 
 [← back to the README](../README.md)
 
@@ -11,11 +12,11 @@ One palette, fanned out. `apollo-settings` › Theme is where it is decided:
 - **Flavor** picks a whole Catppuccin palette — the neutral ramp (`base`…`text`)
   *and* the accent family (`red`, `green`, `blue`, …).
 - **Accent** is your own highlight on top of it, independent of the flavor.
-- **Dynamic colors** (needs `wallust`) derives both from the current wallpaper.
-  *Accent only* touches the highlight; *Full palette* also re-tints the neutral
-  surfaces, keeping each slot's lightness so text stays readable. It never
-  touches the accent family: a terminal whose red, green and yellow are all one
-  wallpaper hue cannot show a diff.
+- **Dynamic colors** derives both from the current wallpaper. *Accent only*
+  touches the highlight; *Full palette* also re-tints the neutral surfaces,
+  keeping each slot's lightness so text stays readable. It never touches the
+  accent family: a terminal whose red, green and yellow are all one wallpaper
+  hue cannot show a diff.
 
 Every write of `config.json` fans that palette out (`apollo-settings/apps.go`):
 
@@ -25,6 +26,7 @@ Every write of `config.json` fans that palette out (`apollo-settings/apps.go`):
 | kitty | `kitty/apollo-colors.conf` | `ctrl+shift+f5`, or the next window |
 | Thunar / GTK | `gtk-{3,4}.0/apollo-colors.css` | next app start |
 | rofi | `rofi/themes/apollo-colors.rasi` | next launch |
+| The login screen | staged, then `sudo apollo-sddm-sync` | next login |
 
 Each generated file is `include`d or `@import`ed by the real config, and each
 one is **gitignored**. That is deliberate: `~/.config/kitty`, `gtk-3.0`,
@@ -42,15 +44,92 @@ static `~` path. `apollo-settings` used to rewrite that line too, with an
 absolute `/home/<user>/` path — a tracked modification and a personal path in a
 committed file, both for no gain.
 
-The lock screen is the exception: it sits *on* the wallpaper, so it takes its
-colors straight from it via matugen (see [The lock screen](#the-lock-screen)),
-regardless of the flavor.
+The lock screen is the exception: it sits *on* the wallpaper, so it takes
+matugen's own Material You scheme rather than a re-tinted Catppuccin ramp (see
+[The lock screen](#the-lock-screen)), regardless of the flavor.
 
 `scripts/check-palettes.py` fails the build if the three tables that spell the
 palette out — `Config.qml`'s `_flavors`, `palette.go`'s `flavorRamps` and
 `apps.go`'s `flavorAccents` — ever disagree, or if a GTK stylesheet uses a color
 name nothing defines. GTK does not report an undefined color; the widget just
 draws wrong.
+
+## The wallpaper drives all of it
+
+With **Dynamic colors** on, one wallpaper change recolours the whole rice.
+The chain, all inside a single `wallpaper-switch.sh` run:
+
+| | |
+|---|---|
+| `wallpaper-switch.sh` | puts the image on screen |
+| `matugen` | extracts a source colour, renders the lock screen's palette, and **stages** that colour in `~/.cache/apollo/theme/source.sh` |
+| `apollo-settings theme` | re-tints the flavor's ramp toward it and writes `config.json`, kitty, GTK, rofi and the staged login palette |
+| `apollo-sddm-sync` | copies that palette and the wallpaper into the login screen — the only step that needs root |
+
+Only the *hue* comes from the wallpaper. Each slot keeps the flavor's own
+lightness, which is what guarantees the result is readable rather than
+low-contrast mud for one unlucky wallpaper, and the accent family is left alone
+entirely.
+
+Staging is what makes the toggle possible: matugen renders its templates
+unconditionally on every wallpaper change, but the fan-out only happens when
+you have asked for it. Turning Dynamic colors off leaves the staged file where
+it is and puts the flavor's own ramp back.
+
+The switches are `dynamicColors` and `dynamicMode` in `config.json`. They used
+to be `wallustEnabled` and `wallustMode`, after the tool that read them —
+`loadConfig` carries the old keys over once, so an existing config keeps its
+setting. wallust is no longer used or needed: its integration read the current
+wallpaper from `~/.cache/wallpaper-current`, a file nothing in Apollo has ever
+written, so it returned early every time and the toggle had never done anything
+at all. matugen was already a hard dependency and already ran on every wallpaper
+change, so it does the extraction now — which also means the lock screen and the
+shell cannot disagree about what colour the wallpaper is, because they are
+handed the same number.
+
+## The login screen
+
+`sddm/themes/apollo` is a Qt 6 QML greeter drawn like the rest of the rice: a
+translucent card on the wallpaper, an accent pill, the same Material 3 easing.
+
+It is the one part of this repo that is **copied rather than symlinked**, and
+that is not a style choice. SDDM's greeter runs as the unprivileged `sddm` user
+before any session exists, so it cannot read anything under your home directory
+— not the wallpaper, not `~/.config`, not `~/.face`, and not a symlink pointing
+into this repo. Everything it draws has to be copied into
+`/usr/share/sddm/themes/apollo` by root:
+
+```sh
+sudo apollo-sddm-sync
+```
+
+That is also why editing `sddm/themes/apollo/theme.conf` here does nothing on
+its own. What is committed is the Mocha starting point; the installed copy is
+rewritten from your wallpaper's palette on every sync.
+
+`wallpaper-switch.sh` runs `sudo -n apollo-sddm-sync` on every wallpaper change,
+which does nothing unless you have added the sudoers drop-in in
+[MANUAL-INSTALL.md](../MANUAL-INSTALL.md) — a keybind has nowhere to show a
+password prompt, and a prompt with nowhere to go would hang the wallpaper change
+rather than fail it.
+
+Two things about the theme are deliberate and worth not undoing:
+
+- **No `QtQuick.Controls`.** A Controls style is a separate package from a
+  separate tree, and a theme that fails to load does not degrade gracefully —
+  SDDM silently falls back to its built-in theme, which looks exactly like the
+  theme "not applying", with the diagnostic in a log only a working session
+  could show you. `TextInput` and `MouseArea` cost a few more lines and cannot
+  fail that way.
+- **Every colour read has a fallback.** A key `theme.conf` does not define comes
+  back as an empty string, and an empty string is not a colour: QML warns and
+  paints black. On a login screen that is a black rectangle with no password
+  field. `scripts/check-sddm-theme.py` (a CI step) keeps the three lists of keys
+  — what `Main.qml` reads, what `theme.conf` defines, and what
+  `renderLoginColors` writes — from ever drifting apart, and
+  `scripts/test-sddm-sync.sh` drives the sync script against temporary
+  directories, including the wallpaper that was deleted since and the format
+  change that used to leave the old background behind.
 
 ## The lock screen
 
@@ -171,9 +250,11 @@ for all of it, and `scripts/check-matugen-templates.py` checks the inputs:
 block naming a file that is not in this repo makes matugen fail on every
 wallpaper change.
 
-The lock screen is matugen's only consumer. **The shell does not read this
-palette** — it takes its colors from `~/.config/apollo/config.json`, which
-`apollo-settings` writes (see "Colors follow the palette" below).
+The lock screen is the only consumer of matugen's *rendered* scheme. The shell
+does not read these files: it takes its colors from
+`~/.config/apollo/config.json`, and reaches the wallpaper by way of the staged
+source colour instead (see "The wallpaper drives all of it" above). Two
+consumers, one extraction.
 
 Requires `hyprpaper`, `matugen`, and (for animated wallpapers) `mpvpaper` and
 `ffmpeg`.

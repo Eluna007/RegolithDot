@@ -32,7 +32,7 @@ apollo-settings/        Go/Fyne GUI for the safe knobs; generates Lua
 scripts/apollo-doctor   health check
 local/bin/              wallpaper pipeline, OSD bridge, game wrappers
 local/share/            icon theme, .desktop entry, PrismLauncher theme
-sddm/                   SDDM theme drop-in
+sddm/                   The login screen: its own QML theme, plus the drop-in
 ```
 
 `config/hypr/hyprlock.conf` stays hyprlang too (hyprlock is its own binary),

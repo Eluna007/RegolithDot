@@ -41,7 +41,10 @@ promise that it works on your machine.
   and power.
 - **A launcher** on `SUPER+Space` that also searches open windows, does
   arithmetic, and runs shell actions.
-- **A lock screen** with four interchangeable hyprlock layouts.
+- **A lock screen** with four interchangeable hyprlock layouts, and a **login
+  screen** drawn to match — its own SDDM theme rather than a borrowed one.
+- **Dynamic colours.** With it switched on, one wallpaper change recolours the
+  shell, the terminal, GTK apps, rofi, the lock screen and the login screen.
 - **`apollo-settings`**, a small Go/Fyne app for the safe knobs — palette,
   accent, bar layout, a handful of keybinds — which writes the Lua the
   compositor reads.

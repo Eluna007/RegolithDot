@@ -12,8 +12,8 @@ and not by the control that was touched. That is exactly what happened to
 change any setting in the app, lose the handle.
 
 The other direction is fine and expected: the settings app owns keys the shell
-has no business reading (its own keybind table, the wallust switches, the rofi
-accent). Those are listed below.
+has no business reading (its own keybind table, the dynamic-colour switches,
+the rofi accent). Those are listed below.
 """
 import re
 import sys
@@ -30,8 +30,8 @@ SETTINGS_ONLY = {
     "rofiAccent",    # rendered into apollo-colors.rasi
     "powerProfile",  # applied to the CPU governor
     "powerPersist",
-    "wallustEnabled",
-    "wallustMode",
+    "dynamicColors",  # the wallpaper drives the palette; see dynamic.go
+    "dynamicMode",
 }
 
 

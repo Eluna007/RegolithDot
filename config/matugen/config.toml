@@ -6,11 +6,20 @@ mode = "dark"
 # variants of one hue. Both templates below use it, so the lock screen's two
 # generated files always agree.
 #
-# There used to be a third template here writing ~/.config/quickshell/colors.json
-# for the old shell's Theme.qml. Apollo's shell takes its palette from
-# apollo-settings (~/.config/apollo/config.json) instead, and the template file
-# itself was never committed — so matugen failed on it on every wallpaper change
-# to produce a file nothing read. hyprlock is matugen's only consumer now.
+# There used to be a template here writing ~/.config/quickshell/colors.json for
+# the old shell's Theme.qml. The file it named was never committed, so matugen
+# failed on it on every wallpaper change to produce a file nothing read. The
+# shell reaches its palette a different way now: apollo-source.sh.template
+# stages the extracted colour, and `apollo-settings theme` fans it out to
+# ~/.config/apollo/config.json — which apollo-settings also writes by hand, so
+# there is exactly one file the shell watches and one writer for it.
+
+# Staged, not written into place: see the template's own comment. The consumer
+# is `apollo-settings theme`, run by wallpaper-switch.sh right after matugen.
+[templates.apollo_source]
+input_path = "~/.config/matugen/templates/apollo-source.sh.template"
+output_path = "~/.cache/apollo/theme/source.sh"
+type = "SchemeExpressive"
 
 [templates.hyprlock]
 input_path = "~/.config/matugen/templates/hyprlock-colors.conf.template"

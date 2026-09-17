@@ -29,6 +29,8 @@ jobs:
           bash -n config/ranger/scope.sh
           bash -n scripts/apollo-doctor
           bash -n local/bin/apollo-lock-layout
+          bash -n local/bin/apollo-sddm-sync
+          bash -n scripts/test-sddm-sync.sh
           bash -n scripts/test-battery.sh
           bash -n scripts/test-network.sh
           bash -n scripts/test-shell-battery.sh
@@ -47,6 +49,8 @@ jobs:
           shellcheck -e SC2034,SC2317 config/ranger/scope.sh
           shellcheck scripts/apollo-doctor
           shellcheck local/bin/apollo-lock-layout
+          shellcheck local/bin/apollo-sddm-sync
+          shellcheck scripts/test-sddm-sync.sh
           shellcheck scripts/test-battery.sh
           shellcheck scripts/test-network.sh
           shellcheck scripts/test-shell-battery.sh
@@ -175,6 +179,21 @@ jobs:
       # what [templates.quickshell] did, silently, for as long as it existed.
       - name: Check matugen templates resolve
         run: python3 scripts/check-matugen-templates.py
+
+      # The greeter reads theme.conf; login.go writes it; Main.qml names the
+      # keys. A key read but never written comes back as an empty string, and
+      # an empty string is not a colour - QML paints black. On a login screen
+      # that is a machine that appears not to boot, with the diagnostic in a
+      # log only a working session could show you.
+      - name: Check the login screen's colour keys agree
+        run: python3 scripts/check-sddm-theme.py
+
+      # apollo-sddm-sync is the one part of the wallpaper pipeline that runs as
+      # root, because the greeter is a different user and cannot read $HOME.
+      # The test drives it against temporary directories; it skips itself when
+      # the runner is not root rather than pretending to have passed.
+      - name: Test apollo-sddm-sync
+        run: sudo ./scripts/test-sddm-sync.sh
 
       # An undefined $variable is not an error to hyprlock - it renders as
       # nothing, i.e. black text on a black card, with no diagnostic. Since the

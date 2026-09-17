@@ -26,7 +26,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -77,6 +76,25 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Println("applied lua/generated.lua + hyprctl reload")
+		return
+	}
+
+	// Headless: `apollo-settings theme` recolours the rice from the wallpaper
+	// matugen just processed. wallpaper-switch.sh calls this, so it runs on
+	// every wallpaper change; it is a no-op when dynamic colours are off.
+	//
+	// A missing staged colour is not a failure worth a non-zero exit: it just
+	// means matugen has not run yet on this machine. Say so and stop, so a
+	// wallpaper change never reports an error for a feature nobody switched on.
+	if len(os.Args) > 1 && os.Args[1] == "theme" {
+		changed, err := applyDynamicColors()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "apollo-settings theme:", err)
+			os.Exit(1)
+		}
+		if changed {
+			fmt.Println("recoloured the shell, kitty, GTK, rofi and the staged login screen")
+		}
 		return
 	}
 
@@ -234,7 +252,7 @@ func themeTab(cfg *Config, w fyne.Window) fyne.CanvasObject {
 	hexLabel.TextSize = 15
 
 	// showAccent updates just the swatch + label; applyAccent also writes it to
-	// config. They're split so wallust regeneration (which saves the accent AND
+	// config. They're split so a dynamic-colour run (which saves the accent AND
 	// a generated palette itself) can refresh the UI without a second save that
 	// would clobber the palette it just wrote.
 	showAccent := func(c color.Color) {
@@ -257,25 +275,32 @@ func themeTab(cfg *Config, w fyne.Window) fyne.CanvasObject {
 	})
 	pick.Importance = widget.HighImportance
 
-	// Wallust: derive colors from the current wallpaper. runWallust does I/O
-	// (spawns wallust, reads its cache) and writes config.json itself — accent,
-	// plus a tinted neutral palette in "full" mode — so it runs off the UI
-	// thread; afterwards we adopt what it wrote and refresh the swatch on the UI
-	// thread via fyne.Do (mutating widgets from a bare goroutine is a race).
+	// Dynamic colors: recolour everything from the current wallpaper. The work
+	// is applyDynamicColors (dynamic.go) — the same call wallpaper-switch.sh
+	// makes, so the button and the wallpaper change cannot produce different
+	// results. It does file I/O, so it runs off the UI thread; afterwards we
+	// adopt what it wrote and refresh the swatch via fyne.Do (mutating widgets
+	// from a bare goroutine is a race).
 	regenAccent := func() {
 		go func() {
-			if runWallust(*cfg) {
-				fresh := loadConfig()
-				fyne.Do(func() {
-					*cfg = fresh
-					showAccent(hexToColor(cfg.Accent))
-				})
+			changed, err := applyDynamicColors()
+			if err != nil {
+				fyne.Do(func() { dialog.ShowError(err, w) })
+				return
 			}
+			if !changed {
+				return
+			}
+			fresh := loadConfig()
+			fyne.Do(func() {
+				*cfg = fresh
+				showAccent(hexToColor(cfg.Accent))
+			})
 		}()
 	}
 
-	wallustCheck := widget.NewCheck("Auto-generate from wallpaper", func(b bool) {
-		cfg.WallustEnabled = b
+	dynamicCheck := widget.NewCheck("Follow the wallpaper", func(b bool) {
+		cfg.DynamicColors = b
 		if !b {
 			cfg.Palette = map[string]string{} // revert the shell to the flavor ramp
 		}
@@ -286,40 +311,40 @@ func themeTab(cfg *Config, w fyne.Window) fyne.CanvasObject {
 			regenAccent()
 		}
 	})
-	wallustCheck.SetChecked(cfg.WallustEnabled)
+	dynamicCheck.SetChecked(cfg.DynamicColors)
 
-	wallustMode := widget.NewRadioGroup([]string{"Accent only", "Full palette"}, func(s string) {
+	dynamicMode := widget.NewRadioGroup([]string{"Accent only", "Full palette"}, func(s string) {
 		if s == "Full palette" {
-			cfg.WallustMode = "full"
+			cfg.DynamicMode = "full"
 		} else {
-			cfg.WallustMode = "accent"
+			cfg.DynamicMode = "accent"
 		}
 		if err := saveConfig(*cfg); err != nil {
 			dialog.ShowError(err, w)
 		}
-		if cfg.WallustEnabled {
+		if cfg.DynamicColors {
 			regenAccent()
 		}
 	})
-	wallustMode.Horizontal = true
-	if cfg.WallustMode == "full" {
-		wallustMode.SetSelected("Full palette")
+	dynamicMode.Horizontal = true
+	if cfg.DynamicMode == "full" {
+		dynamicMode.SetSelected("Full palette")
 	} else {
-		wallustMode.SetSelected("Accent only")
+		dynamicMode.SetSelected("Accent only")
 	}
 
-	runBtn := widget.NewButton("Generate now", regenAccent)
+	runBtn := widget.NewButton("Apply now", regenAccent)
 	runBtn.Importance = widget.MediumImportance
 
-	wallustCard := widget.NewCard("Dynamic colors", "Extract colors from your wallpaper (needs wallust)",
+	dynamicCard := widget.NewCard("Dynamic colors", "Shell, terminal, GTK, rofi and the login screen follow your wallpaper",
 		container.NewVBox(
-			wallustCheck,
-			wallustMode,
+			dynamicCheck,
+			dynamicMode,
 			hintText("Full palette re-tints the neutral surfaces too; accent only touches the highlight color."),
 			container.NewHBox(runBtn),
 		))
-	if _, err := exec.LookPath("wallust"); err != nil {
-		wallustCard = widget.NewCard("Dynamic colors", "Install wallust (yay -S wallust) to enable this", widget.NewLabel("wallust not installed"))
+	if _, err := exec.LookPath("matugen"); err != nil {
+		dynamicCard = widget.NewCard("Dynamic colors", "Install matugen (yay -S matugen-bin) to enable this", widget.NewLabel("matugen not installed"))
 	}
 
 	accentCard := widget.NewCard("Accent", "Drives active & hover states across the shell",
@@ -395,30 +420,30 @@ func themeTab(cfg *Config, w fyne.Window) fyne.CanvasObject {
 		if err := saveConfig(*cfg); err != nil {
 			dialog.ShowError(err, w)
 		}
-		// A full wallust palette is derived from the flavor's ramp, so switching
+		// A full dynamic palette is derived from the flavor's ramp, so switching
 		// flavor while it's active means re-tinting from the new base.
-		if cfg.WallustEnabled && cfg.WallustMode == "full" {
+		if cfg.DynamicColors && cfg.DynamicMode == "full" {
 			regenAccent()
 		}
 	})
 	palette.SetSelected(keyFlavor[cfg.Flavor])
-	paletteCard := widget.NewCard("Palette", "Catppuccin flavor — your accent (and any full wallust palette) sits on top", palette)
+	paletteCard := widget.NewCard("Palette", "Catppuccin flavor — your accent (and any full dynamic palette) sits on top", palette)
 
 	reset := resetButton(func() {
 		d := defaultConfig()
 		cfg.Flavor = d.Flavor
-		cfg.WallustEnabled = d.WallustEnabled
-		cfg.WallustMode = d.WallustMode
+		cfg.DynamicColors = d.DynamicColors
+		cfg.DynamicMode = d.DynamicMode
 		cfg.Palette = map[string]string{} // back to the plain flavor ramp
-		wallustCheck.SetChecked(d.WallustEnabled)
-		wallustMode.SetSelected("Accent only")
+		dynamicCheck.SetChecked(d.DynamicColors)
+		dynamicMode.SetSelected("Accent only")
 		palette.SetSelected(keyFlavor[d.Flavor])
 		applyAccent(hexToColor(d.Accent))
 		applyArchLogo(hexToColor(d.ArchLogoColor))
 		applyRofiAccent(hexToColor(d.RofiAccent))
 	})
 
-	body := container.NewVBox(accentCard, archLogoCard, rofiCard, wallustCard, paletteCard, hintText("Applies instantly — safe, can’t break anything."))
+	body := container.NewVBox(accentCard, archLogoCard, rofiCard, dynamicCard, paletteCard, hintText("Applies instantly — safe, can’t break anything."))
 	return container.NewBorder(nil, footer(reset), nil, nil, container.NewPadded(body))
 }
 
@@ -1231,81 +1256,6 @@ func (g *labeledGrid) Layout(objs []fyne.CanvasObject, size fyne.Size) {
 		}
 		y += rowH + 8
 	}
-}
-
-// ── Wallust integration ──────────────────────────────────────────────────
-// runWallust extracts a color scheme from the current wallpaper and updates
-// config.json. Returns true if the accent was updated successfully.
-func runWallust(cfg Config) bool {
-	if _, err := exec.LookPath("wallust"); err != nil {
-		return false
-	}
-	home, _ := os.UserHomeDir()
-	wpCache := filepath.Join(home, ".cache", "wallpaper-current")
-	wp, err := os.ReadFile(wpCache)
-	if err != nil {
-		return false
-	}
-	wpPath := strings.TrimSpace(string(wp))
-	if wpPath == "" {
-		return false
-	}
-
-	// Run wallust (quiet mode — only writes cache, no terminal color injection)
-	cmd := exec.Command("wallust", "run", "-q", wpPath)
-	if err := cmd.Run(); err != nil {
-		return false
-	}
-
-	// Parse the sequences file for color index 4 (accent) and indexed colors
-	seqFile := filepath.Join(home, ".cache", "wallust", "sequences")
-	data, err := os.ReadFile(seqFile)
-	if err != nil {
-		return false
-	}
-
-	re := regexp.MustCompile(`]4;(\d+);#([0-9a-fA-F]{6})`)
-	matches := re.FindAllStringSubmatch(string(data), -1)
-	if len(matches) < 8 {
-		return false
-	}
-
-	colors := map[int]string{}
-	for _, m := range matches {
-		idx := 0
-		fmt.Sscanf(m[1], "%d", &idx)
-		colors[idx] = "#" + m[2]
-	}
-
-	accent, ok := colors[4] // color4 = accent in wallust's output
-	if !ok || accent == "" {
-		accent = colors[6] // fallback: color6
-	}
-	cfg.Accent = accent
-
-	if cfg.WallustMode == "full" {
-		// Tint the flavor's neutral ramp toward the wallpaper. Prefer the
-		// wallpaper's background hue (color0) for the mood; if that's basically
-		// gray, fall back to the accent's hue so the tint is still visible.
-		bgHex := colors[0]
-		if bgHex == "" {
-			bgHex = accent
-		}
-		tintHue, bgSat, _ := rgbToHSL(hexToColor(bgHex))
-		if bgSat < 0.08 {
-			tintHue, _, _ = rgbToHSL(hexToColor(accent))
-		}
-		cfg.Palette = tintedPalette(cfg.Flavor, tintHue)
-	} else {
-		// Accent-only: clear any previous full palette so the shell reverts to
-		// the plain flavor ramp.
-		cfg.Palette = map[string]string{}
-	}
-
-	if err := saveConfig(cfg); err != nil {
-		return false
-	}
-	return true
 }
 
 // ── Config card renderer for PNG export ──────────────────────────────────
