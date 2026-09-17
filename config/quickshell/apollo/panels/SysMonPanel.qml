@@ -97,7 +97,21 @@ PanelWindow {
     property var procBuffer: []
     Process {
         id: procProc
-        command: ["sh", "-c", "NCPU=$(nproc); ps aux --sort=-%cpu | awk -v nc=$NCPU 'NR>1 && NR<=7{cpu=$3/nc; if(cpu>100)cpu=100; printf \"%s %.1f %.1f\\n\", $11, cpu, $4}'"]
+        // The sampling pipeline is filtered out of its own output. `ps aux`
+        // lists ps itself, and %CPU is cputime over elapsed-since-start - for
+        // a process a few milliseconds old that lands around 25%, so the
+        // monitor's own top row was always the monitor asking. (Its %MEM read
+        // 0.0, correctly: it uses nothing.)
+        //
+        // Every other row carries the same caveat more quietly: ps reports
+        // %CPU as an average over the process's whole life, not what it is
+        // doing now. A browser open for an hour reads as its hour-long
+        // average, which is why these numbers barely move.
+        //
+        // One line: a backslash continuation inside the single-quoted awk
+        // program silently broke the condition/action pairing, and the
+        // header row started coming through as a process called COMMAND.
+        command: ["sh", "-c", "NCPU=$(nproc); ps aux --sort=-%cpu | awk -v nc=$NCPU 'NR>1 && n<6 { c=$11; sub(/.*\\//,\"\",c); if (c==\"ps\"||c==\"awk\"||c==\"nproc\"||c==\"sh\") next; cpu=$3/nc; if(cpu>100)cpu=100; printf \"%s %.1f %.1f\\n\", $11, cpu, $4; n++ }'"]
         stdout: SplitParser {
             splitMarker: "\n"
             onRead: data => {

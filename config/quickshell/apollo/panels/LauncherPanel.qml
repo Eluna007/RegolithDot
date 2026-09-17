@@ -309,26 +309,18 @@ PanelWindow {
                     columns: root.columns
                     spacing: 0
 
-                    // Tiles slide to their new slot when the filter changes
-                    // rather than snapping, which is most of what makes typing
-                    // in a grid feel smooth instead of strobing.
-                    move: Transition {
-                        NumberAnimation {
-                            properties: "x,y"
-                            duration: Motion.fastSpatial
-                            easing.type: Easing.Bezier
-                            easing.bezierCurve: Motion.curveDefaultSpatial
-                        }
-                    }
-                    add: Transition {
-                        NumberAnimation {
-                            property: "opacity"
-                            from: 0; to: 1
-                            duration: Motion.effects
-                            easing.type: Easing.Bezier
-                            easing.bezierCurve: Motion.curveDefaultEffects
-                        }
-                    }
+                    // No add/move transitions here, deliberately.
+                    //
+                    // A Repeater whose model is a new array destroys and
+                    // recreates its delegates rather than moving them, so
+                    // `move` never fired and `add` fired for all thirty at
+                    // once — starting each at opacity 0. The list arrives in
+                    // two steps (an empty scan result, then the real one), so
+                    // the second rebuild interrupted the first batch of
+                    // transitions and stranded those tiles at zero. One tile
+                    // drew; the page dots proved the other twenty-nine were
+                    // there. Paging away and back rebuilt them cleanly, which
+                    // is exactly what it looked like.
 
                     Repeater {
                         model: root.pageItems
