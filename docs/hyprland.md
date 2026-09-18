@@ -104,3 +104,26 @@ A cold boot is the empty case: `autostart.lua` runs `hyprpm reload` from the
 `hyprland.start` handler, which fires *after* the config is parsed. And after a
 Hyprland or kernel update, hyprpm needs the plugin rebuilt (`hyprpm update`)
 before it loads at all. `apollo-doctor` reports whether it did.
+
+## When the touchpad stops
+
+Some I2C touchpads — ELAN's among them — drop off their bus and never come
+back on their own. The tell is that everything still *describes* the device
+correctly: `hyprctl configerrors` is clean, `hyprctl devices` lists it,
+`/proc/bus/input/devices` has it with all its capabilities, and it sends
+nothing.
+
+```sh
+apollo-touchpad-reset --what          # which device, which driver, no root
+sudo ~/.local/bin/apollo-touchpad-reset
+```
+
+It finds the touchpad by name and its driver by walking up the sysfs tree from
+the input node — the driver is bound several levels above, on the bus device —
+then reloads that module. Nothing is hardcoded to one laptop.
+
+This is not a fault in these dotfiles and the script does not pretend to fix
+one. It is a recovery for a fault below them, of the kind worth having as one
+command rather than one reboot. To confirm that is what you are looking at,
+`sudo evtest /dev/input/eventN` on the touchpad's node prints nothing at all
+while it is dead, and starts printing again the moment the driver is reloaded.

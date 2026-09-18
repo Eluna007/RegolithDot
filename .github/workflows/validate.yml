@@ -36,6 +36,8 @@ jobs:
           bash -n local/bin/apollo-lock-layout
           bash -n local/bin/apollo-sddm-sync
           bash -n local/bin/apollo-paper-layout
+          bash -n local/bin/apollo-touchpad-reset
+          bash -n scripts/test-touchpad-reset.sh
           bash -n scripts/test-sddm-sync.sh
           bash -n scripts/test-battery.sh
           bash -n scripts/test-network.sh
@@ -61,6 +63,8 @@ jobs:
           shellcheck local/bin/apollo-lock-layout
           shellcheck local/bin/apollo-sddm-sync
           shellcheck local/bin/apollo-paper-layout
+          shellcheck local/bin/apollo-touchpad-reset
+          shellcheck scripts/test-touchpad-reset.sh
           shellcheck scripts/test-sddm-sync.sh
           shellcheck scripts/test-battery.sh
           shellcheck scripts/test-network.sh
@@ -307,6 +311,12 @@ jobs:
       # animated wallpaper playing for a second and then giving up.
       - name: Test wallpaper-switch.sh
         run: ./scripts/test-wallpaper-switch.sh
+
+      # Finding the touchpad rather than the touchscreen beside it on the same
+      # controller, and its driver several levels above the input node. Both
+      # are faked, so this runs without a touchpad.
+      - name: Test apollo-touchpad-reset
+        run: ./scripts/test-touchpad-reset.sh
 
       # Ranking is the whole product of a launcher: the orderings that matter
       # are asserted rather than eyeballed.
