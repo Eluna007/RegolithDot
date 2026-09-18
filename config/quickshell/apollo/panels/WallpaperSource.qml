@@ -101,6 +101,22 @@ Item {
     // ── Applying ─────────────────────────────────────────────────────────
     signal applied(string path)
 
+    // Emitted before the script runs, so the transition layer is covering the
+    // screen by the time the daemons start swapping underneath it. The URLs
+    // are what to *draw*, not the paths: a video has no frame QML can decode,
+    // so it goes out as its cached thumbnail. Resolving that here keeps every
+    // format rule in one file.
+    signal switching(url fromArt, url toArt)
+
+    function artFor(path) {
+        if (!path)
+            return ""
+        var name = path.substring(path.lastIndexOf("/") + 1)
+        if (root.isVideo(name) || root.isGif(name))
+            return root.thumbFor(name)
+        return "file://" + path
+    }
+
     // execDetached, not Process.
     //
     // A Process is a child of the shell, and so is everything it spawns. The
@@ -117,6 +133,10 @@ Item {
     function apply(path) {
         if (!path)
             return
+        // Cover first, then switch. The other order leaves the swap visible
+        // for as long as it takes this signal to reach a surface.
+        root.switching(root.artFor(root.appliedPath), root.artFor(path))
+
         // The path goes in as $1 rather than being interpolated, to dodge
         // quoting: wallpapers have spaces and apostrophes in their names.
         Quickshell.execDetached(["sh", "-c",
