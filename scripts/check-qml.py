@@ -211,6 +211,39 @@ for f in qml_files:
                    f"required property - pass it with "
                    f"loader.setSource(url, {{ \"{m.group(1)}\": ... }})")
 
+# A MultiEffect mask that is not a texture provider.
+#
+# Qt's own documentation for maskSource says it must be "an item with
+# layer.enabled set to true". A plain Item is not, and getting it wrong does
+# not warn: the effect simply draws nothing. WallpaperHex shipped a Shape as
+# its mask and rendered a honeycomb of empty cells.
+#
+# Only the direct form is checkable here — `maskSource: someId` where the id is
+# declared in the same file. WallpaperTile takes a Component and does the
+# layering itself precisely because that form cannot be checked from here, and
+# a trap you cannot check is better removed than documented.
+for f in qml_files:
+    src = strip(f.read_text())
+    for m in re.finditer(r"maskSource:\s*(\w+)\s*$", src, re.M):
+        name = m.group(1)
+        d = re.search(r"\bid:\s*%s\b" % re.escape(name), src)
+        if not d:
+            continue   # not declared here; nothing this file can promise
+        # From the id, walk to the end of the object that declares it.
+        depth, i, end = 1, d.end(), len(src)
+        while i < len(src) and depth > 0:
+            if src[i] == "{":
+                depth += 1
+            elif src[i] == "}":
+                depth -= 1
+                if depth == 0:
+                    end = i
+            i += 1
+        if "layer.enabled" not in src[d.start():end]:
+            bad.append(f"{f}: `maskSource: {name}` but {name} has no "
+                       f"`layer.enabled: true` - a mask must be a texture "
+                       f"provider, and without it the effect draws nothing")
+
 # A view's cache buffer, computed from geometry, without a floor under it.
 #
 # Every size derived from a panel's width is evaluated once before that panel

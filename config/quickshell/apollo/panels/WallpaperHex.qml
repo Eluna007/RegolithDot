@@ -107,23 +107,27 @@ Item {
                     }
                 }
 
-                // The silhouette, shared by the mask and the outline below.
-                // A flat-top hexagon: the two flat edges are top and bottom,
-                // and the points are left and right at half height.
-                Shape {
-                    id: hex
-                    anchors.fill: parent
-                    visible: false
-                    ShapePath {
-                        fillColor: "black"
-                        strokeWidth: -1
-                        startX: tile.width * 0.25; startY: 0
-                        PathLine { x: tile.width * 0.75; y: 0 }
-                        PathLine { x: tile.width;        y: tile.height * 0.5 }
-                        PathLine { x: tile.width * 0.75; y: tile.height }
-                        PathLine { x: tile.width * 0.25; y: tile.height }
-                        PathLine { x: 0;                 y: tile.height * 0.5 }
-                        PathLine { x: tile.width * 0.25; y: 0 }
+                // The silhouette the tile is cut to. A flat-top hexagon: the
+                // flat edges are top and bottom, the points left and right at
+                // half height.
+                //
+                // A Component, handed to the tile, which builds it inside its
+                // own layered mask — see WallpaperTile.shape. It is sized by
+                // anchoring, so it needs to know nothing about this delegate.
+                Component {
+                    id: hexShape
+                    Shape {
+                        ShapePath {
+                            fillColor: "black"
+                            strokeWidth: -1
+                            startX: width * 0.25; startY: 0
+                            PathLine { x: width * 0.75; y: 0 }
+                            PathLine { x: width;        y: height * 0.5 }
+                            PathLine { x: width * 0.75; y: height }
+                            PathLine { x: width * 0.25; y: height }
+                            PathLine { x: 0;            y: height * 0.5 }
+                            PathLine { x: width * 0.25; y: 0 }
+                        }
                     }
                 }
 
@@ -133,7 +137,7 @@ Item {
                     fileName: tile.fileName
                     fileUrl: tile.fileUrl
                     // The hexagon, not a rounded rectangle.
-                    shape: hex
+                    shape: hexShape
                     current: tile.isCurrent
                     animate: tile.isCurrent
                 }

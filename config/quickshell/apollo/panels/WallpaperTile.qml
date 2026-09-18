@@ -14,11 +14,21 @@ Item {
 
     property int radius: 16
 
-    // An alternative silhouette. A layout that is not made of rectangles —
-    // the honeycomb — hands in its own mask item and gets the wallpaper cut to
-    // that shape instead. Left unset, the rounded rectangle below is used, so
-    // every other layout is unaffected.
-    property Item shape: null
+    // An alternative silhouette, as a Component rather than an Item.
+    //
+    // A layout that is not made of rectangles — the honeycomb — hands in the
+    // shape it wants and gets the wallpaper cut to it. Left unset, the rounded
+    // rectangle below is used, so every other layout is unaffected.
+    //
+    // A Component, because an Item would put the trap on the caller: a
+    // MultiEffect mask has to be a texture provider, which for a plain Item
+    // means `layer.enabled: true`, and forgetting it does not warn — the
+    // effect simply draws nothing, which is a honeycomb of empty cells. Taking
+    // a Component means this file does the layering, inside the mask item that
+    // already has it, and the caller cannot get it wrong. The component is
+    // sized by anchoring to its parent, so it needs to know nothing about the
+    // tile either.
+    property Component shape: null
     property bool current: false
     // Only the focused tile animates its gif: decoding several at once is real
     // work for tiles nobody is looking at.
@@ -103,7 +113,7 @@ Item {
         anchors.fill: parent
         source: tile.isGif ? gif : still
         maskEnabled: true
-        maskSource: tile.shape ? tile.shape : mask
+        maskSource: mask
         // Nothing to mask until there is something to draw, and an effect over
         // an unloaded source paints a grey rectangle that reads as a broken
         // wallpaper.
@@ -115,7 +125,23 @@ Item {
         anchors.fill: parent
         layer.enabled: true
         visible: false
-        Rectangle { anchors.fill: parent; radius: tile.radius; color: "black"; antialiasing: true }
+
+        // The default silhouette.
+        Rectangle {
+            anchors.fill: parent
+            radius: tile.radius
+            color: "black"
+            antialiasing: true
+            visible: !tile.shape
+        }
+
+        // Or whatever the layout asked for, built here so it is inside the
+        // layer above and is therefore a texture provider by construction.
+        Loader {
+            anchors.fill: parent
+            active: tile.shape !== null
+            sourceComponent: tile.shape
+        }
     }
 
     // What a tile shows when the picture is not there: still loading, or
