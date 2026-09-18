@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# Rebind the touchpad's driver, for when it stops responding.
+#
+#   sudo ~/.local/bin/apollo-touchpad-reset
+#   apollo-touchpad-reset --what     # just say what it would do
+#
+# Some I2C touchpads — ELAN's among them — drop off their bus and never come
+# back on their own. The device still enumerates, `hyprctl devices` still lists
+# it, /proc/bus/input/devices still describes it perfectly, and it sends
+# nothing. Reloading its driver brings it back without a reboot.
+#
+# This is not a fault in these dotfiles and this script does not pretend to fix
+# one. It is a recovery for a fault below them, of the kind you want to be one
+# command rather than one reboot.
+#
+# Nothing is hardcoded to this laptop: the touchpad is found by capability and
+# its driver by walking the sysfs tree, so the same script works on a machine
+# with a different one.
+set -uo pipefail
+
+# Overridable so scripts/test-touchpad-reset.sh can drive this against a fake
+# tree — the same arrangement APOLLO_SDDM_THEME_DIR gives apollo-sddm-sync.
+DEVICES="${APOLLO_INPUT_DEVICES:-/proc/bus/input/devices}"
+SYSFS="${APOLLO_SYSFS:-/sys}"
+
+WHAT_ONLY=0
+[ "${1-}" = "--what" ] && WHAT_ONLY=1
+
+die() { echo "apollo-touchpad-reset: $*" >&2; exit 1; }
+
+[ -r "$DEVICES" ] || die "cannot read $DEVICES"
+
+# The touchpad's sysfs path, by name. A laptop has one; a name match is what
+# every other tool uses, and the alternative is decoding capability bitmaps in
+# bash.
+sysfs_rel=""
+name=""
+while IFS= read -r line; do
+    case "$line" in
+        'N: Name='*)
+            name="${line#N: Name=}"
+            name="${name%\"}"
+            name="${name#\"}"
+            ;;
+        'S: Sysfs='*)
+            case "${name,,}" in
+                *touchpad*|*trackpad*)
+                    sysfs_rel="${line#S: Sysfs=}"
+                    break
+                    ;;
+            esac
+            ;;
+    esac
+done < "$DEVICES"
+
+[ -n "$sysfs_rel" ] || die "no touchpad found in $DEVICES"
+
+dev="$SYSFS$sysfs_rel"
+[ -d "$dev" ] || die "$dev does not exist"
+
+# Walk up from the input node until something has a driver bound. The input
+# device itself never does — the driver sits on the bus device several levels
+# above it, and how many levels differs by bus.
+driver=""
+node="$dev"
+while [ "$node" != "$SYSFS" ] && [ "$node" != "/" ]; do
+    if [ -L "$node/driver" ]; then
+        driver="$(basename "$(readlink -f "$node/driver")")"
+        break
+    fi
+    node="$(dirname "$node")"
+done
+
+[ -n "$driver" ] || die "found the touchpad at $sysfs_rel but nothing on that path has a driver bound"
+
+if [ "$WHAT_ONLY" -eq 1 ]; then
+    echo "touchpad : $name"
+    echo "sysfs    : $sysfs_rel"
+    echo "driver   : $driver"
+    echo
+    echo "would run: modprobe -r $driver && modprobe $driver"
+    exit 0
+fi
+
+[ "$(id -u)" -eq 0 ] || die "needs root — run: sudo ~/.local/bin/apollo-touchpad-reset"
+
+echo "apollo-touchpad-reset: reloading $driver for '$name'"
+
+if ! modprobe -r "$driver" 2>/dev/null; then
+    die "could not unload $driver — it may be built into the kernel rather than a module"
+fi
+
+# A moment for the bus to settle before the driver probes it again. Without it
+# the reload can land while the controller is still going away and the device
+# comes back no better than it left.
+sleep 0.5
+
+if ! modprobe "$driver"; then
+    die "unloaded $driver but could not load it again — the touchpad is now definitely gone, try a reboot"
+fi
+
+echo "apollo-touchpad-reset: $driver reloaded"

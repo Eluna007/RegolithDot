@@ -254,6 +254,7 @@ for s in ~/RegolithDot/local/bin/*.sh; do ln -sfn "$s" ~/.local/bin/"$(basename 
 ln -sfn ~/RegolithDot/local/bin/apollo-lock-layout ~/.local/bin/apollo-lock-layout
 ln -sfn ~/RegolithDot/local/bin/apollo-sddm-sync ~/.local/bin/apollo-sddm-sync
 ln -sfn ~/RegolithDot/local/bin/apollo-paper-layout ~/.local/bin/apollo-paper-layout
+ln -sfn ~/RegolithDot/local/bin/apollo-touchpad-reset ~/.local/bin/apollo-touchpad-reset
 
 # keyd is system-wide and needs a real copy, not a symlink. Being a copy, it
 # drifts after a pull — re-run these two lines when config/keyd changes, and
