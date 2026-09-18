@@ -255,7 +255,14 @@ ln -sfn ~/RegolithDot/local/bin/apollo-lock-layout ~/.local/bin/apollo-lock-layo
 ln -sfn ~/RegolithDot/local/bin/apollo-sddm-sync ~/.local/bin/apollo-sddm-sync
 ln -sfn ~/RegolithDot/local/bin/apollo-paper-layout ~/.local/bin/apollo-paper-layout
 
-# keyd is system-wide and needs a real copy, not a symlink
+# keyd is system-wide and needs a real copy, not a symlink. Being a copy, it
+# drifts after a pull — re-run these two lines when config/keyd changes, and
+# apollo-doctor will tell you when it has.
+#
+# Its [ids] excludes this laptop's touchpad and touchscreen by id. keyd's
+# wildcard captures pointing devices too, and a touchpad whose every event
+# travels through a grab-and-re-emit path fails intermittently. Find your own
+# ids with `sudo keyd monitor` and edit the exclusions to match.
 sudo cp config/keyd/default.conf /etc/keyd/default.conf
 sudo keyd reload
 ```
