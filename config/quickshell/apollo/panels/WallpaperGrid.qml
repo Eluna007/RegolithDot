@@ -21,8 +21,16 @@ Item {
     readonly property real listWidth: width * 0.40
     readonly property real outerMargin: 32
     readonly property int columns: 3
-    readonly property real cellW: Math.floor((layout.listWidth - outerMargin * 2) / columns)
-    readonly property real cellH: cellW * 9 / 16
+
+    // Clamped, because these are evaluated once before the panel has any
+    // geometry at all. At width 0 the margins are subtracted from nothing and
+    // every derived size goes negative: cellW -22, cellH -12, and a cacheBuffer
+    // of -74 that QML rejects outright — "Cannot set a negative cache buffer",
+    // once per grid, in a log nobody reads. The real values arrive a frame
+    // later and it recovers, but a GridView is briefly asked to lay out cells
+    // of negative size to get there.
+    readonly property real cellW: Math.max(80, Math.floor((layout.listWidth - outerMargin * 2) / columns))
+    readonly property real cellH: Math.max(45, cellW * 9 / 16)
 
     WallpaperBackdrop {
         anchors.fill: parent
@@ -47,8 +55,11 @@ Item {
         cellHeight: layout.cellH
         model: layout.wallpapers.model
         // Keep a screenful either side alive rather than rebuilding — and
-        // re-decoding — them on every scroll.
-        cacheBuffer: Math.round(layout.cellH * 6)
+        // re-decoding — them on every scroll. Floored as well as derived from
+        // a floored cellH: the check in scripts/check-qml.py wants the floor
+        // where the value is used, not somewhere up the chain where the next
+        // person editing this has to go looking for it.
+        cacheBuffer: Math.max(0, Math.round(layout.cellH * 6))
 
         delegate: Item {
             id: cell

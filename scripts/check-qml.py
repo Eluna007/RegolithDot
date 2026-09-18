@@ -211,6 +211,27 @@ for f in qml_files:
                    f"required property - pass it with "
                    f"loader.setSource(url, {{ \"{m.group(1)}\": ... }})")
 
+# A view's cache buffer, computed from geometry, without a floor under it.
+#
+# Every size derived from a panel's width is evaluated once before that panel
+# has any geometry — at width 0, with margins subtracted, it goes negative.
+# QML rejects a negative cacheBuffer outright ("Cannot set a negative cache
+# buffer") and lays the view out with negative cells for a frame before the
+# real numbers arrive. WallpaperGrid shipped that, and the only sign of it was
+# a warning in a log.
+#
+# Narrow on purpose: a literal is fine, and so is anything already clamped.
+for f in qml_files:
+    for m in re.finditer(r"cacheBuffer:\s*(.+)", strip(f.read_text())):
+        expr = m.group(1).strip()
+        if re.fullmatch(r"\d+", expr):
+            continue
+        if "Math.max" in expr:
+            continue
+        bad.append(f"{f}: `cacheBuffer: {expr}` is computed without a floor - "
+                   f"before the panel has geometry this is negative, which QML "
+                   f"rejects. Wrap it in Math.max().")
+
 # A curve or duration that Motion does not define comes back undefined, and an
 # undefined bezierCurve is not an error - the animation just runs on the
 # default easing, so the whole point of the shared vocabulary is silently lost.

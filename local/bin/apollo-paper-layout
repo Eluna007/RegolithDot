@@ -32,13 +32,22 @@ describe() {
     dock-clear)        echo "the dock with no background blur" ;;
     grid)              echo "a wall of thumbnails with a large preview beside it" ;;
     grid-clear)        echo "the grid with no background blur" ;;
+    classic)           echo "a plain list with a big preview — lightest on the GPU" ;;
+    floating)          echo "tiered floating cards with reflections under all of them" ;;
+    floating-center)   echo "floating, reflection under the focused card only" ;;
+    floating-clean)    echo "floating with no reflections" ;;
+    floating-clear)    echo "floating with reflections and no background blur" ;;
+    floating-clear-clean) echo "floating with neither reflections nor blur" ;;
+    floating-minimal)  echo "floating with no clock, caption or reflections" ;;
     *)                 echo "" ;;
   esac
 }
 
 available() {
   printf '%s\n' filmstrip coverflow coverflow-clear coverflow-minimal \
-                 dock dock-clear grid grid-clear
+                 dock dock-clear grid grid-clear classic \
+                 floating floating-center floating-clean \
+                 floating-clear floating-clear-clean floating-minimal
 }
 
 current() {

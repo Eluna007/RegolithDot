@@ -316,24 +316,24 @@ apollo-paper-layout coverflow    # switch
 | | |
 |---|---|
 | **filmstrip** | a centred card holding a strip of thumbnails — Apollo's own, and the default |
-| **coverflow** | full-screen sheared cards over a blurred copy of the selection |
-| **coverflow-clear** | the same with no blur, for a GPU that cannot keep it smooth |
-| **coverflow-minimal** | the same with no caption |
-| **dock** | a sheared deck along the bottom edge, wallpaper above it |
-| **dock-clear** | the dock with no blur |
-| **grid** | a wall of thumbnails with a large preview beside it |
-| **grid-clear** | the grid with no blur |
+| **classic** | a plain list with a big preview; lightest on the GPU |
+| **coverflow**, **-clear**, **-minimal** | full-screen sheared cards; without the blur, without the caption |
+| **dock**, **dock-clear** | a sheared deck along the bottom edge, wallpaper above it |
+| **grid**, **grid-clear** | a wall of thumbnails with a large preview beside it |
+| **floating**, **-center**, **-clean**, **-clear**, **-clear-clean**, **-minimal** | tiered cards suspended around the focused one, with reflections under all, one, or none |
 
 Everything but the filmstrip is ported from
 [ujjalsigdel/hyprquickpaper](https://github.com/ujjalsigdel/hyprquickpaper).
 
-Eight names, four files. Upstream ships every variant as its own complete
-`shell.qml` — coverflow, coverflow-clear and coverflow-minimal are 531, 553 and
-406 lines differing by about ninety — but a variant is not a different layout,
-it is the same one with the blur off or the caption hidden. Here it is the same
-file and a couple of properties, handed over by `Loader.setSource`. That is what
-keeps a long list of names from meaning a long list of copies of the same
-delegate.
+Fifteen names, six files. Upstream ships every variant as its own complete
+`shell.qml` — its six floating layouts are 364 to 559 lines apiece and differ
+in three yes/no answers — but a variant is not a different layout, it is the
+same one with the blur off or the reflections gone. Here it is the same file
+and a couple of properties, handed over by `Loader.setSource`, which is the
+only place a required property can be supplied anyway. That is what keeps a
+long list of names from meaning a long list of copies of the same delegate.
+
+`apollo-paper-layout` lists them all with a line on each.
 
 The split is the lock screen's. `WallpaperPanel.qml` is the surface — the
 scrim, the reveal, the keyboard — and everything underneath lives once in
