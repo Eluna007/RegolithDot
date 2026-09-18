@@ -51,6 +51,9 @@ sysfs="$work/sys"
 tp="$sysfs/devices/pci0000:00/0000:00:15.1/i2c_designware.1/i2c-1/i2c-ELAN0000:00"
 mkdir -p "$tp/input/input23" "$sysfs/bus/i2c/drivers/elan_i2c"
 ln -s "$sysfs/bus/i2c/drivers/elan_i2c" "$tp/driver"
+# The driver's bind/unbind files, which are what a rebind writes to.
+: > "$sysfs/bus/i2c/drivers/elan_i2c/unbind"
+: > "$sysfs/bus/i2c/drivers/elan_i2c/bind"
 
 # The touchscreen's driver, so picking the wrong device is a visible mistake
 # rather than an identical answer.
@@ -84,6 +87,13 @@ if echo "$out" | grep -q "driver   : elan_i2c"; then
 else
     fail "did not find the driver" "$out"
 fi
+# unbind and bind take the name the *driver* knows the device by, which is the
+# directory holding the driver link — not the input node under it.
+if echo "$out" | grep -q "device   : i2c-ELAN0000:00"; then
+    ok "names the device the way unbind and bind expect"
+else
+    fail "wrong device id for rebinding" "$out"
+fi
 if echo "$out" | grep -q "i2c_hid_acpi"; then
     fail "found the touchscreen's driver" "$out"
 else
@@ -97,20 +107,33 @@ fi
 
 # ── Actually reloading ───────────────────────────────────────────────────
 if [ "$(id -u)" -eq 0 ]; then
+    # ── The touchpad comes back after a rebind ───────────────────────────
+    # The fake tree still lists it, so `alive` is true: the rebind should be
+    # reported as the thing that worked and the module left alone.
     : > "$MODPROBE_LOG"
     out="$(run)"
-    if grep -q "modprobe -r elan_i2c" "$MODPROBE_LOG" && grep -q "^modprobe elan_i2c" "$MODPROBE_LOG"; then
-        ok "unloads and reloads the driver"
+    if grep -qx "i2c-ELAN0000:00" "$sysfs/bus/i2c/drivers/elan_i2c/unbind" 2>/dev/null \
+       || echo "$out" | grep -q "rebinding"; then
+        ok "tries a rebind before reloading the module"
     else
-        fail "did not reload the driver" "$(cat "$MODPROBE_LOG")"
+        fail "went straight to the module" "$out"
     fi
-    # Order matters: loading before unloading does nothing at all.
-    if [ "$(grep -n 'modprobe -r' "$MODPROBE_LOG" | cut -d: -f1)" -lt \
-         "$(grep -n '^modprobe elan_i2c' "$MODPROBE_LOG" | cut -d: -f1)" ]; then
-        ok "unloads before loading"
+    if echo "$out" | grep -q "back, by rebind"; then
+        ok "stops once the rebind has worked"
     else
-        fail "reloaded in the wrong order" "$(cat "$MODPROBE_LOG")"
+        fail "did not stop at the rebind" "$out"
     fi
+    if [ -s "$MODPROBE_LOG" ]; then
+        fail "reloaded the module even though the rebind worked" "$(cat "$MODPROBE_LOG")"
+    else
+        ok "leaves the module alone when the narrower fix worked"
+    fi
+
+    # Not covered: rebind and module reload both run and the touchpad still
+    # does not come back. Reaching it needs the devices file to change
+    # *between* two reads by the same process, which the stubs cannot do —
+    # and it is a report-only path: it prints what is left to try and exits
+    # non-zero, changing nothing. Said here rather than left looking tested.
 else
     out="$(run)"
     if echo "$out" | grep -q "needs root"; then
@@ -139,6 +162,9 @@ else
     fail "an unbound driver was not reported" "$out"
 fi
 ln -s "$sysfs/bus/i2c/drivers/elan_i2c" "$tp/driver"
+# The driver's bind/unbind files, which are what a rebind writes to.
+: > "$sysfs/bus/i2c/drivers/elan_i2c/unbind"
+: > "$sysfs/bus/i2c/drivers/elan_i2c/bind"
 
 if [ $fails -gt 0 ]; then echo; echo "$fails failure(s)"; exit 1; fi
 echo; echo "ok - apollo-touchpad-reset"

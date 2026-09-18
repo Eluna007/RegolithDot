@@ -62,10 +62,17 @@ dev="$SYSFS$sysfs_rel"
 # device itself never does — the driver sits on the bus device several levels
 # above it, and how many levels differs by bus.
 driver=""
+bus_id=""
+driver_dir=""
 node="$dev"
 while [ "$node" != "$SYSFS" ] && [ "$node" != "/" ]; do
     if [ -L "$node/driver" ]; then
-        driver="$(basename "$(readlink -f "$node/driver")")"
+        driver_dir="$(readlink -f "$node/driver")"
+        driver="$(basename "$driver_dir")"
+        # The name the driver knows this device by — what unbind and bind
+        # take. It is the directory the driver link lives in, not the input
+        # node several levels below it.
+        bus_id="$(basename "$node")"
         break
     fi
     node="$(dirname "$node")"
@@ -77,17 +84,48 @@ if [ "$WHAT_ONLY" -eq 1 ]; then
     echo "touchpad : $name"
     echo "sysfs    : $sysfs_rel"
     echo "driver   : $driver"
+    echo "device   : $bus_id"
     echo
-    echo "would run: modprobe -r $driver && modprobe $driver"
+    echo "would try, in order:"
+    echo "  1. rebind  — $bus_id out of and back into $driver"
+    echo "  2. reload  — modprobe -r $driver && modprobe $driver"
     exit 0
 fi
 
 [ "$(id -u)" -eq 0 ] || die "needs root — run: sudo ~/.local/bin/apollo-touchpad-reset"
 
-echo "apollo-touchpad-reset: reloading $driver for '$name'"
+# alive — is the touchpad delivering again? Its event node reappearing in
+# /proc/bus/input/devices is the only thing here that means the device came
+# back, as opposed to the command merely not erroring.
+alive() {
+    grep -q -i -E 'N: Name=.*(touchpad|trackpad)' "$DEVICES" 2>/dev/null
+}
 
+echo "apollo-touchpad-reset: '$name' on $driver ($bus_id)"
+
+# ── 1. Rebind just this device ───────────────────────────────────────────
+# Narrower than reloading the module: it re-probes this one device and leaves
+# everything else the driver owns alone. Often enough on its own, and on a
+# laptop with two devices on the same driver it is the polite one to try first.
+if [ -w "$driver_dir/unbind" ] && [ -w "$driver_dir/bind" ]; then
+    echo "  rebinding $bus_id..."
+    echo "$bus_id" > "$driver_dir/unbind" 2>/dev/null
+    sleep 0.5
+    echo "$bus_id" > "$driver_dir/bind" 2>/dev/null
+    sleep 0.5
+
+    if alive; then
+        echo "apollo-touchpad-reset: back, by rebind"
+        exit 0
+    fi
+    echo "  rebind did not bring it back; reloading the module"
+else
+    echo "  $driver has no bind/unbind; going straight to a module reload"
+fi
+
+# ── 2. Reload the module ─────────────────────────────────────────────────
 if ! modprobe -r "$driver" 2>/dev/null; then
-    die "could not unload $driver — it may be built into the kernel rather than a module"
+    die "could not unload $driver — it may be built into the kernel rather than a module, or still in use"
 fi
 
 # A moment for the bus to settle before the driver probes it again. Without it
@@ -99,4 +137,17 @@ if ! modprobe "$driver"; then
     die "unloaded $driver but could not load it again — the touchpad is now definitely gone, try a reboot"
 fi
 
-echo "apollo-touchpad-reset: $driver reloaded"
+sleep 0.5
+
+if alive; then
+    echo "apollo-touchpad-reset: back, by module reload"
+    exit 0
+fi
+
+# Both levers pulled and it is still gone. Say what is left rather than
+# reporting success because two commands returned zero.
+echo "apollo-touchpad-reset: $driver reloaded, but the touchpad is still not present" >&2
+echo "  the controller itself may have gone: try suspending and resuming, or" >&2
+echo "  a full power-off (not a reboot) with the power disconnected" >&2
+echo "  and check: journalctl -b -k | grep -i -E 'elan|i2c_designware'" >&2
+exit 1
