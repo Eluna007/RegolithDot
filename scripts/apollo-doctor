@@ -532,7 +532,16 @@ main() {
   check_cmd copyq "copyq (clipboard history)"
   check_service NetworkManager
   check_service bluetooth
-  check_service keyd
+  # Only when it is actually installed. keyd is optional — it provides the
+  # meta-layer copy/paste shortcuts and nothing else — and "keyd is not
+  # enabled" on a machine that has never had it reads as a fault to fix
+  # rather than a tool you declined. That warning sent a touchpad
+  # investigation after keyd for a round.
+  if command -v keyd >/dev/null 2>&1; then
+    check_service keyd
+  else
+    ok "keyd not installed (optional: meta-layer copy/paste shortcuts)"
+  fi
   check_audio
   check_network
   check_battery
