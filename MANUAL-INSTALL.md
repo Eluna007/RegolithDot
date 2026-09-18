@@ -171,7 +171,29 @@ It is your own home directory, so that is you — but it does mean a symlink you
 pull from this repo is running as root on every wallpaper change. Skipping this
 costs nothing except running `sudo ~/.local/bin/apollo-sddm-sync` yourself.
 
-### 4.2 GTK
+### 4.2 Tailscale (optional)
+
+The bar has a Tailscale widget. It runs `tailscale up`, `down` and `set`, and
+all three write to the daemon — which belongs to root until this user is made
+the **operator**. Without that the toggle only ever produces a permission
+error, which reads as a broken switch rather than one that was never allowed:
+
+```bash
+sudo pacman -S tailscale
+sudo systemctl enable --now tailscaled
+sudo tailscale set --operator=$USER
+```
+
+That last line is the one the widget needs, and it is Tailscale's own
+mechanism rather than a sudoers rule. The difference is the one that matters:
+it hands over control of this one daemon, not the ability to run anything as
+root. `apollo-doctor` reports whether it has been done.
+
+If you would rather not grant it at all, the widget still shows your status,
+peers and exit nodes — it just cannot change them, and it offers to copy the
+command above when you try.
+
+### 4.3 GTK
 
 ```bash
 mkdir -p ~/.themes
@@ -181,7 +203,7 @@ curl -sL \
 7z x -y /tmp/catppuccin-gtk.zip -o ~/.themes/
 ```
 
-### 4.3 Cursors
+### 4.4 Cursors
 
 Not vendored here — install the package:
 

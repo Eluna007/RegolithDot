@@ -83,6 +83,25 @@ PanelWindow {
     property string lastError: ""
     property bool showPeers: false
 
+    // $USER is expanded here rather than left literal, so what lands on the
+    // clipboard is the command to run, not a template to edit.
+    readonly property string userName: {
+        var u = Quickshell.env("USER")
+        return u ? u : Quickshell.env("LOGNAME")
+    }
+
+    // Every way the daemon says "you are not allowed to do that".
+    readonly property bool needsOperator: {
+        var e = root.lastError.toLowerCase()
+        return e.indexOf("permission") !== -1
+            || e.indexOf("access denied") !== -1
+            || e.indexOf("operator") !== -1
+            || e.indexOf("root") !== -1
+    }
+
+    property bool copiedFix: false
+    Timer { id: copiedFixTimer; interval: 2500; onTriggered: root.copiedFix = false }
+
     function refresh() {
         if (!shared.tsProc.running) shared.tsProc.running = true
     }
@@ -473,16 +492,48 @@ PanelWindow {
                         color: root.maroon
                         font { pixelSize: 10; family: root.nfFont }
                     }
-                    Text {
+                    // The fix, as something you can act on rather than
+                    // retype. `tailscale up`/`down`/`set` all write to the
+                    // daemon, which is root's until this user is made the
+                    // operator — so the toggle is not broken, it has never
+                    // been allowed. One command, once, and it is Tailscale's
+                    // own mechanism: it hands over control of this one daemon
+                    // rather than the ability to run anything as root.
+                    //
+                    // Copied rather than run: it needs root the first time,
+                    // and there is no polkit agent in this rice to ask
+                    // through. A terminal is the honest place for it.
+                    Rectangle {
                         Layout.fillWidth: true
-                        textFormat: Text.PlainText
-                        wrapMode: Text.WordWrap
-                        visible: root.lastError.toLowerCase().indexOf("permission") !== -1
-                                 || root.lastError.toLowerCase().indexOf("access denied") !== -1
-                                 || root.lastError.toLowerCase().indexOf("root") !== -1
-                        text: "One-time fix: sudo tailscale set --operator=$USER"
-                        color: root.overlay0
-                        font { pixelSize: 9; family: root.nfFont }
+                        visible: root.needsOperator
+                        implicitHeight: 26
+                        radius: 8
+                        color: fixArea.containsMouse
+                               ? Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.22)
+                               : Qt.rgba(root.surface1.r, root.surface1.g, root.surface1.b, 0.6)
+                        Behavior on color { ColorAnimation { duration: 140 } }
+
+                        Text {
+                            anchors.centerIn: parent
+                            textFormat: Text.PlainText
+                            text: root.copiedFix
+                                  ? "󰄬  copied — run it in a terminal"
+                                  : "󰆏  copy: sudo tailscale set --operator=$USER"
+                            color: root.copiedFix ? root.accent : root.subtext0
+                            font { pixelSize: 9; family: root.nfFont }
+                        }
+
+                        MouseArea {
+                            id: fixArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                root.copy("sudo tailscale set --operator=" + root.userName)
+                                root.copiedFix = true
+                                copiedFixTimer.restart()
+                            }
+                        }
                     }
                 }
             }
