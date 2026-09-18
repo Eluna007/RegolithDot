@@ -100,7 +100,18 @@ PanelWindow {
         "dock-clear":        { file: "WallpaperDock.qml",      props: { backdrop: false, widgets: true  } },
 
         "grid":              { file: "WallpaperGrid.qml",      props: { backdrop: true  } },
-        "grid-clear":        { file: "WallpaperGrid.qml",      props: { backdrop: false } }
+        "grid-clear":        { file: "WallpaperGrid.qml",      props: { backdrop: false } },
+
+        "classic":           { file: "WallpaperClassic.qml",   props: { backdrop: true  } },
+
+        // Upstream's six floating shell.qml files, which differ only in these
+        // three answers.
+        "floating":                { file: "WallpaperFloating.qml", props: { backdrop: true,  widgets: true,  reflections: "all"    } },
+        "floating-center":         { file: "WallpaperFloating.qml", props: { backdrop: true,  widgets: true,  reflections: "center" } },
+        "floating-clean":          { file: "WallpaperFloating.qml", props: { backdrop: true,  widgets: true,  reflections: "none"   } },
+        "floating-clear":          { file: "WallpaperFloating.qml", props: { backdrop: false, widgets: true,  reflections: "all"    } },
+        "floating-clear-clean":    { file: "WallpaperFloating.qml", props: { backdrop: false, widgets: true,  reflections: "none"   } },
+        "floating-minimal":        { file: "WallpaperFloating.qml", props: { backdrop: true,  widgets: false, reflections: "none"   } }
     })
 
     readonly property string defaultLayout: "filmstrip"
