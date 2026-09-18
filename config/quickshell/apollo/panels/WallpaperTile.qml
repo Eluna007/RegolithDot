@@ -13,6 +13,12 @@ Item {
     required property url fileUrl
 
     property int radius: 16
+
+    // An alternative silhouette. A layout that is not made of rectangles —
+    // the honeycomb — hands in its own mask item and gets the wallpaper cut to
+    // that shape instead. Left unset, the rounded rectangle below is used, so
+    // every other layout is unaffected.
+    property Item shape: null
     property bool current: false
     // Only the focused tile animates its gif: decoding several at once is real
     // work for tiles nobody is looking at.
@@ -42,10 +48,14 @@ Item {
 
     // Shows through any letterboxing, and is what a tile looks like before its
     // picture arrives.
+    // Shows through any letterboxing, and is what a tile looks like before its
+    // picture arrives. Hidden when the layout supplies its own shape, since a
+    // rounded rectangle behind a hexagon is a rounded rectangle you can see.
     Rectangle {
         anchors.fill: parent
         radius: tile.radius
         color: Config.mantle
+        visible: !tile.shape
     }
 
     Image {
@@ -93,7 +103,7 @@ Item {
         anchors.fill: parent
         source: tile.isGif ? gif : still
         maskEnabled: true
-        maskSource: mask
+        maskSource: tile.shape ? tile.shape : mask
         // Nothing to mask until there is something to draw, and an effect over
         // an unloaded source paints a grey rectangle that reads as a broken
         // wallpaper.

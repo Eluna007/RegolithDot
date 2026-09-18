@@ -301,6 +301,14 @@ jobs:
 
       # Ranking is the whole product of a launcher: the orderings that matter
       # are asserted rather than eyeballed.
+      # The honeycomb's fit search: how many columns and at what scale a
+      # flat-top hex grid fills the screen. Pure arithmetic with edge cases
+      # that are invisible until they are wrong - a last row reaching an
+      # offset column hangs half a row lower, and the last column's tile
+      # sticks out past where `columns x step` would put the right edge.
+      - name: Test honeycomb layout
+        run: node scripts/test-honeycomb.js
+
       - name: Test launcher matching
         run: node scripts/test-launcher.js
 
