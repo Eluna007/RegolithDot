@@ -120,7 +120,18 @@ sudo ~/.local/bin/apollo-touchpad-reset
 
 It finds the touchpad by name and its driver by walking up the sysfs tree from
 the input node — the driver is bound several levels above, on the bus device —
-then reloads that module. Nothing is hardcoded to one laptop.
+then tries two things in order:
+
+1. **Rebind** just that device, out of and back into its driver. Narrower than
+   reloading the module: it re-probes this one device and leaves everything
+   else the driver owns alone, which on a laptop with a touchscreen on the same
+   driver is the polite one to try first.
+2. **Reload the module**, if the rebind did not bring it back.
+
+It checks the device is actually delivering again between the two, rather than
+reporting success because a command returned zero. If neither works it says so
+and names what is left — suspend/resume, a full power-off, and the kernel log
+that would explain it. Nothing is hardcoded to one laptop.
 
 `evtest` on the touchpad's node is what settles it: while the pad is dead it
 prints nothing at all however much you touch it, and starts printing again the
