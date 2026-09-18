@@ -230,6 +230,29 @@ check_tailscale_operator() {
   fi
 }
 
+# check_helper <name> [why it matters]
+#
+# "Missing" and "the symlink points at nothing" are different problems with
+# different fixes, and a dangling symlink reports as `command not found`, which
+# reads as the first. A typo in an `ln -s` target — ~/.RegolithDot for
+# ~/RegolithDot — then sends you to re-run an install that was already right.
+# Naming the target it points at is the whole difference.
+check_helper() {
+  local name="$1" why="${2-}"
+  local path="$HOME/.local/bin/$name"
+
+  if [[ -x "$path" ]]; then
+    ok "$name installed"
+  elif [[ -L "$path" ]]; then
+    fail "$name is a broken symlink -> $(readlink "$path")"
+    fail "  that path does not exist; re-link it against your actual repo"
+  elif [[ -e "$path" ]]; then
+    fail "$name exists but is not executable: chmod +x $path"
+  else
+    warn "$name missing from ~/.local/bin${why:+ — $why}"
+  fi
+}
+
 # Which wallpaper picker layout is live. Absent means the default, which is
 # the normal state - this is a report, not a requirement.
 check_paper_layout() {
@@ -238,11 +261,7 @@ check_paper_layout() {
   [[ -r "$f" ]] && now="$(tr -d '[:space:]' < "$f")"
   ok "wallpaper picker layout: $now"
 
-  if [[ -x "$HOME/.local/bin/apollo-paper-layout" ]]; then
-    ok "apollo-paper-layout installed"
-  else
-    warn "apollo-paper-layout missing from ~/.local/bin"
-  fi
+  check_helper apollo-paper-layout
 }
 
 # Dynamic colours: the wallpaper drives the shell, the terminal, GTK, rofi and
@@ -282,11 +301,7 @@ check_login_screen() {
     return
   fi
 
-  if [[ -x "$HOME/.local/bin/apollo-sddm-sync" ]]; then
-    ok "apollo-sddm-sync installed"
-  else
-    warn "apollo-sddm-sync missing from ~/.local/bin — the login screen cannot follow your wallpaper"
-  fi
+  check_helper apollo-sddm-sync "the login screen cannot follow your wallpaper"
 
   if [[ ! -d "$theme" ]]; then
     warn "$theme missing — see MANUAL-INSTALL.md (§4.1) to install the theme"
@@ -597,7 +612,7 @@ main() {
     fi
   done
   for s in osd-report restore-wallpaper wallpaper-switch hyprlock-wallpaper; do
-    if [[ -x "$HOME/.local/bin/$s.sh" ]]; then ok "$s.sh installed"; else fail "$s.sh missing from ~/.local/bin"; fi
+    check_helper "$s.sh"
   done
 
   check_keyd_devices
@@ -605,12 +620,9 @@ main() {
   check_dynamic_colors
   check_login_screen
   check_paper_layout
-  # No .sh suffix: this one is meant to be typed.
-  if [[ -x "$HOME/.local/bin/apollo-lock-layout" ]]; then
-    ok "apollo-lock-layout installed"
-  else
-    warn "apollo-lock-layout missing from ~/.local/bin — lock screen layouts can only be switched from apollo-settings"
-  fi
+  # No .sh suffix: these are meant to be typed.
+  check_helper apollo-lock-layout "lock screen layouts can only be switched from apollo-settings"
+  check_helper apollo-touchpad-reset "no one-command recovery when the touchpad drops off its bus"
   check_hypr_lua
   check_lock_layout
   check_file "$HOME/.config/rofi/config.rasi" "live Rofi config"

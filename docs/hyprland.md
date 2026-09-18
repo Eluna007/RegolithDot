@@ -122,6 +122,12 @@ It finds the touchpad by name and its driver by walking up the sysfs tree from
 the input node — the driver is bound several levels above, on the bus device —
 then reloads that module. Nothing is hardcoded to one laptop.
 
+`evtest` on the touchpad's node is what settles it: while the pad is dead it
+prints nothing at all however much you touch it, and starts printing again the
+moment the driver is reloaded. Events arriving there while the pointer does not
+move would mean something *above* the kernel is eating them, which is a
+different problem entirely.
+
 This is not a fault in these dotfiles and the script does not pretend to fix
 one. It is a recovery for a fault below them, of the kind worth having as one
 command rather than one reboot. To confirm that is what you are looking at,
