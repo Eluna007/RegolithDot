@@ -553,11 +553,28 @@ ShellRoot {
                 onClose: scope.closeAll()
             }
 
+            // ── Wallpaper transition ─────────────────────────────────────
+            // Covers the screen with the outgoing wallpaper while the daemons
+            // swap underneath, then grows the incoming one over it. Without it
+            // the compositor's own default shows through for the few frames
+            // between a daemon accepting a wallpaper and drawing it — which no
+            // amount of ordering inside wallpaper-switch.sh can close, because
+            // hyprpaper's IPC answers when the request is queued and mpvpaper
+            // has nothing to ask at all.
+            //
+            // Declared before the picker only for reading order: `switching`
+            // is a runtime signal, so both objects exist by the time it fires
+            // whichever way round they are written.
+            property var wallpaperTransition: WallpaperTransition {
+                screen: scope.modelData
+            }
+
             property var wallpaperPanel: WallpaperPanel {
                 screen:     scope.modelData
                 outputName: scope.modelData.name   // apply only to this monitor
                 visible:    scope.activePanel === "wallpaper"
                 onClose:    scope.closeAll()
+                onSwitching: (fromArt, toArt) => scope.wallpaperTransition.begin(fromArt, toArt)
             }
 
             property var overviewPanel: WindowOverview {

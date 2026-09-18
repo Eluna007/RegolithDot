@@ -19,6 +19,10 @@ PanelWindow {
     id: root
     signal close()
 
+    // Forwarded from the source so shell.qml can put the transition layer in
+    // front of the swap without reaching inside this panel.
+    signal switching(url fromArt, url toArt)
+
     // Hyprland output this picker belongs to (set per-screen from shell.qml).
     // Currently unused: wallpapers are applied through wallpaper-switch.sh,
     // which drives hyprpaper/mpvpaper across all monitors at once. Kept so
@@ -62,6 +66,7 @@ PanelWindow {
     WallpaperSource {
         id: wallpapers
         active: root.visible
+        onSwitching: (fromArt, toArt) => root.switching(fromArt, toArt)
     }
 
     // ── Background scrim (click outside to dismiss) ──────────────────────

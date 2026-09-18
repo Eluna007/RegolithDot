@@ -25,7 +25,8 @@ CLI = ROOT / "local/bin/apollo-paper-layout"
 PANELS_DIR = ROOT / "config/quickshell/apollo/panels"
 
 # Not layouts: the panel itself and the pieces every layout shares.
-NOT_LAYOUTS = {"WallpaperPanel.qml", "WallpaperSource.qml", "WallpaperTile.qml"}
+NOT_LAYOUTS = {"WallpaperPanel.qml", "WallpaperSource.qml", "WallpaperTile.qml",
+               "WallpaperTransition.qml"}
 
 fails = []
 

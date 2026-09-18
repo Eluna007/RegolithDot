@@ -261,6 +261,15 @@ piece of it:
    recording the sequence of calls, because none of this shows up in the
    script's output.
 
+   What ordering cannot fix is the gap between a daemon *accepting* a
+   wallpaper and drawing it: hyprpaper's IPC answers when the request is
+   queued, and mpvpaper has nothing to ask at all. `panels/WallpaperTransition.qml`
+   covers that — a Bottom-layer surface holding the outgoing wallpaper while
+   the daemons swap underneath, handing over with a circular grow rather than a
+   cut. It takes no input, unmaps itself when it is done, and gives up after
+   six seconds if the art never loads, because an overlay that stays up forever
+   is a desktop you cannot use.
+
 1. `local/bin/wallpaper-switch.sh` applies a wallpaper. The `SUPER+W`
    carousel calls it too, so the picker and the boot restore can't disagree
    about what's set. It uses `hyprpaper` for

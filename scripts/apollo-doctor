@@ -153,6 +153,41 @@ check_aur_helper() {
 #
 # Seeding them here is what makes a fresh clone themed. It never overwrites:
 # once the file exists, it belongs to whoever set the palette.
+# The bar's Tailscale widget runs `tailscale up`, `down` and `set`, and all
+# three write to the daemon — which is root's unless this user has been made
+# the operator. Without that the toggle does nothing but produce a permission
+# error, which is a switch that looks broken rather than one that needs a
+# one-time grant.
+#
+# `tailscale set --operator=$USER` is Tailscale's own mechanism for this. It is
+# better than a sudoers rule in the way that matters: it grants control of the
+# one daemon rather than the ability to run anything as root.
+check_tailscale_operator() {
+  command -v tailscale >/dev/null 2>&1 || return 0
+
+  # OperatorUser is `omitempty`, so it is simply absent when nobody is the
+  # operator. Verified against tailscale's ipn/prefs.go.
+  local op
+  op="$(tailscale debug prefs 2>/dev/null | jq -r '.OperatorUser // ""' 2>/dev/null)"
+
+  if [[ -z "$op" ]] && ! tailscale debug prefs >/dev/null 2>&1; then
+    # Cannot read prefs at all: the daemon is down, or this build has no
+    # `debug prefs`. Not something to report as a misconfiguration.
+    warn "tailscale: could not read prefs — is tailscaled running?"
+    return 0
+  fi
+
+  if [[ "$op" == "$USER" ]]; then
+    ok "tailscale operator is $USER — the bar widget can control it"
+  elif [[ -n "$op" ]]; then
+    warn "tailscale operator is '$op', not $USER — the bar widget cannot control it"
+    warn "  fix: sudo tailscale set --operator=\$USER"
+  else
+    warn "tailscale has no operator — the bar widget's toggle will only error"
+    warn "  fix: sudo tailscale set --operator=\$USER"
+  fi
+}
+
 # Which wallpaper picker layout is live. Absent means the default, which is
 # the normal state - this is a report, not a requirement.
 check_paper_layout() {
@@ -514,6 +549,7 @@ main() {
     if [[ -x "$HOME/.local/bin/$s.sh" ]]; then ok "$s.sh installed"; else fail "$s.sh missing from ~/.local/bin"; fi
   done
 
+  check_tailscale_operator
   check_dynamic_colors
   check_login_screen
   check_paper_layout
