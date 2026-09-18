@@ -39,6 +39,8 @@ describe() {
     floating-clear)    echo "floating with reflections and no background blur" ;;
     floating-clear-clean) echo "floating with neither reflections nor blur" ;;
     floating-minimal)  echo "floating with no clock, caption or reflections" ;;
+    hexcomb)           echo "an interlocking honeycomb, sized to fill the screen" ;;
+    hexcomb-minimal)   echo "the honeycomb with no caption" ;;
     *)                 echo "" ;;
   esac
 }
@@ -47,7 +49,8 @@ available() {
   printf '%s\n' filmstrip coverflow coverflow-clear coverflow-minimal \
                  dock dock-clear grid grid-clear classic \
                  floating floating-center floating-clean \
-                 floating-clear floating-clear-clean floating-minimal
+                 floating-clear floating-clear-clean floating-minimal \
+                 hexcomb hexcomb-minimal
 }
 
 current() {

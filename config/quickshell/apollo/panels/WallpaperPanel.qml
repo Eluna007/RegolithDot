@@ -111,7 +111,10 @@ PanelWindow {
         "floating-clean":          { file: "WallpaperFloating.qml", props: { backdrop: true,  widgets: true,  reflections: "none"   } },
         "floating-clear":          { file: "WallpaperFloating.qml", props: { backdrop: false, widgets: true,  reflections: "all"    } },
         "floating-clear-clean":    { file: "WallpaperFloating.qml", props: { backdrop: false, widgets: true,  reflections: "none"   } },
-        "floating-minimal":        { file: "WallpaperFloating.qml", props: { backdrop: true,  widgets: false, reflections: "none"   } }
+        "floating-minimal":        { file: "WallpaperFloating.qml", props: { backdrop: true,  widgets: false, reflections: "none"   } },
+
+        "hexcomb":           { file: "WallpaperHex.qml",       props: { backdrop: true,  widgets: true  } },
+        "hexcomb-minimal":   { file: "WallpaperHex.qml",       props: { backdrop: true,  widgets: false } }
     })
 
     readonly property string defaultLayout: "filmstrip"

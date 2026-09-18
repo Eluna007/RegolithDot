@@ -321,11 +321,12 @@ apollo-paper-layout coverflow    # switch
 | **dock**, **dock-clear** | a sheared deck along the bottom edge, wallpaper above it |
 | **grid**, **grid-clear** | a wall of thumbnails with a large preview beside it |
 | **floating**, **-center**, **-clean**, **-clear**, **-clear-clean**, **-minimal** | tiered cards suspended around the focused one, with reflections under all, one, or none |
+| **hexcomb**, **hexcomb-minimal** | an interlocking honeycomb, sized to fill the screen |
 
 Everything but the filmstrip is ported from
 [ujjalsigdel/hyprquickpaper](https://github.com/ujjalsigdel/hyprquickpaper).
 
-Fifteen names, six files. Upstream ships every variant as its own complete
+Seventeen names, seven files. Upstream ships every variant as its own complete
 `shell.qml` — its six floating layouts are 364 to 559 lines apiece and differ
 in three yes/no answers — but a variant is not a different layout, it is the
 same one with the blur off or the reflections gone. Here it is the same file
@@ -334,6 +335,21 @@ only place a required property can be supplied anyway. That is what keeps a
 long list of names from meaning a long list of copies of the same delegate.
 
 `apollo-paper-layout` lists them all with a line on each.
+
+The honeycomb is the one layout whose interesting part is arithmetic rather
+than bindings, so that part lives in `panels/wallpaper/Honeycomb.js` and is
+exercised by `scripts/test-honeycomb.js` under node. Its edge cases are real
+and none of them are visible until they are wrong: a last row that reaches an
+offset column hangs half a row lower than the rest; a grid with fewer tiles
+than columns is only as wide as its tiles; and because interlocking columns
+advance by three quarters of a tile, the last column's hexagon sticks out its
+full width past where `columns × step` would put the right edge — guess that
+and the right-hand column is clipped. The search tries every column count from
+three up and keeps whichever can be drawn largest.
+
+It is also why `WallpaperTile` takes an optional `shape`: a layout that is not
+made of rectangles hands in its own mask item and gets the wallpaper cut to it.
+Every other layout leaves it unset and gets the rounded rectangle.
 
 The split is the lock screen's. `WallpaperPanel.qml` is the surface — the
 scrim, the reveal, the keyboard — and everything underneath lives once in
