@@ -271,6 +271,15 @@ jobs:
       # picker existed, so wallpaper-switch.sh's entire mpvpaper branch - gifs
       # and video, the thing hyprpaper cannot do - was unreachable from the UI
       # it was written for.
+      # keyd captures a device and re-emits its events through a virtual one.
+      # A bare `*` in [ids] hands it every pointing device on the machine,
+      # touchpad included - keyd's wildcard filters on no capability at all.
+      # `k:*` is not the fix: the prefix takes a literal id, so it matches
+      # nothing, never sets the wildcard, and keyd captures nothing at all
+      # while the remaps stop working with no error anywhere.
+      - name: Check keyd is not capturing the pointing devices
+        run: python3 scripts/check-keyd.py
+
       - name: Check the wallpaper formats agree
         run: python3 scripts/check-wallpaper-formats.py
 

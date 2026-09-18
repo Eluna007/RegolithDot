@@ -153,6 +153,48 @@ check_aur_helper() {
 #
 # Seeding them here is what makes a fresh clone themed. It never overwrites:
 # once the file exists, it belongs to whoever set the palette.
+# keyd grabs the devices it manages and re-emits their events through a virtual
+# one. Pointed at a touchpad — which a bare `*` in [ids] does, because keyd's
+# wildcard filters on nothing — every touch travels a grab-and-re-emit path
+# that has no business existing, and an intermittently dead touchpad is what
+# that looks like.
+#
+# /etc/keyd/default.conf is a *copy* of the one in this repo, not a symlink
+# (keyd reads it as root, before any of this is mounted), so it drifts silently
+# after a pull. That is the other half of what this checks.
+check_keyd_devices() {
+  local live="/etc/keyd/default.conf"
+  local repo="${APOLLO_REPO:-}/config/keyd/default.conf"
+
+  command -v keyd >/dev/null 2>&1 || return 0
+
+  if [[ ! -r "$live" ]]; then
+    warn "keyd installed but $live is missing — see MANUAL-INSTALL.md"
+    return 0
+  fi
+
+  # The [ids] block, comments stripped.
+  local ids
+  ids=$(sed -n '/^\[ids\]/,/^\[/p' "$live" | sed 's/#.*//' | tr -d '[:blank:]' \
+        | grep -v '^\[' | grep -v '^$')
+
+  if grep -qx '\*' <<< "$ids" && ! grep -q '^-' <<< "$ids"; then
+    fail "keyd's [ids] is a bare '*' — it is capturing your touchpad"
+    fail "  fix: copy this repo's config/keyd/default.conf to $live and run: sudo keyd reload"
+  else
+    ok "keyd is not capturing the pointing devices"
+  fi
+
+  if [[ -n "${APOLLO_REPO:-}" && -r "$repo" ]]; then
+    if cmp -s "$live" "$repo"; then
+      ok "keyd config matches the repo"
+    else
+      warn "$live differs from the repo's copy — it is a copy, not a symlink"
+      warn "  sudo cp $repo $live && sudo keyd reload"
+    fi
+  fi
+}
+
 # The bar's Tailscale widget runs `tailscale up`, `down` and `set`, and all
 # three write to the daemon — which is root's unless this user has been made
 # the operator. Without that the toggle does nothing but produce a permission
@@ -549,6 +591,7 @@ main() {
     if [[ -x "$HOME/.local/bin/$s.sh" ]]; then ok "$s.sh installed"; else fail "$s.sh missing from ~/.local/bin"; fi
   done
 
+  check_keyd_devices
   check_tailscale_operator
   check_dynamic_colors
   check_login_screen
