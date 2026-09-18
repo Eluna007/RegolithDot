@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Three lists name the wallpaper picker's layouts. They have to agree.
 
-  panels/WallpaperPanel.qml    the Loader's switch — what the shell will load
+  panels/WallpaperPanel.qml    the layouts table — what the shell will load
   local/bin/apollo-paper-layout  describe() — what you can ask for
   panels/Wallpaper*.qml        the files that actually exist
 
@@ -25,8 +25,9 @@ CLI = ROOT / "local/bin/apollo-paper-layout"
 PANELS_DIR = ROOT / "config/quickshell/apollo/panels"
 
 # Not layouts: the panel itself and the pieces every layout shares.
+# The panel itself, and the pieces every layout shares rather than is.
 NOT_LAYOUTS = {"WallpaperPanel.qml", "WallpaperSource.qml", "WallpaperTile.qml",
-               "WallpaperTransition.qml"}
+               "WallpaperTransition.qml", "WallpaperBackdrop.qml"}
 
 fails = []
 
@@ -38,51 +39,52 @@ def fail(msg):
 
 def main() -> int:
     panel = PANEL.read_text()
-    m = re.search(r"switch \(Config\.paperLayout\) \{(.*?)\n            \}", panel, re.S)
-    if not m:
-        fail("WallpaperPanel.qml: no switch on Config.paperLayout")
-        return 1
-    body = m.group(1)
 
-    cases = dict(re.findall(r'case "(\w+)":\s*return "([\w.]+)"', body))
-    m = re.search(r'default:\s*return "([\w.]+)"', body)
+    m = re.search(r"readonly property var layouts: \(\{(.*?)\n    \}\)", panel, re.S)
     if not m:
-        fail("WallpaperPanel.qml: the Loader has no default layout — an "
-             "unknown name would load nothing")
+        fail("WallpaperPanel.qml: no layouts table")
         return 1
-    default_file = m.group(1)
+    table = dict(re.findall(r'"([\w-]+)":\s*\{\s*file:\s*"([\w.]+)"', m.group(1)))
+    if not table:
+        fail("WallpaperPanel.qml: the layouts table parsed empty")
+        return 1
+
+    m = re.search(r'readonly property string defaultLayout: "([\w-]+)"', panel)
+    if not m:
+        fail("WallpaperPanel.qml: no defaultLayout")
+        return 1
+    default = m.group(1)
+    if default not in table:
+        fail(f"WallpaperPanel.qml: defaultLayout is {default!r}, which the table "
+             f"does not name — an unknown layout would fall back to nothing")
 
     cli = CLI.read_text()
     m = re.search(r"describe\(\) \{\n  case \"\$1\" in(.*?)\n  esac", cli, re.S)
     if not m:
         fail("apollo-paper-layout: no describe() case block")
         return 1
-    described = {n for n in re.findall(r"^\s+(\w+)\)", m.group(1), re.M)}
+    described = {n for n in re.findall(r"^\s+([\w-]+)\)", m.group(1), re.M)}
 
-    m = re.search(r"available\(\) \{ printf '%s\\n' (.*?); \}", cli)
-    offered = set(m.group(1).split()) if m else set()
+    m = re.search(r"available\(\) \{\n  printf '%s\\n' (.*?)\n\}", cli, re.S)
+    offered = set(m.group(1).replace("\\", " ").split()) if m else set()
     if not m:
         fail("apollo-paper-layout: no available() list")
 
-    # The default layout is reached by name too, or it could never be
-    # switched *back* to once you had left it.
     files = {f.name for f in PANELS_DIR.glob("Wallpaper*.qml")} - NOT_LAYOUTS
-    named_files = set(cases.values()) | {default_file}
 
-    for name, f in sorted(cases.items()):
+    for name, f in sorted(table.items()):
         if f not in files:
             fail(f"WallpaperPanel.qml maps '{name}' to {f}, which does not exist")
-    if default_file not in files:
-        fail(f"WallpaperPanel.qml's default is {default_file}, which does not exist")
 
-    for f in sorted(files - named_files):
-        fail(f"{f} is a layout the Loader never selects")
+    for f in sorted(files - set(table.values())):
+        fail(f"{f} is a layout the panel never selects")
 
-    # Every name the CLI offers must be one the Loader knows, or switching to
-    # it silently lands on the default.
-    for name in sorted(described - set(cases)):
-        fail(f"apollo-paper-layout offers '{name}', which the Loader's switch "
-             f"does not name (it would fall through to the default)")
+    for name in sorted(described - set(table)):
+        fail(f"apollo-paper-layout offers '{name}', which the panel's table "
+             f"does not name (it would fall back to the default)")
+    for name in sorted(set(table) - described):
+        fail(f"the panel has a layout '{name}' that apollo-paper-layout does "
+             f"not offer, so there is no way to ask for it")
     if described != offered:
         fail(f"apollo-paper-layout: describe() has {sorted(described)} but "
              f"available() lists {sorted(offered)}")
@@ -90,8 +92,8 @@ def main() -> int:
     if fails:
         print(f"\n{len(fails)} problem(s)")
         return 1
-    print(f"ok - {len(files)} picker layout(s): "
-          f"{', '.join(sorted(described))} — named the same in all three places")
+    print(f"ok - {len(table)} picker layout(s) across {len(files)} file(s): "
+          f"{', '.join(sorted(table))} — named the same in all three places")
     return 0
 
 

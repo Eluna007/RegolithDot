@@ -24,13 +24,22 @@ active="$conf_dir/paper-layout.conf"
 # Loader; CI fails if the two disagree about which layouts exist.
 describe() {
   case "$1" in
-    filmstrip) echo "a centred card holding a strip of thumbnails (default)" ;;
-    coverflow) echo "full-screen sheared cards over a blur of the selection" ;;
-    *)         echo "" ;;
+    filmstrip)         echo "a centred card holding a strip of thumbnails (default)" ;;
+    coverflow)         echo "full-screen sheared cards over a blur of the selection" ;;
+    coverflow-clear)   echo "coverflow with no background blur — for a GPU that struggles" ;;
+    coverflow-minimal) echo "coverflow with no caption" ;;
+    dock)              echo "a sheared deck along the bottom, wallpaper above it" ;;
+    dock-clear)        echo "the dock with no background blur" ;;
+    grid)              echo "a wall of thumbnails with a large preview beside it" ;;
+    grid-clear)        echo "the grid with no background blur" ;;
+    *)                 echo "" ;;
   esac
 }
 
-available() { printf '%s\n' filmstrip coverflow; }
+available() {
+  printf '%s\n' filmstrip coverflow coverflow-clear coverflow-minimal \
+                 dock dock-clear grid grid-clear
+}
 
 current() {
   [ -r "$active" ] || return 0
@@ -46,7 +55,7 @@ usage() {
   echo "available:"
   local n
   while read -r n; do
-    printf '  %-10s %s\n' "$n" "$(describe "$n")"
+    printf '  %-18s %s\n' "$n" "$(describe "$n")"
   done < <(available)
   echo
   echo "switch with: apollo-paper-layout <name>"

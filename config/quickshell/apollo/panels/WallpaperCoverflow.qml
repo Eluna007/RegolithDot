@@ -62,131 +62,20 @@ Item {
         return n < 0 ? -sum : sum
     }
 
-    // ── Backdrop ─────────────────────────────────────────────────────────
-    // The selected wallpaper, blurred and darkened behind the cards, crossfaded
-    // between two Images so a change never flashes through to the desktop.
-    property bool bgToggle: false
+    // ── Variants ─────────────────────────────────────────────────────────
+    // Upstream ships coverflow, coverflow-clear and coverflow-minimal as three
+    // near-identical shell.qml files — 531, 553 and 406 lines differing by
+    // about ninety. Here they are the same layout with two switches, passed in
+    // by the panel's Loader. The blur is the expensive one, and turning it off
+    // is upstream's own advice for a GPU that cannot keep it smooth.
+    property bool backdrop: true
+    property bool widgets: true
 
-    // Load into whichever image is currently hidden, and only crossfade once it
-    // is actually ready.
-    //
-    // Flipping straight away is what made the backdrop lag behind the cards:
-    // the fade starts against an Image that has not finished loading, so for
-    // its first few hundred milliseconds it is fading to nothing. Waiting for
-    // Ready means the fade always has something to fade to, and a thumbnail
-    // that is already cached crossfades immediately.
-    function updateBackground() {
-        if (layout.wallpapers.count === 0)
-            return
-        var name = layout.wallpapers.nameAt(view.currentIndex)
-        if (!name)
-            return
-        // The cached thumbnail, not the original: this is blurred to
-        // unrecognisable anyway, and decoding a 4K wallpaper on every arrow
-        // key is exactly the cost the thumbnails exist to avoid.
-        var url = layout.wallpapers.thumbFor(name)
-        var incoming = layout.bgToggle ? bgA : bgB
-        if (incoming.source !== url)
-            incoming.source = url
-    }
-
-    Item {
+    WallpaperBackdrop {
         anchors.fill: parent
-
-        Image {
-            id: bgA
-            anchors.fill: parent
-            fillMode: Image.PreserveAspectCrop
-            asynchronous: true
-            // Cached, and bounded to the thumbnail's own width: going back to a
-            // wallpaper you have already passed then costs nothing, which is
-            // most of what browsing a carousel is.
-            cache: true
-            sourceSize.width: 640
-            smooth: true
-            visible: false
-            opacity: layout.bgToggle ? 0.0 : 1.0
-            // Whichever image just finished loading is the one that was being
-            // loaded into, so it is the one to show.
-            onStatusChanged: if (status === Image.Ready) layout.bgToggle = false
-            Behavior on opacity {
-                NumberAnimation { duration: Motion.slowEffects; easing.type: Easing.InOutQuad }
-            }
-        }
-        Image {
-            id: bgB
-            anchors.fill: parent
-            fillMode: Image.PreserveAspectCrop
-            asynchronous: true
-            cache: true
-            sourceSize.width: 640
-            smooth: true
-            visible: false
-            opacity: layout.bgToggle ? 1.0 : 0.0
-            onStatusChanged: if (status === Image.Ready) layout.bgToggle = true
-            Behavior on opacity {
-                NumberAnimation { duration: Motion.slowEffects; easing.type: Easing.InOutQuad }
-            }
-        }
-
-        MultiEffect {
-            anchors.fill: parent
-            source: bgA
-            opacity: bgA.opacity
-            blurEnabled: true
-            blur: 1.0
-            blurMax: 72
-            brightness: -0.25
-            saturation: 0.05
-        }
-        MultiEffect {
-            anchors.fill: parent
-            source: bgB
-            opacity: bgB.opacity
-            blurEnabled: true
-            blur: 1.0
-            blurMax: 72
-            brightness: -0.25
-            saturation: 0.05
-        }
-
-        // A soft wash of the accent behind the cards. Theirs used the single
-        // border_color; ours follows the palette.
-        Rectangle {
-            width: parent.width * 0.5
-            height: parent.height * 0.9
-            anchors.centerIn: parent
-            radius: width * 0.5
-            color: Config.accent
-            opacity: 0.18
-            layer.enabled: true
-            layer.effect: MultiEffect {
-                blurEnabled: true
-                blur: 1.0
-                blurMax: 90
-            }
-        }
-
-        // Vignettes. Black whatever the palette, like every other shadow in
-        // the shell: these darken the wallpaper, they are not a colour.
-        Rectangle {
-            anchors.fill: parent
-            gradient: Gradient {
-                orientation: Gradient.Vertical
-                GradientStop { position: 0.0; color: "#33000000" }
-                GradientStop { position: 0.5; color: "#00000000" }
-                GradientStop { position: 1.0; color: "#AA000000" }
-            }
-        }
-        Rectangle {
-            anchors.fill: parent
-            gradient: Gradient {
-                orientation: Gradient.Horizontal
-                GradientStop { position: 0.0; color: "#77000000" }
-                GradientStop { position: 0.5; color: "#00000000" }
-                GradientStop { position: 1.0; color: "#77000000" }
-            }
-        }
+        wallpapers: layout.wallpapers
+        index: view.currentIndex
+        blurred: layout.backdrop
     }
 
     // ── Cards ────────────────────────────────────────────────────────────
@@ -206,8 +95,6 @@ Item {
         // Keep delegates alive off the path: it otherwise destroys and
         // recreates — and re-decodes — the same cards on the way past.
         cacheItemCount: 6
-
-        onCurrentIndexChanged: layout.updateBackground()
 
         path: Path {
             startX: view.width / 2 + layout.cumulativeOffset(-5)
@@ -364,6 +251,7 @@ Item {
     // that only some layouts carry; here it is the one bit of chrome coverflow
     // has, so it lives with the layout rather than in the panel.
     Text {
+        visible: layout.widgets
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
         anchors.bottomMargin: Math.round(parent.height * 0.10)
@@ -388,7 +276,6 @@ Item {
             var i = layout.wallpapers.indexOfApplied()
             view.currentIndex = i >= 0 ? i : 0
             view.positionViewAtIndex(view.currentIndex, PathView.Center)
-            layout.updateBackground()
         }
     }
 

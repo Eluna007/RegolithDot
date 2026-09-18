@@ -265,8 +265,12 @@ piece of it:
    wallpaper and drawing it: hyprpaper's IPC answers when the request is
    queued, and mpvpaper has nothing to ask at all. `panels/WallpaperTransition.qml`
    covers that — a Bottom-layer surface holding the outgoing wallpaper while
-   the daemons swap underneath, handing over with a circular grow rather than a
-   cut. It takes no input, unmaps itself when it is done, and gives up after
+   the daemons swap underneath, handing over with one of three shapes, a
+   different one each time: a circle out of the middle, a hard diagonal wipe,
+   or the new wallpaper pushing the old one off the screen. Not a fade,
+   deliberately: a fade through a half-drawn background is the thing being
+   hidden. A transition you see twenty times a day stops being a transition and
+   starts being a delay, so it never repeats itself twice running. It takes no input, unmaps itself when it is done, and gives up after
    six seconds if the art never loads, because an overlay that stays up forever
    is a desktop you cannot use.
 
@@ -312,7 +316,24 @@ apollo-paper-layout coverflow    # switch
 | | |
 |---|---|
 | **filmstrip** | a centred card holding a strip of thumbnails — Apollo's own, and the default |
-| **coverflow** | full-screen sheared cards over a blurred copy of the selection, ported from [ujjalsigdel/hyprquickpaper](https://github.com/ujjalsigdel/hyprquickpaper) |
+| **coverflow** | full-screen sheared cards over a blurred copy of the selection |
+| **coverflow-clear** | the same with no blur, for a GPU that cannot keep it smooth |
+| **coverflow-minimal** | the same with no caption |
+| **dock** | a sheared deck along the bottom edge, wallpaper above it |
+| **dock-clear** | the dock with no blur |
+| **grid** | a wall of thumbnails with a large preview beside it |
+| **grid-clear** | the grid with no blur |
+
+Everything but the filmstrip is ported from
+[ujjalsigdel/hyprquickpaper](https://github.com/ujjalsigdel/hyprquickpaper).
+
+Eight names, four files. Upstream ships every variant as its own complete
+`shell.qml` — coverflow, coverflow-clear and coverflow-minimal are 531, 553 and
+406 lines differing by about ninety — but a variant is not a different layout,
+it is the same one with the blur off or the caption hidden. Here it is the same
+file and a couple of properties, handed over by `Loader.setSource`. That is what
+keeps a long list of names from meaning a long list of copies of the same
+delegate.
 
 The split is the lock screen's. `WallpaperPanel.qml` is the surface — the
 scrim, the reveal, the keyboard — and everything underneath lives once in

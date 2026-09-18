@@ -78,15 +78,38 @@ PanelWindow {
     }
 
     // ── The layout ───────────────────────────────────────────────────────
-    // Every layout is named, including the default one: `default:` is only for
-    // a value nobody meant, and a layout reachable only through it stops being
-    // reachable at all the day the default changes.
-    readonly property string layoutFile: {
-        switch (Config.paperLayout) {
-        case "coverflow": return "WallpaperCoverflow.qml"
-        case "filmstrip": return "WallpaperFilmstrip.qml"
-        default:          return "WallpaperFilmstrip.qml"
-        }
+    // Name → file plus the properties that make it that variant.
+    //
+    // Upstream ships every variant as its own complete shell.qml — coverflow,
+    // coverflow-clear and coverflow-minimal are 531, 553 and 406 lines
+    // differing by about ninety. A variant is not a different layout, it is
+    // the same one with the blur off or the caption hidden, so here it is the
+    // same file and a couple of properties. That is what keeps fourteen names
+    // from meaning fourteen copies of the same delegate.
+    //
+    // `props` goes to Loader.setSource, which is the only place a required
+    // property can be supplied — see the long comment on loadLayout below.
+    readonly property var layouts: ({
+        "filmstrip":         { file: "WallpaperFilmstrip.qml", props: {} },
+
+        "coverflow":         { file: "WallpaperCoverflow.qml", props: { backdrop: true,  widgets: true  } },
+        "coverflow-clear":   { file: "WallpaperCoverflow.qml", props: { backdrop: false, widgets: true  } },
+        "coverflow-minimal": { file: "WallpaperCoverflow.qml", props: { backdrop: true,  widgets: false } },
+
+        "dock":              { file: "WallpaperDock.qml",      props: { backdrop: true,  widgets: true  } },
+        "dock-clear":        { file: "WallpaperDock.qml",      props: { backdrop: false, widgets: true  } },
+
+        "grid":              { file: "WallpaperGrid.qml",      props: { backdrop: true  } },
+        "grid-clear":        { file: "WallpaperGrid.qml",      props: { backdrop: false } }
+    })
+
+    readonly property string defaultLayout: "filmstrip"
+
+    readonly property var layoutSpec: {
+        var l = root.layouts[Config.paperLayout]
+        // A name nobody meant — a typo in paper-layout.conf, or a layout that
+        // has since been removed. Falling back beats an empty screen.
+        return l ? l : root.layouts[root.defaultLayout]
     }
 
     // setSource with initial properties, not a `source` binding plus an
@@ -103,11 +126,15 @@ PanelWindow {
     // Loader records the source and its properties even while inactive, and
     // reuses them every time `active` goes true again, so toggling with the
     // panel's visibility needs nothing further. Both of those are verified in
-    // scripts/qml-tests/tst_loader.qml.
+    // scripts/qml-tests/tst_loader_required.qml.
     function loadLayout() {
-        loader.setSource(root.layoutFile, { "wallpapers": wallpapers })
+        var spec = root.layoutSpec
+        var props = { "wallpapers": wallpapers }
+        for (var k in spec.props)
+            props[k] = spec.props[k]
+        loader.setSource(spec.file, props)
     }
-    onLayoutFileChanged: loadLayout()
+    onLayoutSpecChanged: loadLayout()
     Component.onCompleted: loadLayout()
 
     Loader {
@@ -132,12 +159,10 @@ PanelWindow {
         // full-screen blur that snaps to opaque that fast reads as a flash, so
         // it takes the whole reveal.
         transformOrigin: Item.Center
-        opacity: Config.paperLayout === "coverflow"
-                 ? root.reveal
-                 : Math.min(1, root.reveal * 2)
-        scale: Config.paperLayout === "coverflow"
-               ? 1
-               : Motion.fromScale + (1 - Motion.fromScale) * root.reveal
+        // Only the filmstrip is a card; everything else takes the screen.
+        readonly property bool sheet: Config.paperLayout === "filmstrip"
+        opacity: sheet ? Math.min(1, root.reveal * 2) : root.reveal
+        scale: sheet ? Motion.fromScale + (1 - Motion.fromScale) * root.reveal : 1
     }
 
     // ── Keyboard ─────────────────────────────────────────────────────────
@@ -161,6 +186,12 @@ PanelWindow {
                 case Qt.Key_Return:
                 case Qt.Key_Enter:
                 case Qt.Key_Space:  loader.item.activate(); break
+                // A grid moves in two dimensions; the carousels do not, and
+                // say so by not having these.
+                case Qt.Key_Up:
+                case Qt.Key_K:      if (loader.item.prevRow) loader.item.prevRow(); break
+                case Qt.Key_Down:
+                case Qt.Key_J:      if (loader.item.nextRow) loader.item.nextRow(); break
             }
         }
     }

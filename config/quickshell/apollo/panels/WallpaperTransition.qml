@@ -43,13 +43,37 @@ PanelWindow {
     // Decorative only: every click goes through to whatever is behind it.
     mask: Region {}
 
-    // idle → covering (the old wallpaper, held) → revealing (the grow) → idle
+    // idle → covering (the old wallpaper, held) → revealing → idle
     property string phase: "idle"
     property url fromArt: ""
     property url toArt: ""
 
-    // How far the new wallpaper has grown over the old one, 0..1.
+    // How far the new wallpaper has taken over from the old one, 0..1. Every
+    // style is a different reading of this one number, so the timing, the
+    // guards and the teardown are shared and only the shape differs.
     property real grow: 0
+
+    // ── Styles ───────────────────────────────────────────────────────────
+    // A different one each time, because a transition you see twenty times a
+    // day stops being a transition and starts being a delay.
+    //
+    //   grow   a circle out of the middle, past the corners
+    //   wipe   a hard diagonal edge sweeping across
+    //   push   the new wallpaper shoves the old one off the screen
+    //
+    // Deliberately not a fade: a fade through a half-drawn background is the
+    // thing this whole surface exists to hide.
+    readonly property var styles: ["grow", "wipe", "push"]
+    property string style: "grow"
+
+    // Never the same one twice running — with three of them, pure chance
+    // repeats often enough to look like it is stuck.
+    function pickStyle() {
+        var next = root.styles[Math.floor(Math.random() * root.styles.length)]
+        if (next === root.style)
+            next = root.styles[(root.styles.indexOf(next) + 1) % root.styles.length]
+        root.style = next
+    }
 
     // begin(from, to) — art URLs, already resolved by WallpaperSource: a video
     // has no decodable frame of its own, so it arrives as its cached thumbnail.
@@ -59,6 +83,7 @@ PanelWindow {
         root.fromArt = from
         root.toArt = to
         root.grow = 0
+        root.pickStyle()
         root.phase = "covering"
         coverTimeout.restart()
 
@@ -80,7 +105,10 @@ PanelWindow {
     // ── The old wallpaper, held ──────────────────────────────────────────
     Image {
         id: fromImg
-        anchors.fill: parent
+        width: root.width
+        height: root.height
+        // Only "push" moves it; the other two leave it still and uncover it.
+        x: root.style === "push" ? -root.width * root.grow : 0
         source: root.fromArt
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
@@ -105,32 +133,57 @@ PanelWindow {
     // ── The new wallpaper, growing in ────────────────────────────────────
     Image {
         id: toImg
-        anchors.fill: parent
+        width: root.width
+        height: root.height
+        x: root.style === "push" ? root.width * (1 - root.grow) : 0
         source: root.toArt
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
         cache: false
         smooth: true
-        visible: false
+        // "push" draws this directly — there is nothing to mask, the image
+        // simply arrives from the right. The other two draw it through the
+        // mask below instead.
+        visible: root.style === "push" && status === Image.Ready
     }
 
-    // A circle from the middle, out past the corners. The mask is what makes it
-    // a shape rather than a fade — the same MultiEffect masking the wallpaper
-    // tiles use, driven by a growing radius instead of a fixed rounded rect.
+    // The shape the new wallpaper arrives in. The mask is what makes it a
+    // shape rather than a fade — the same MultiEffect masking the wallpaper
+    // tiles use, driven by a growing geometry instead of a fixed rounded rect.
     Item {
-        id: growMask
+        id: shapeMask
         anchors.fill: parent
         layer.enabled: true
         visible: false
 
+        // The diagonal, not the width: a circle from the middle has to reach
+        // the corners, and a diagonal wipe has to cross them.
+        readonly property real span: Math.sqrt(root.width * root.width
+                                               + root.height * root.height)
+
+        // grow — a circle out of the middle.
         Rectangle {
-            // Far enough to reach the corners: the diagonal, not the width.
-            readonly property real full: Math.sqrt(root.width * root.width
-                                                   + root.height * root.height)
-            width: full * root.grow
+            visible: root.style === "grow"
+            width: shapeMask.span * root.grow
             height: width
             radius: width / 2
             anchors.centerIn: parent
+            color: "black"
+            antialiasing: true
+        }
+
+        // wipe — a hard edge crossing the screen at an angle. Oversized on
+        // every side so the rotation cannot pull a corner out of the mask.
+        Rectangle {
+            visible: root.style === "wipe"
+            height: shapeMask.span * 2
+            width: shapeMask.span * 2 * root.grow
+            // Anchored to where the sweep starts, off the left edge, so the
+            // leading edge travels rather than the rectangle growing in place.
+            x: -shapeMask.span / 2
+            y: (root.height - height) / 2
+            transformOrigin: Item.Left
+            rotation: -12
             color: "black"
             antialiasing: true
         }
@@ -140,8 +193,8 @@ PanelWindow {
         anchors.fill: parent
         source: toImg
         maskEnabled: true
-        maskSource: growMask
-        visible: toImg.status === Image.Ready
+        maskSource: shapeMask
+        visible: root.style !== "push" && toImg.status === Image.Ready
     }
 
     // ── Timing ───────────────────────────────────────────────────────────
