@@ -348,8 +348,18 @@ and the right-hand column is clipped. The search tries every column count from
 three up and keeps whichever can be drawn largest.
 
 It is also why `WallpaperTile` takes an optional `shape`: a layout that is not
-made of rectangles hands in its own mask item and gets the wallpaper cut to it.
-Every other layout leaves it unset and gets the rounded rectangle.
+made of rectangles hands in the silhouette it wants and gets the wallpaper cut
+to it. Every other layout leaves it unset and gets the rounded rectangle.
+
+It takes a **Component**, not an Item, and that is the whole point. Qt requires
+a `MultiEffect` mask to be a texture provider — an item with `layer.enabled:
+true` — and forgetting it does not warn: the effect silently draws nothing.
+Hexcomb shipped a bare `Shape` as its mask and rendered a honeycomb of empty
+cells. Taking a Component means the tile builds the shape inside the mask item
+that already has the layer, so the caller cannot get it wrong.
+`scripts/check-qml.py` covers the direct form — `maskSource: someId` where that
+id has no layer — but a trap you cannot check is better removed than
+documented.
 
 The split is the lock screen's. `WallpaperPanel.qml` is the surface — the
 scrim, the reveal, the keyboard — and everything underneath lives once in
