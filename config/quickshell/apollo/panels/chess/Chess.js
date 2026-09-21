@@ -6,10 +6,10 @@
 // the real board; the off-board bits make bounds checking a single AND instead
 // of two comparisons, and they make "did this slide leave the board" free.
 //
-// Correctness here is not a matter of opinion: scripts/test-chess.js runs
-// perft against the published node counts for the standard test positions. A
-// move generator that mishandles en passant, castling through check, or a
-// pinned piece will not match them.
+// Correctness here is not a matter of opinion: perft against the published
+// node counts for the standard test positions settles it. A move generator
+// that mishandles en passant, castling through check, or a pinned piece will
+// not match them.
 
 // ------------------------------------------------------------------ pieces
 

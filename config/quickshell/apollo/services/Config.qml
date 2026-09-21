@@ -4,110 +4,39 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Single source of truth for Apollo Shell.
-// The apollo-settings app writes ~/.config/apollo/config.json; this
-// singleton live-reads it (watchChanges) so the shell restyles instantly.
-// Everything the shell should let users tweak lives here — never hardcode
-// a themeable value in a panel again; bind to Config.<key> instead.
+// Single source of truth for the two widgets.
+//
+// Live-reads ~/.config/apollo/config.json (watchChanges), so editing that file
+// restyles the panels without restarting the shell. It is machine state, not
+// part of this repo: with no file at all every key below falls back to the
+// default written next to it, which is a working Catppuccin Mocha.
+//
+// This used to carry the whole rice — bar layout, wallpaper dir, toasts,
+// battery glyphs, a dynamic palette written by matugen. All of that went with
+// the bar. What is left is the palette the panels paint with, where they sit,
+// and the one chess.com handle.
 Singleton {
     id: root
 
-    // Moonlight mauve accent — drives active/hover states across the shell.
+    // Drives active/hover states in both panels.
     readonly property color accent: adapter.accent
-    // Arch logo color in the bar — independent of accent, defaults to the
-    // original Catppuccin maroon (rose/red).
-    readonly property color archLogoColor: adapter.archLogoColor
-    // Top bar layout: "islands" (floating pills) or "classic" (solid topbar).
-    readonly property string barStyle: adapter.barStyle
-    // Bar edge: "top" (horizontal) | "left" | "right" (vertical side bar).
-    readonly property string barPosition: adapter.barPosition
-    // Bar look + per-widget visibility.
-    readonly property real   barOpacity:    adapter.barOpacity
-    readonly property bool   clock24h:       adapter.clock24h
-    readonly property bool   showUpdates:    adapter.showUpdates
-    readonly property bool   showTemp:       adapter.showTemp
-    readonly property bool   showBattery:    adapter.showBattery
-    readonly property bool   showRecording:  adapter.showRecording
-    readonly property bool   showNetworkName: adapter.showNetworkName
-    readonly property bool   showDesktop:     adapter.showDesktop
-    readonly property int    toastDuration:  adapter.toastDuration
-    readonly property int    maxToasts:      adapter.maxToasts
-    readonly property string toastPosition:  adapter.toastPosition
-    readonly property string wallpaperDir:   adapter.wallpaperDir
+
+    // Which screen edge the panels anchor to: "top" | "left" | "right".
+    // They used to hang off the bar's painted edge; with no bar this is just
+    // where you want them.
+    readonly property string panelEdge: adapter.panelEdge
+    // Gap between that edge and the panel, in pixels.
+    readonly property int panelMargin: adapter.panelMargin
+
     // chess.com handle for the chess widget's ratings. Empty means the widget
-    // simply does not show that section - it is never required to play.
-    readonly property string chessUsername:  adapter.chessUsername
-
-    function resolvePath(p) {
-        if (p === undefined || p === "") return ""
-        if (p[0] === "~") return Quickshell.env("HOME") + p.substring(1)
-        return p
-    }
-    readonly property string resolvedWallpaperDir: resolvePath(wallpaperDir)
-
-    // Where the shell's own scripts live.
-    //
-    // Quickshell.env() returns **null** for an unset variable, not "". So
-    // `Quickshell.env("XDG_CONFIG_HOME") !== ""` is true when it is unset, the
-    // ternary takes the wrong branch, and `null + "/quickshell/..."` yields the
-    // string "null/quickshell/apollo/scripts/apps.sh". Quickshell then fails to
-    // start that process and the panel shows an empty list — which is exactly
-    // what an empty clipboard and a machine with no applications look like.
-    // Both the launcher and the clipboard panel shipped with that bug.
-    //
-    // Truthiness, not a !== "" test: it catches null, undefined and "" alike.
-    readonly property string configDir: {
-        var x = Quickshell.env("XDG_CONFIG_HOME")
-        return x ? x : Quickshell.env("HOME") + "/.config"
-    }
-    function shellScript(name) {
-        return configDir + "/quickshell/apollo/scripts/" + name
-    }
-
-    // Where the bar's painted edge is, measured from the screen edge. Panels
-    // anchor to this so a popout meets the rail instead of floating beside it.
-    //
-    // The bar's *window* is 42px tall / 46px wide, but in islands mode the pill
-    // it paints is only 34 across and centred in that window - so the pill ends
-    // at 38 (top) or 40 (left/right), and a panel at the window edge still
-    // leaves a visible gap. Classic mode paints the whole window, so there the
-    // two are the same number.
-    //
-    // Panel margins are measured from the screen edge, not from the bar's
-    // exclusive zone: the top-bar margin was already exactly the bar's own
-    // height, which only lines up if it is screen-relative.
-    readonly property int barEdge: {
-        if (barPosition === "top") return barStyle === "classic" ? 42 : 38
-        return barStyle === "classic" ? 46 : 40
-    }
-
-    // Which wallpaper picker layout is live.
-    //
-    // Its own file rather than a key in config.json, for the same reason the
-    // lock screen's layout has one: `apollo-paper-layout` writes it from a
-    // terminal, apollo-settings writes config.json, and a second copy of the
-    // answer would drift from the first. ~/.config/apollo is machine state,
-    // not part of this repo, so switching layouts never dirties it.
-    property string paperLayout: "filmstrip"
-
-    FileView {
-        id: paperLayoutFile
-        path: Quickshell.env("HOME") + "/.config/apollo/paper-layout.conf"
-        watchChanges: true
-        onFileChanged: reload()
-        onLoaded: {
-            var t = text().trim()
-            if (t !== "")
-                root.paperLayout = t
-        }
-    }
+    // simply does not show that section — it is never required to play.
+    readonly property string chessUsername: adapter.chessUsername
 
     // ── Palette (Catppuccin flavor) ──────────────────────────────────────
-    // flavor picks the WHOLE Catppuccin palette — the neutral ramp (base…text)
-    // *and* the accent family (blue, teal, green, red, …). The shell binds its
-    // semantic colors to these so every flavor is fully realised, not just
-    // Mocha with a slightly different background. The user's `accent` knob
-    // stays separate on top.
+    // flavor picks the WHOLE palette — the neutral ramp (base…text) *and* the
+    // accent family (blue, teal, green, red, …), so every flavor is fully
+    // realised rather than Mocha with a different background. The `accent`
+    // knob above stays separate on top.
     readonly property string flavor: adapter.flavor
 
     readonly property var _flavors: ({
@@ -116,23 +45,7 @@ Singleton {
         "frappe":    { base:"#303446", mantle:"#292c3c", crust:"#232634", surface0:"#414559", surface1:"#51576d", surface2:"#626880", overlay0:"#737994", overlay1:"#838ba7", overlay2:"#949cbb", subtext0:"#a5adce", subtext1:"#b5bfe2", text:"#c6d0f5", rosewater:"#f2d5cf", flamingo:"#eebebe", pink:"#f4b8e4", mauve:"#ca9ee6", red:"#e78284", maroon:"#ea999c", peach:"#ef9f76", yellow:"#e5c890", green:"#a6d189", teal:"#81c8be", sky:"#99d1db", sapphire:"#85c1dc", blue:"#8caaee", lavender:"#babbf1" },
         "latte":     { base:"#eff1f5", mantle:"#e6e9ef", crust:"#dce0e8", surface0:"#ccd0da", surface1:"#bcc0cc", surface2:"#acb0be", overlay0:"#9ca0b0", overlay1:"#8c8fa1", overlay2:"#7c7f93", subtext0:"#6c6f85", subtext1:"#5c5f77", text:"#4c4f69", rosewater:"#dc8a78", flamingo:"#dd7878", pink:"#ea76cb", mauve:"#8839ef", red:"#d20f39", maroon:"#e64553", peach:"#fe640b", yellow:"#df8e1d", green:"#40a02b", teal:"#179299", sky:"#04a5e5", sapphire:"#209fb5", blue:"#1e66f5", lavender:"#7287fd" }
     })
-    readonly property var _flavorRamp: _flavors[flavor] !== undefined ? _flavors[flavor] : _flavors["mocha"]
-
-    // Optional wallpaper-derived neutral ramp ("full palette" dynamic colours).
-    // When present it overrides the flavor ramp; empty/absent means we just use
-    // the flavor. Accent stays separate on top either way. It only ever carries
-    // the neutrals — the accent family below keeps the flavor's, so a terminal
-    // does not end up with a red, a green and a yellow that are all one hue.
-    readonly property var _custom: adapter.palette
-    readonly property bool _hasCustom: _custom !== undefined && _custom !== null
-                                       && _custom.base !== undefined && _custom.base !== ""
-    readonly property var _p: {
-        if (!_hasCustom) return _flavorRamp
-        var out = {}
-        for (var k in _flavorRamp)
-            out[k] = (_custom[k] !== undefined && _custom[k] !== "") ? _custom[k] : _flavorRamp[k]
-        return out
-    }
+    readonly property var _p: _flavors[flavor] !== undefined ? _flavors[flavor] : _flavors["mocha"]
 
     readonly property color base:     _p.base
     readonly property color mantle:   _p.mantle
@@ -147,10 +60,9 @@ Singleton {
     readonly property color subtext1: _p.subtext1
     readonly property color text:     _p.text
 
-    // Accent family — follows the flavor (Latte's colors are darker/saturated
-    // for light backgrounds, etc.). A full dynamic ramp only overrides the
-    // neutrals above; these keep the flavor's own accents. Bind semantic
-    // colors in panels to these instead of hardcoding Mocha hexes.
+    // Accent family — follows the flavor (Latte's are darker and more
+    // saturated, for a light background). Bind semantic colors in the panels
+    // to these instead of hardcoding Mocha hexes.
     readonly property color rosewater: _p.rosewater
     readonly property color flamingo:  _p.flamingo
     readonly property color pink:      _p.pink
@@ -166,27 +78,6 @@ Singleton {
     readonly property color blue:      _p.blue
     readonly property color lavender:  _p.lavender
 
-    // ── Battery glyphs ──────────────────────────────────────────────────
-    // The bar used one of two icons, full or low, so a battery at 95% and one
-    // at 25% looked identical. Nerd Fonts ship a glyph per decile; use them.
-    // Lives here rather than in Bar.qml because the system-monitor panel draws
-    // the same battery and the two must not disagree about it.
-    readonly property var _battRamp: [
-        0xf0083, // 0-9%  (alert)
-        0xf007a, 0xf007b, 0xf007c, 0xf007d, 0xf007e,
-        0xf007f, 0xf0080, 0xf0081,
-        0xf0079  // 90-100% (full)
-    ]
-
-    function batteryIcon(pct, charging) {
-        if (charging) return String.fromCodePoint(0xf0084)
-        if (pct < 0) return String.fromCodePoint(0xf0091)   // unknown
-        var i = Math.floor(pct / 10)
-        if (i > 9) i = 9
-        if (i < 0) i = 0
-        return String.fromCodePoint(_battRamp[i])
-    }
-
     FileView {
         id: cfg
         path: Quickshell.env("HOME") + "/.config/apollo/config.json"
@@ -196,27 +87,10 @@ Singleton {
         adapter: JsonAdapter {
             id: adapter
             property string accent: "#cba6f7"
-            property string archLogoColor: "#eba0ac"
             property string flavor: "mocha"
-            property string barStyle: "islands"
-            property string barPosition: "top"
-            property real   barOpacity: 0.72
-            property bool   clock24h: true
-            property bool   showUpdates: true
-            property bool   showTemp: true
-            property bool   showBattery: true
-            property bool   showRecording: true
-            property bool   showNetworkName: true
-            // The clock on the wallpaper (panels/Desktop.qml). Only ever
-            // visible on an empty workspace, which is when it earns its place.
-            property bool   showDesktop: true
-            property int    toastDuration: 4200
-            property int    maxToasts: 5
-            property string toastPosition: "auto"
-            property string wallpaperDir: "~/Pictures/Wallpapers"
+            property string panelEdge: "top"
+            property int    panelMargin: 10
             property string chessUsername: ""
-            // "Full palette" neutral ramp from the wallpaper; {} = use `flavor`.
-            property var palette: ({})
         }
     }
 }

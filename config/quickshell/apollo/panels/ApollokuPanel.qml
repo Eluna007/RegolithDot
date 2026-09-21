@@ -7,21 +7,21 @@ import "../services"
 import "apolloku/Sudoku.js" as Sudoku
 import "apolloku/Model.js" as Model
 
-// Apolloku — sudoku in the bar.
+// Apolloku — a sudoku panel.
 //
 // The puzzle logic lives in apolloku/Sudoku.js and apolloku/Model.js, which
-// are plain ECMAScript and are covered by scripts/test-apolloku.js under node.
-// This file is only presentation and input: anything worth asserting about
-// belongs next door where it can be tested.
+// are plain ECMAScript and carry no QML at all, so they run under node on
+// their own. This file is only presentation and input: anything worth
+// asserting about belongs next door where it can be tested.
 PanelWindow {
     id: root
     signal close()
 
     // ── Opening ──────────────────────────────────────────────────────────
-    // The card unrolls out of the bar edge: its own clip does the masking, so
-    // the text is uncovered at full size rather than scaled up out of a blur.
-    // This is how Caelestia's popouts read, and why they look attached to the
-    // bar instead of appearing next to it.
+    // The card unrolls out of the screen edge: its own clip does the masking,
+    // so the text is uncovered at full size rather than scaled up out of a
+    // blur. This is how Caelestia's popouts read, and why the card looks
+    // attached to the edge instead of appearing in front of it.
     //
     // `running: visible` rather than a NumberAnimation-on-property with
     // `running: true`. shell.qml creates every panel eagerly and toggles it
@@ -41,13 +41,17 @@ PanelWindow {
         running: root.visible
     }
 
+    // Where the card sits, per Config.panelEdge. It used to be anchored to the
+    // bar's painted edge so the reveal looked attached to it; with no bar the
+    // "top" case is anchored to that edge alone, which centres it
+    // horizontally — the card unrolls from the top of the screen instead of
+    // from a corner where nothing is any more.
     anchors.top: true
-    anchors.left: Config.barPosition === "left"
-    anchors.right: Config.barPosition !== "left"
-    // Flush with the bar, not floating beside it — see Config.barEdge.
-    margins.top: Config.barPosition === "top" ? Config.barEdge : 10
-    margins.left: Config.barPosition === "left" ? Config.barEdge : 0
-    margins.right: Config.barPosition === "right" ? Config.barEdge : 0
+    anchors.left: Config.panelEdge === "left"
+    anchors.right: Config.panelEdge === "right"
+    margins.top: Config.panelEdge === "top" ? Config.panelMargin : 10
+    margins.left: Config.panelEdge === "left" ? Config.panelMargin : 0
+    margins.right: Config.panelEdge === "right" ? Config.panelMargin : 0
     exclusiveZone: 0
     implicitWidth: 372
     implicitHeight: akContent.implicitHeight + 10
@@ -193,7 +197,7 @@ PanelWindow {
     // ── Generation, one attempt per frame ───────────────────────────────
     //
     // Carving a rated puzzle can take a few hundred milliseconds in total, and
-    // this runs on the thread that draws the bar. Sudoku.js exposes the run as
+    // this runs on the shell's UI thread. Sudoku.js exposes the run as
     // discrete attempts so the work can be spread across frames instead of
     // freezing everything at the moment you ask for a new game.
     property var generator: null
@@ -396,7 +400,7 @@ PanelWindow {
     // Reads go through FileView, which this shell already uses elsewhere.
     // Writes go through Process, because FileView's write API is not used
     // anywhere in this codebase and an unknown property or signal in QML is a
-    // load-time error that would take the whole bar down, not just this panel.
+    // load-time error that would take the whole shell down, not just this panel.
     //
     // The JSON travels as an argv entry rather than on stdin: `command` is the
     // Process API this shell already relies on, and a save is a couple of KB,
