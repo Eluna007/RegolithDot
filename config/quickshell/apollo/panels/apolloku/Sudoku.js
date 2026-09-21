@@ -2,8 +2,8 @@
 
 // Pure sudoku logic: no QML, no I/O, no side effects on anything the caller
 // did not hand in. Everything here is a plain function over a flat 81-cell
-// array of 0..9, where 0 means empty. Keeping it a `.pragma library` means the
-// bar widget and the panel share one parsed copy rather than one per instance.
+// array of 0..9, where 0 means empty. Keeping it a `.pragma library` means
+// every importer shares one parsed copy rather than one per instance.
 
 // ---------------------------------------------------------------- geometry
 
@@ -63,7 +63,7 @@ function _masksFor(grid) {
 }
 
 // `budget` bounds the search so a pathological grid cannot freeze the shell
-// process every widget in the bar shares. Running out returns `cap`, i.e. the
+// process every widget shares. Running out returns `cap`, i.e. the
 // pessimistic "more than one" answer — the generator then keeps the clue it
 // was about to remove, so exhaustion costs an easier puzzle, never a broken one.
 function _count(g, rm, cm, bm, cap, budget) {
@@ -441,10 +441,10 @@ function _carve(difficulty, rng) {
 //
 // `attempts` is a hard bound because this runs on the shell's UI thread: a
 // puzzle one step off the requested difficulty is a far better outcome than a
-// bar that stops responding. `rating` on the result is the measured value, so
+// panel that stops responding. `rating` on the result is the measured value, so
 // the UI can show what the puzzle is rather than what was requested.
 // Generation is incremental because it runs on the shell's UI thread, which
-// also draws the bar. Carving once takes a few milliseconds typically but can
+// also draws the panel. Carving once takes a few milliseconds typically but can
 // reach ~100ms, and doing all 24 attempts in one call froze everything for a
 // third of a second. `createGenerator` / `step` do one attempt per call, so
 // the panel can drive it from a Timer and stay responsive.

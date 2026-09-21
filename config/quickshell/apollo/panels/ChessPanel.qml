@@ -8,21 +8,21 @@ import "chess/Chess.js" as Chess
 import "chess/Engine.js" as Engine
 import "chess/Model.js" as Model
 
-// Chess in the bar: play a local opponent or the built-in engine, with your
-// chess.com ratings alongside when a username is configured.
+// Chess: play a local opponent or the built-in engine, with your chess.com
+// ratings alongside when a username is configured.
 //
-// Rules, search and parsing are in chess/*.js, covered by
-// scripts/test-chess.js under node - including perft against the published
-// node counts. This file is presentation and input only.
+// Rules, search and parsing are in chess/*.js, which carry no QML and run
+// under node on their own — including perft against the published node
+// counts. This file is presentation and input only.
 PanelWindow {
     id: root
     signal close()
 
     // ── Opening ──────────────────────────────────────────────────────────
-    // The card unrolls out of the bar edge: its own clip does the masking, so
-    // the text is uncovered at full size rather than scaled up out of a blur.
-    // This is how Caelestia's popouts read, and why they look attached to the
-    // bar instead of appearing next to it.
+    // The card unrolls out of the screen edge: its own clip does the masking,
+    // so the text is uncovered at full size rather than scaled up out of a
+    // blur. This is how Caelestia's popouts read, and why the card looks
+    // attached to the edge instead of appearing in front of it.
     //
     // `running: visible` rather than a NumberAnimation-on-property with
     // `running: true`. shell.qml creates every panel eagerly and toggles it
@@ -42,13 +42,17 @@ PanelWindow {
         running: root.visible
     }
 
+    // Where the card sits, per Config.panelEdge. It used to be anchored to the
+    // bar's painted edge so the reveal looked attached to it; with no bar the
+    // "top" case is anchored to that edge alone, which centres it
+    // horizontally — the card unrolls from the top of the screen instead of
+    // from a corner where nothing is any more.
     anchors.top: true
-    anchors.left: Config.barPosition === "left"
-    anchors.right: Config.barPosition !== "left"
-    // Flush with the bar, not floating beside it — see Config.barEdge.
-    margins.top: Config.barPosition === "top" ? Config.barEdge : 10
-    margins.left: Config.barPosition === "left" ? Config.barEdge : 0
-    margins.right: Config.barPosition === "right" ? Config.barEdge : 0
+    anchors.left: Config.panelEdge === "left"
+    anchors.right: Config.panelEdge === "right"
+    margins.top: Config.panelEdge === "top" ? Config.panelMargin : 10
+    margins.left: Config.panelEdge === "left" ? Config.panelMargin : 0
+    margins.right: Config.panelEdge === "right" ? Config.panelMargin : 0
     exclusiveZone: 0
     implicitWidth: 396
     implicitHeight: chContent.implicitHeight + 10
@@ -245,8 +249,8 @@ PanelWindow {
         searchState = null
     }
 
-    // One bounded slice per tick. The search shares the thread that draws the
-    // bar, so it is never allowed to run to completion in one go.
+    // One bounded slice per tick. The search shares the shell's UI thread, so
+    // it is never allowed to run to completion in one go.
     Timer {
         id: engineTimer
         interval: 16
@@ -301,7 +305,7 @@ PanelWindow {
 
     // Writes go through Process, matching the Apolloku panel: FileView's write
     // API is not used anywhere in this shell, and an unknown property in QML
-    // is a load-time error that takes the whole bar down.
+    // is a load-time error that takes the whole shell down.
     property var pendingWrites: ({})
     Process {
         id: writeProc
@@ -364,7 +368,7 @@ PanelWindow {
     // hostile value cannot become a second shell word or a different endpoint.
     // SplitParser plus onRunningChanged, not StdioCollector: SplitParser is the
     // only stdout API this shell uses anywhere, and an unknown QML type is a
-    // load-time error that takes the bar and every panel down with it. The
+    // load-time error that takes the shell and every panel down with it. The
     // response arrives in newline-delimited chunks, so they are accumulated
     // and parsed once the process exits.
     property string ratingsBuffer: ""

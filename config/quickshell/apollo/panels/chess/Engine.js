@@ -9,7 +9,7 @@
 // dependency the shell would have to find, launch and talk UCI to. This is a
 // few hundred lines of ECMAScript that node can test directly.
 //
-// The search runs in slices. It shares the thread that draws the bar, and a
+// The search runs in slices. It shares the shell's UI thread, and a
 // depth-4 search is comfortably long enough to drop frames, so `step` does a
 // bounded number of nodes per call and the panel drives it from a Timer.
 
@@ -210,8 +210,8 @@ function search(state, pos, depth, alpha, beta, ply) {
 
 // ---------------------------------------------------------------- slicing
 //
-// The search is spread across frames because it shares the thread that draws
-// the bar. The unit of work is ONE ROOT MOVE, not one depth iteration.
+// The search is spread across frames because it shares the shell's UI
+// thread. The unit of work is ONE ROOT MOVE, not one depth iteration.
 //
 // The first version sliced by iteration and abandoned the search whenever a
 // slice ran out of budget, keeping the last completed depth. On a fast engine
@@ -367,7 +367,7 @@ function applySlack(gen) {
 }
 
 // Blocking convenience for tests. Runs the whole search in one call, which is
-// fine anywhere that is not the thread drawing the bar.
+// fine anywhere that is not the shell's UI thread.
 function bestMove(pos, level, rng) {
   var gen = createSearch(pos, level, rng);
   var guard = 0;

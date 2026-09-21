@@ -1,117 +1,99 @@
-# Apollo
+# Apollo widgets
 
-A Hyprland rice for Arch: Catppuccin, a Quickshell bar, and Hyprland configured
-in **Lua** rather than `hyprland.conf`.
+Two [Quickshell](https://quickshell.org) widgets — a sudoku and a chess board
+— that run on any Wayland compositor. No bar, no compositor bindings: they are
+opened over IPC, so the keybind lives in your compositor's own config.
 
-<!-- Screenshots go here. -->
+This repo used to be a whole Hyprland rice. It isn't any more; see
+[History](#history).
 
-## About this repo
+## The widgets
 
-I'm not a developer.
+**Apolloku** — sudoku. Four difficulties, generated on the fly and rated by
+the techniques a solve actually needs rather than by how many clues are left.
+Notes mode, hints, undo, a mistake counter. Generation runs incrementally
+across frames, so making a hard puzzle never freezes the panel.
 
-This started because I'm a fan of
-[Fi3w0's Moonlit-shell](https://github.com/Fi3w0/Moonlit-shell). It's a
-beautiful set of dots and I wanted to daily-drive it — but Moonlit is written
-in hyprlang, and I'd moved to Hyprland's Lua configuration and didn't want to
-go back. So I set about translating it myself. Apollo is that translation, and
-the design, the panels and the look are Moonlit's; the credit for the rice
-belongs upstream.
-
-I got the port most of the way there by hand and then hit the limits of what I
-could work out on my own, particularly on the Quickshell side.
-
-**Claude (Anthropic's Claude Code) did the work of finishing it** from there:
-completing the Lua port, rebuilding and extending the shell, and adding the
-tests and checks described below. The commit history is the honest record of
-which parts were whose.
-
-So: a personal rice, translated out of admiration for the original and
-finished with a lot of help. Published in case it's useful to someone else on
-the same path. It isn't a product, it has one user, and it comes with no
-promise that it works on your machine.
-
-## What it is
-
-- **Hyprland in Lua.** `config/hypr/hyprland.lua` plus a module per concern —
-  appearance, animations, input, gestures, rules, keybinds, autostart. Dispatch
-  goes through `hl.dsp.*` rather than the old hyprlang strings.
-- **A Quickshell bar**, in four layouts (floating islands or a classic bar,
-  horizontal or vertical). Workspaces, a tray, a clock, system stats, and
-  panels for audio, bluetooth, wifi, clipboard, calendar, wallpaper, Tailscale
-  and power.
-- **A launcher** on `SUPER+Space` that also searches open windows, does
-  arithmetic, and runs shell actions.
-- **A lock screen** with four interchangeable hyprlock layouts, and a **login
-  screen** drawn to match — its own SDDM theme rather than a borrowed one.
-- **Dynamic colours.** With it switched on, one wallpaper change recolours the
-  shell, the terminal, GTK apps, rofi, the lock screen and the login screen.
-- **`apollo-settings`**, a small Go/Fyne app for the safe knobs — palette,
-  accent, bar layout, a handful of keybinds — which writes the Lua the
-  compositor reads.
-- **`apollo-doctor`**, which checks every dependency and generated file the
-  above quietly relies on.
-
-Some extras that are there because I wanted them: a sudoku widget, a chess
-widget with a real engine, and a clock drawn on the wallpaper.
+**Chess** — play a local opponent or the built-in engine. Legal-move
+generation is a 0x88 board with full rules (en passant, castling rights,
+promotion, the draw conditions); the engine is alpha-beta with quiescence,
+sliced one root move per frame so the search never blocks the UI. Set a
+chess.com handle and it shows your ratings alongside.
 
 ## Install
 
-See [MANUAL-INSTALL.md](MANUAL-INSTALL.md). It's a set of symlinks and a
-package list — there is deliberately no installer script.
+Symlink the shell into your Quickshell config directory:
 
-**Then run `scripts/apollo-doctor`.** It tells you what's missing, and it
-writes the palette files the terminal and GTK apps read — those are machine
-state, so a fresh clone has only the committed `*.default.*` to seed from until
-the doctor runs once. It never overwrites a palette you've already set.
+```sh
+ln -s "$PWD/config/quickshell/apollo" ~/.config/quickshell/apollo
+```
 
-## Docs
+Then run it — as a service, or from your compositor's startup:
 
-| | |
-|---|---|
-| [docs/hyprland.md](docs/hyprland.md) | The Lua config: what's where, what the translation changed, the keybinds |
-| [docs/shell.md](docs/shell.md) | The Quickshell side: launcher, cheatsheet, widgets, motion |
-| [docs/theming.md](docs/theming.md) | Where the colours come from, and the lock screen |
+```sh
+qs -c apollo
+```
 
-## On the tests
+Needs `quickshell`, a Nerd Font (the panels draw glyphs from
+`JetBrainsMono Nerd Font Mono`), and `curl` if you want chess.com ratings.
 
-There are rather a lot of checks in `scripts/` and `.github/workflows/` for a
-personal dotfiles repo. They're there because almost every bug in this thing
-has been silent: a widget that says "Disconnected" when the tool it needs isn't
-installed, a clipboard panel querying a program that wasn't running, a colour
-scheme generator pointed at a template that was never committed, a dozen
-entrance animations that played once at login to a hidden window and never
-again. None of those announce themselves. Each check exists because something
-was actually broken, and each one was verified by putting the bug back and
-watching it fail.
+## Opening them
 
-## Not included
+Both panels are toggled over Quickshell's IPC:
 
-Deliberately left out of this repo:
+```sh
+qs -c apollo ipc call panel toggle apolloku
+qs -c apollo ipc call panel toggle chess
+qs -c apollo ipc call panel close
+```
 
-- **`install.sh`** — Moonlit's installer. Deploy with the symlinks in
-  MANUAL-INSTALL.md instead.
-- **Wallpapers** (25 MB) — `~/Pictures/Wallpapers` is expected to exist; the
-  picker and `SUPER+SHIFT+B` read from it.
-- **`Bibata-Modern-Classic` cursors** (27 MB) — install
-  `bibata-cursor-theme` from the AUR.
+Bind those in your compositor. In niri's `config.kdl`:
 
-One upstream inconsistency is preserved as-is: `gtk-3.0/settings.ini` names
-`Nero-Cyber-Cyan` as the cursor theme while Moonlit shipped Bibata. Point it at
-whichever you actually install.
+```kdl
+binds {
+    Mod+Shift+S { spawn "qs" "-c" "apollo" "ipc" "call" "panel" "toggle" "apolloku"; }
+    Mod+Shift+C { spawn "qs" "-c" "apollo" "ipc" "call" "panel" "toggle" "chess"; }
+}
+```
 
-## Credits
+Toggling the panel that is already open closes it; opening the other replaces
+it, so the two never overlap. `Esc` closes whichever is up.
 
-Apollo is a remake. The design, the Quickshell panels, the settings app and the
-rice as a whole are [Fi3w0's Moonlit-shell](https://github.com/Fi3w0/Moonlit-shell);
-this repo translates them to Hyprland's Lua config and builds on them.
-Upstream's LICENSE is kept.
+## Configuration
 
-The wallpaper picker pre-caches downscaled thumbnails the way
-[iamsurjog/hyprquickpaper](https://github.com/iamsurjog/hyprquickpaper) does.
+Optional, and read live from `~/.config/apollo/config.json` — edit it and the
+panels restyle without a restart. With no file at all you get Catppuccin Mocha
+anchored to the top edge.
+
+| Key | Default | |
+|---|---|---|
+| `flavor` | `"mocha"` | `mocha`, `macchiato`, `frappe` or `latte` |
+| `accent` | `"#cba6f7"` | Drives active and hover states |
+| `panelEdge` | `"top"` | `top` (centred), `left` or `right` |
+| `panelMargin` | `10` | Gap from that edge, in pixels |
+| `chessUsername` | `""` | chess.com handle; empty hides the ratings section |
+
+## Multi-monitor
+
+The panels are single instances and land on your first screen. Nothing here
+imports a compositor module, which is what makes it portable — the cost is
+that the shell can't ask which output has focus. Making them follow focus
+means querying the compositor (`niri msg --json focused-output`) and passing
+the name down to `screen` in `shell.qml`.
+
+## History
+
+This started as a Hyprland rice: a Quickshell bar, Hyprland configured in Lua,
+hyprlock, an SDDM theme, a settings app, dynamic colours. All of that was
+removed when I moved to niri — the two widgets are what I actually wanted to
+keep. The rest is in the git history if you want it.
+
+The shell scaffolding these widgets grew inside was a translation of
+[Fi3w0's Moonlit-shell](https://github.com/Fi3w0/Moonlit-shell), whose LICENSE
+is kept. The sudoku and chess widgets themselves are not Moonlit's.
 
 The motion vocabulary in `services/Motion.qml` is Material 3's expressive
 durations and curves as [caelestia-dots/shell](https://github.com/caelestia-dots/shell)
-spells them (`Config/tokens.hpp`), found by way of
-[Ryoku](https://github.com/Ryoku-dev/ryoku-arch), which ports them too.
+spells them (`Config/tokens.hpp`).
 
 Built with [Claude Code](https://claude.ai/code).
